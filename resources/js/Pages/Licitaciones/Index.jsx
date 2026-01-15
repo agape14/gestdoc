@@ -112,7 +112,9 @@ export default function Index({ licitaciones, filters, flash }) {
                                 <tr key={licitacion.id}>
                                     <td className="ps-4 py-3 fw-medium text-body">{licitacion.titulo}</td>
                                     <td className="text-secondary">{licitacion.entidad}</td>
-                                    <td className="text-secondary fw-bold text-body">S/ {parseFloat(licitacion.presupuesto).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (PEN)</td>
+                                    <td className="text-secondary fw-bold text-body">
+                                        S/ {parseFloat(licitacion.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PEN
+                                    </td>
                                     <td>
                                         <span className={`badge bg-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${licitacion.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
                                             {licitacion.estado}

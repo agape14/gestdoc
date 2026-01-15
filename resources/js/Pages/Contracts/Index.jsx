@@ -139,11 +139,16 @@ export default function Index({ contratos, filters, flash }) {
                                         <td className="text-secondary">{contrato.licitacion?.entidad || 'N/A'}</td>
                                         <td className="text-secondary">
                                             {contrato.fecha_firma ? (() => {
-                                                const date = new Date(contrato.fecha_firma);
-                                                const day = String(date.getDate()).padStart(2, '0');
-                                                const month = String(date.getMonth() + 1).padStart(2, '0');
-                                                const year = date.getFullYear();
-                                                return `${day}/${month}/${year}`;
+                                                try {
+                                                    const date = new Date(contrato.fecha_firma);
+                                                    if (isNaN(date.getTime())) return contrato.fecha_firma;
+                                                    const day = String(date.getDate()).padStart(2, '0');
+                                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                    const year = date.getFullYear();
+                                                    return `${day}/${month}/${year}`;
+                                                } catch (e) {
+                                                    return contrato.fecha_firma;
+                                                }
                                             })() : '-'}
                                         </td>
                                         <td>
