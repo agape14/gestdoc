@@ -12,8 +12,14 @@ class FolderSeeder extends Seeder
      */
     public function run(): void
     {
+        // Desactivar restricciones de clave foránea temporalmente
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
         // Limpiar carpetas existentes
         Folder::truncate();
+
+        // Reactivar restricciones de clave foránea
+        \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // NIVEL 1: Carpetas principales
         $privados = Folder::create([
