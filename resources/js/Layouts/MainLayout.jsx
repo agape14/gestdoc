@@ -89,7 +89,7 @@ export default function MainLayout({ children }) {
                         <div className="px-4 mb-2 text-uppercase text-white-50 small fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>Menu Principal</div>
                         <NavItem href="/dashboard" icon="bi-speedometer2" label="Dashboard" />
                         <NavItem href="/licitaciones" icon="bi-briefcase" label="Licitaciones" activePattern="/licitaciones" />
-                        <NavItem href="/contracts" icon="bi-file-earmark-text" label="Contratos" activePattern="/contracts" />
+                        <NavItem href="/folders" icon="bi-folder-fill" label="Gestión Documental" activePattern="/folders" />
 
                         <div className="px-4 mt-4 mb-2 text-uppercase text-white-50 small fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>Gestión</div>
                         <NavItem href="/cvs" icon="bi-people" label="Banco de CVs" activePattern="/cvs" />
