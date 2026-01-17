@@ -6,6 +6,7 @@ export default function MainLayout({ children }) {
     const { auth } = props;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const [configMenuOpen, setConfigMenuOpen] = useState(false);
 
     React.useEffect(() => {
         const storedTheme = localStorage.getItem('theme');
@@ -35,6 +36,52 @@ export default function MainLayout({ children }) {
                 >
                     <i className={`bi ${icon} me-3 fs-5`}></i>
                     <span className="fs-6">{label}</span>
+                </Link>
+            </li>
+        );
+    };
+
+    const NavItemWithSubmenu = ({ icon, label, activePattern, children }) => {
+        const isActive = activePattern && url && url.startsWith(activePattern);
+        const [isOpen, setIsOpen] = useState(isActive);
+
+        React.useEffect(() => {
+            if (isActive) setIsOpen(true);
+        }, [isActive]);
+
+        return (
+            <li className="nav-item">
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={`nav-link d-flex align-items-center justify-content-between py-3 px-4 w-100 border-0 ${isActive ? 'active bg-white text-primary shadow-sm fw-bold rounded-end-pill' : 'text-white-50 hover-text-white'}`}
+                    style={{ transition: 'all 0.2s', marginRight: isActive ? '1rem' : '0', background: 'transparent' }}
+                >
+                    <div className="d-flex align-items-center">
+                        <i className={`bi ${icon} me-3 fs-5`}></i>
+                        <span className="fs-6">{label}</span>
+                    </div>
+                    <i className={`bi ${isOpen ? 'bi-chevron-up' : 'bi-chevron-down'} small`}></i>
+                </button>
+                {isOpen && (
+                    <ul className="nav flex-column ps-3">
+                        {children}
+                    </ul>
+                )}
+            </li>
+        );
+    };
+
+    const SubNavItem = ({ href, icon, label }) => {
+        const isActive = url === href;
+        return (
+            <li className="nav-item">
+                <Link
+                    href={href}
+                    className={`nav-link d-flex align-items-center py-2 px-4 ${isActive ? 'text-white fw-semibold' : 'text-white-50 hover-text-white'}`}
+                    style={{ fontSize: '0.9rem' }}
+                >
+                    <i className={`bi ${icon} me-2`}></i>
+                    <span>{label}</span>
                 </Link>
             </li>
         );
@@ -93,7 +140,10 @@ export default function MainLayout({ children }) {
 
                         <div className="px-4 mt-4 mb-2 text-uppercase text-white-50 small fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>Gestión</div>
                         <NavItem href="/cvs" icon="bi-people" label="Banco de CVs" activePattern="/cvs" />
-                        <NavItem href="/config" icon="bi-gear" label="Configuración" activePattern="/config" />
+                        <NavItemWithSubmenu icon="bi-gear" label="Configuración" activePattern="/config">
+                            <SubNavItem href="/config" icon="bi-people-fill" label="Usuarios" />
+                            <SubNavItem href="/config/image360" icon="bi-image-fill" label="Imagen 360°" />
+                        </NavItemWithSubmenu>
                     </ul>
                 </div>
 

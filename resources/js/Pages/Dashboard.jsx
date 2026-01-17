@@ -1,20 +1,29 @@
 import React from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head } from '@inertiajs/react';
+import Viewer360 from '@/Components/Viewer360';
 
-export default function Dashboard({ auth }) {
-    // Placeholder data
-    const stats = [
-        { label: 'Total Contratos', value: '12', icon: 'bi-file-text', color: 'primary' },
-        { label: 'Licitaciones en Curso', value: '5', icon: 'bi-briefcase', color: 'warning' },
-        { label: 'CVs Registrados', value: '48', icon: 'bi-people', color: 'success' },
-    ];
-
-    const activities = [
-        { id: 1, action: 'Nuevo Contrato firmado: Proyecto Alpha', user: 'Juan Perez', time: 'Hace 2 horas', status: 'Nuevo' },
-        { id: 2, action: 'Licitación "Hosp. Central" actualizada', user: 'Maria Lopez', time: 'Hace 5 horas', status: 'Revisión' },
-        { id: 3, action: 'CV subido: Arquitecto Senior', user: 'Sistema', time: 'Ayer', status: 'Pendiente' },
-        { id: 4, action: 'Presupuesto aprobado #4023', user: 'Carlos Ruiz', time: 'Ayer', status: 'Aprobado' },
+export default function Dashboard({ auth, stats, image360 }) {
+    // Preparar datos de estadísticas con valores reales
+    const statsCards = [
+        { 
+            label: 'Total Contratos', 
+            value: stats?.totalContratos || 0, 
+            icon: 'bi-file-text', 
+            color: 'primary' 
+        },
+        { 
+            label: 'Licitaciones en Curso', 
+            value: stats?.licitacionesEnCurso || 0, 
+            icon: 'bi-briefcase', 
+            color: 'warning' 
+        },
+        { 
+            label: 'CVs Registrados', 
+            value: stats?.cvsRegistrados || 0, 
+            icon: 'bi-people', 
+            color: 'success' 
+        },
     ];
 
     return (
@@ -28,7 +37,7 @@ export default function Dashboard({ auth }) {
 
             {/* Stats Cards */}
             <div className="row g-4 mb-5">
-                {stats.map((stat, index) => (
+                {statsCards.map((stat, index) => (
                     <div key={index} className="col-md-4">
                         <div className={`card bg-body border-0 shadow-sm h-100 border-start border-4 border-${stat.color}`}>
                             <div className="card-body d-flex align-items-center justify-content-between">
@@ -45,42 +54,23 @@ export default function Dashboard({ auth }) {
                 ))}
             </div>
 
-            {/* Recent Activity Table */}
+            {/* Visor 360° */}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
                 <div className="card-header bg-body py-3 px-4 border-bottom border-light d-flex align-items-center justify-content-between">
-                    <h5 className="mb-0 fw-bold text-body">Actividad Reciente</h5>
-                    <button className="btn btn-sm btn-outline-secondary">Ver todo</button>
+                    <div>
+                        <h5 className="mb-0 fw-bold text-body">Vista Panorámica del Proyecto</h5>
+                        <p className="text-secondary mb-0 small mt-1">Explora la vista 360° del sitio de construcción</p>
+                    </div>
+                    <button className="btn btn-sm btn-outline-primary">
+                        <i className="bi bi-arrows-fullscreen me-2"></i>
+                        Pantalla Completa
+                    </button>
                 </div>
-                <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0">
-                        <thead className="border-bottom text-secondary small text-uppercase">
-                            <tr>
-                                <th scope="col" className="ps-4 py-3">Descripción</th>
-                                <th scope="col" className="py-3">Usuario</th>
-                                <th scope="col" className="py-3">Fecha</th>
-                                <th scope="col" className="text-end pe-4 py-3">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {activities.map((item) => (
-                                <tr key={item.id}>
-                                    <td className="ps-4 py-3">
-                                        <div className="d-flex align-items-center">
-                                            <div className="bg-body-tertiary rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
-                                                <i className="bi bi-clock-history text-secondary"></i>
-                                            </div>
-                                            <span className="fw-medium text-body">{item.action}</span>
-                                        </div>
-                                    </td>
-                                    <td className="text-secondary">{item.user}</td>
-                                    <td><small className="text-muted">{item.time}</small></td>
-                                    <td className="text-end pe-4">
-                                        <span className="badge bg-body-secondary text-body border fw-normal px-3 py-2 rounded-pill">{item.status}</span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="card-body p-0" style={{ height: '600px' }}>
+                    <Viewer360 
+                        imageUrl={image360 || "/images/360/default-panorama.jpg"} 
+                        title="Vista 360° del Proyecto"
+                    />
                 </div>
             </div>
         </MainLayout>

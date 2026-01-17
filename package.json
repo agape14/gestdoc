@@ -23,6 +23,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "@photo-sphere-viewer/core": "^5.14.1",
         "@popperjs/core": "^2.11.8",
         "bootstrap": "^5.3.8",
         "bootstrap-icons": "^1.13.1",
