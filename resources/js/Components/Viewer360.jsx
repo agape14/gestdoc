@@ -5,54 +5,69 @@ import '@photo-sphere-viewer/core/index.css';
 export default function Viewer360({ imageUrl, title = "Vista 360°" }) {
     const viewerRef = useRef(null);
     const viewerInstance = useRef(null);
-    const [imageExists, setImageExists] = useState(true);
+    const [imageExists, setImageExists] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Verificar si la imagen existe
     useEffect(() => {
-        // Verificar si la imagen existe
+        setIsLoading(true);
+        setImageExists(null);
+        
         const img = new Image();
         img.onload = () => {
             setImageExists(true);
             setIsLoading(false);
-            initViewer();
         };
         img.onerror = () => {
             setImageExists(false);
             setIsLoading(false);
         };
         img.src = imageUrl;
-
-        return () => {
-            if (viewerInstance.current) {
-                viewerInstance.current.destroy();
-                viewerInstance.current = null;
-            }
-        };
     }, [imageUrl]);
 
-    const initViewer = () => {
-        if (viewerRef.current && !viewerInstance.current) {
+    // Inicializar el visor cuando la imagen esté verificada y el contenedor esté montado
+    useEffect(() => {
+        if (!isLoading && imageExists && viewerRef.current && !viewerInstance.current) {
             try {
-                viewerInstance.current = new Viewer({
-                    container: viewerRef.current,
-                    panorama: imageUrl,
-                    navbar: [
-                        'zoom',
-                        'move',
-                        'fullscreen',
-                    ],
-                    defaultZoomLvl: 50,
-                    fisheye: false,
-                    mousewheel: true,
-                    autorotateDelay: 3000,
-                    autorotateSpeed: '1rpm',
-                });
+                // Pequeño delay para asegurar que el DOM esté completamente renderizado
+                const timer = setTimeout(() => {
+                    if (viewerRef.current) {
+                        viewerInstance.current = new Viewer({
+                            container: viewerRef.current,
+                            panorama: imageUrl,
+                            navbar: [
+                                'zoom',
+                                'move',
+                                'fullscreen',
+                            ],
+                            defaultZoomLvl: 50,
+                            fisheye: false,
+                            mousewheel: true,
+                            mousemove: true,
+                            autorotateDelay: 3000,
+                            autorotateSpeed: '1rpm',
+                        });
+                    }
+                }, 100);
+
+                return () => clearTimeout(timer);
             } catch (error) {
                 console.error('Error initializing panorama viewer:', error);
                 setImageExists(false);
             }
         }
-    };
+
+        return () => {
+            if (viewerInstance.current) {
+                try {
+                    viewerInstance.current.destroy();
+                } catch (e) {
+                    console.error('Error destroying viewer:', e);
+                }
+                viewerInstance.current = null;
+            }
+        };
+    }, [isLoading, imageExists, imageUrl]);
 
     if (isLoading) {
         return (
