@@ -87,6 +87,7 @@ class Folder extends Model
         ];
     }
 
+
     /**
      * Genera slug automáticamente al crear
      */
@@ -97,11 +98,11 @@ class Folder extends Model
         static::creating(function ($folder) {
             if (empty($folder->slug)) {
                 $folder->slug = Str::slug($folder->name);
-                
+
                 // Asegurar unicidad del slug
                 $originalSlug = $folder->slug;
                 $count = 1;
-                
+
                 while (static::where('slug', $folder->slug)->exists()) {
                     $folder->slug = $originalSlug . '-' . $count;
                     $count++;

@@ -6,7 +6,7 @@ import FolderModal from '@/Components/FolderModal';
 import ContractModal from '@/Components/ContractModal';
 import PdfViewerModal from '@/Components/PdfViewerModal';
 
-export default function Index({ folders = [], contracts = [], currentFolder = null, breadcrumb = [], allFolders = [], flash, filters = {} }) {
+export default function Index({ folders = [], contracts = [], currentFolder = null, breadcrumb = [], allFolders = [], recentContracts = [], flash, filters = {} }) {
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [showContractModal, setShowContractModal] = useState(false);
     const [showPdfModal, setShowPdfModal] = useState(false);
@@ -347,24 +347,27 @@ export default function Index({ folders = [], contracts = [], currentFolder = nu
                                             className="text-decoration-none text-body"
                                         >
                                             <div
-                                                className="card-header border-0 p-4"
+                                                className="card-header border-0 p-4 position-relative"
                                                 style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '120px' }}
                                             >
                                                 <div className="d-flex justify-content-between align-items-start">
                                                     <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
-                                                    {folder.is_system && (
-                                                        <span className="badge bg-dark-subtle text-dark-emphasis border border-dark-subtle rounded-pill">
-                                                            Sistema
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {summary.total > 0 && (
-                                                    <div className="position-absolute bottom-0 end-0 m-3">
-                                                        <span className={`badge ${summary.percentage === 100 ? 'bg-success' : 'bg-warning'} rounded-pill`}>
-                                                            {summary.complete}/{summary.total}
+                                                    <div className="d-flex flex-column gap-2 align-items-end">
+                                                        {folder.is_system && (
+                                                            <span className="badge bg-dark-subtle text-dark-emphasis border border-dark-subtle rounded-pill">
+                                                                Sistema
+                                                            </span>
+                                                        )}
+                                                        <span
+                                                            className={`badge ${(folder.contratos_count || 0) > 0 ? 'bg-primary text-white' : 'bg-secondary bg-opacity-25 text-secondary'} rounded-pill shadow-sm`}
+                                                            style={{ fontSize: '0.75rem', fontWeight: '600' }}
+                                                            title={`${folder.contratos_count || 0} contrato${(folder.contratos_count || 0) !== 1 ? 's' : ''} en esta carpeta`}
+                                                        >
+                                                            <i className="bi bi-file-earmark-text me-1"></i>
+                                                            {folder.contratos_count || 0}
                                                         </span>
                                                     </div>
-                                                )}
+                                                </div>
                                             </div>
                                         </Link>
                                         <div className="card-body p-3">
@@ -403,6 +406,33 @@ export default function Index({ folders = [], contracts = [], currentFolder = nu
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Actividad Reciente - Solo en vista raíz */}
+            {!currentFolder && recentContracts && recentContracts.length > 0 && (
+                <div className="mb-4">
+                    <div className="card border-0 shadow-sm rounded-4 bg-body">
+                        <div className="card-body p-4">
+                            <h6 className="fw-bold text-body mb-3">
+                                <i className="bi bi-clock-history me-2 text-primary"></i>
+                                Contratos Agregados Recientemente
+                            </h6>
+                            <ul className="list-unstyled mb-0">
+                                {recentContracts.map((contract) => (
+                                    <li key={contract.id} className="mb-2 text-body">
+                                        <i className="bi bi-dot text-primary fs-4 me-1" style={{ verticalAlign: 'middle' }}></i>
+                                        <strong>{contract.project_name || 'Sin nombre'}</strong>
+                                        <span className="text-secondary ms-2">
+                                            {contract.folder_path && contract.folder_path.length > 0
+                                                ? `→ ${contract.folder_path.map(f => f.name).join(' › ')}`
+                                                : '→ Sin carpeta'}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     </div>
                 </div>
             )}

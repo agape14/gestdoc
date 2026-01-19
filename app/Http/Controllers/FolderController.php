@@ -18,18 +18,40 @@ class FolderController extends Controller
     public function index()
     {
         $folders = Folder::whereNull('parent_id')
-            ->with(['children', 'contratos'])
+            ->withCount('contratos')
+            ->with(['children' => function($query) {
+                $query->withCount('contratos')
+                      ->with(['children' => function($q) {
+                          $q->withCount('contratos');
+                      }]);
+            }, 'contratos'])
             ->get();
 
         $allFolders = Folder::with('children.children.children')
             ->whereNull('parent_id')
             ->get();
 
+        // Obtener los últimos 10 contratos insertados con información de carpeta
+        $recentContracts = Contrato::with(['folder.parent.parent.parent'])
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(function ($contract) {
+                return [
+                    'id' => $contract->id,
+                    'project_name' => $contract->project_name,
+                    'client' => $contract->client,
+                    'created_at' => $contract->created_at,
+                    'folder_path' => $contract->folder ? $contract->folder->path : [],
+                ];
+            });
+
         return Inertia::render('Folders/Index', [
             'folders' => $folders,
             'currentFolder' => null,
             'breadcrumb' => [],
             'allFolders' => $allFolders,
+            'recentContracts' => $recentContracts,
         ]);
     }
 
@@ -38,7 +60,17 @@ class FolderController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $folder = Folder::with(['children', 'parent'])->findOrFail($id);
+        $folder = Folder::with(['parent'])
+            ->withCount('contratos')
+            ->findOrFail($id);
+
+        // Cargar children con sus conteos
+        $folder->load(['children' => function($query) {
+            $query->withCount('contratos')
+                  ->with(['children' => function($q) {
+                      $q->withCount('contratos');
+                  }]);
+        }, 'contratos']);
 
         $allFolders = Folder::with('children.children.children')
             ->whereNull('parent_id')
