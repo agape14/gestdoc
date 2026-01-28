@@ -24,6 +24,16 @@ use App\Models\Folder;
 
 class DashboardController extends Controller
 {
+    private function safeCountCurriculumProfesionales()
+    {
+        try {
+            return Curriculum::where('tipo', 'Profesional')->orWhereNull('tipo')->count();
+        } catch (\Exception $e) {
+            Log::warning("Error counting Curriculum profesionales: " . $e->getMessage());
+            return 0;
+        }
+    }
+
     public function index()
     {
         // Función helper para contar de forma segura
@@ -88,14 +98,7 @@ class DashboardController extends Controller
             'plantillasIng' => $safeCount(PlantillaIng::class),
             'cvsRegistrados' => [
                 'total' => $safeCount(Curriculum::class),
-                'profesionales' => function() use ($safeCountWhere) {
-                    try {
-                        return Curriculum::where('tipo', 'Profesional')->orWhereNull('tipo')->count();
-                    } catch (\Exception $e) {
-                        \Log::warning("Error counting Curriculum profesionales: " . $e->getMessage());
-                        return 0;
-                    }
-                }(),
+                'profesionales' => $this->safeCountCurriculumProfesionales(),
                 'empresas' => $safeCountWhere(Curriculum::class, 'tipo', 'Empresa'),
             ],
             'gestionDocumental' => $safeCount(Folder::class),
