@@ -8,45 +8,26 @@ const DetailForm = ({ item, onClose }) => {
         _method: 'PUT',
         titulo: item.titulo || '',
         entidad: item.entidad || '',
+        modalidad: item.modalidad || '',
+        duracion: item.duracion || '',
         especialidad: item.especialidad || '',
+        tipo_servicio: item.tipo_servicio || '',
         presupuesto: item.presupuesto || '',
         estado: item.estado || 'En Curso',
-        modalidad: item.modalidad || '',
-        consorcio: item.consorcio || false,
-        nombre_rc: item.nombre_rc || '',
-        nombre_consorcio: item.nombre_consorcio || '',
-        consorciados: item.consorciados && typeof item.consorciados === 'string'
-            ? JSON.parse(item.consorciados)
-            : (item.consorciados || [{ nombre: '', porcentaje: '' }]),
-        bases_integradas: null,
-        propuesta_economica: null,
-        propuesta_tecnica: null,
         contrato_archivo: null,
-        promesa_consorcio: null,
+        tdr_archivo: null,
+        personal_clave: null,
+        producto_tecnico: null,
+        actas_resoluciones: null,
+        conformidad_tecnica: null,
     });
-
-    const handleAddConsorciado = () => {
-        setData('consorciados', [...data.consorciados, { nombre: '', porcentaje: '' }]);
-    };
-
-    const handleRemoveConsorciado = (index) => {
-        const list = [...data.consorciados];
-        list.splice(index, 1);
-        setData('consorciados', list);
-    };
-
-    const handleConsorciadoChange = (e, index, field) => {
-        const list = [...data.consorciados];
-        list[index][field] = e.target.value;
-        setData('consorciados', list);
-    };
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('licitaciones.update', item.id), {
+        post(route('consultor-obras.update', item.id), {
             forceFormData: true,
             onSuccess: () => {
-                Swal.fire('Éxito', 'Licitación actualizada correctamente', 'success');
+                Swal.fire('Éxito', 'Registro actualizado correctamente', 'success');
                 onClose();
             }
         });
@@ -55,15 +36,11 @@ const DetailForm = ({ item, onClose }) => {
     return (
         <form onSubmit={submit} className="p-4 bg-white rounded-4 shadow-sm">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h5 className="fw-bold mb-0">Detalle de Licitación</h5>
+                <h5 className="fw-bold mb-0">Detalle de Consultoría</h5>
                 <button type="button" className="btn-close" onClick={onClose}></button>
             </div>
 
             <div className="row g-3 mb-3">
-                <div className="col-md-12">
-                    <label className="form-label fw-bold small text-secondary">Licitación</label>
-                    <input type="text" className="form-control" value={data.titulo} onChange={e => setData('titulo', e.target.value)} />
-                </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Proyecto</label>
                     <input type="text" className="form-control" value={data.titulo} onChange={e => setData('titulo', e.target.value)} />
@@ -73,25 +50,27 @@ const DetailForm = ({ item, onClose }) => {
                     <input type="text" className="form-control" value={data.entidad} onChange={e => setData('entidad', e.target.value)} />
                 </div>
                 <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Modalidad</label>
+                    <input type="text" className="form-control" value={data.modalidad} onChange={e => setData('modalidad', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Duración</label>
+                    <input type="text" className="form-control" value={data.duracion} onChange={e => setData('duracion', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Especialidad</label>
+                    <input type="text" className="form-control" value={data.especialidad} onChange={e => setData('especialidad', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Tipo</label>
+                    <input type="text" className="form-control" placeholder="Elaboración de expediente técnico, evaluación, liquidación, etc" value={data.tipo_servicio} onChange={e => setData('tipo_servicio', e.target.value)} />
+                </div>
+                <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Presupuesto</label>
                     <div className="input-group">
                         <span className="input-group-text">S/</span>
                         <input type="number" step="0.01" className="form-control" value={data.presupuesto} onChange={e => setData('presupuesto', e.target.value)} />
                     </div>
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Modalidad</label>
-                    <input type="text" className="form-control" value={data.modalidad} onChange={e => setData('modalidad', e.target.value)} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Estado</label>
-                    <select className="form-select" value={data.estado} onChange={e => setData('estado', e.target.value)}>
-                        <option value="Buena Pro">Buena Pro</option>
-                        <option value="Nulo">Nulo</option>
-                        <option value="Desierto">Desierto</option>
-                        <option value="Perdido">Perdido</option>
-                        <option value="En Curso">En Curso</option>
-                    </select>
                 </div>
             </div>
 
@@ -99,89 +78,84 @@ const DetailForm = ({ item, onClose }) => {
 
             <div className="row g-3 mb-3">
                 <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Bases Integradas</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('bases_integradas', e.target.files[0])} />
-                    {item.bases_integradas && (
-                        <a href={`/storage/${item.bases_integradas}`} target="_blank" className="small text-primary mt-1 d-block">
+                    <label className="form-label fw-bold small text-secondary">Contrato</label>
+                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('contrato_archivo', e.target.files[0])} />
+                    {item.contrato_archivo && (
+                        <a href={`/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
                 </div>
                 <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Propuesta (Económica y Técnica)</label>
-                    <input type="file" className="form-control form-control-sm mb-2" accept=".pdf,.doc,.docx" onChange={e => setData('propuesta_economica', e.target.files[0])} />
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('propuesta_tecnica', e.target.files[0])} />
+                    <label className="form-label fw-bold small text-secondary">TDR</label>
+                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('tdr_archivo', e.target.files[0])} />
+                    {item.tdr_archivo && (
+                        <a href={`/storage/${item.tdr_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
+                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
+                        </a>
+                    )}
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Personal Clave</label>
+                    <input type="file" className="form-control form-control-sm" accept="image/*" onChange={e => setData('personal_clave', e.target.files[0])} />
+                    {item.personal_clave && (
+                        <a href={`/storage/${item.personal_clave}`} target="_blank" className="small text-primary mt-1 d-block">
+                            <i className="bi bi-image"></i> Ver imagen actual
+                        </a>
+                    )}
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Producto Técnico</label>
+                    <input type="file" className="form-control form-control-sm" multiple accept=".pdf,.doc,.docx" onChange={e => setData('producto_tecnico', Array.from(e.target.files))} />
+                    {item.producto_tecnico && Array.isArray(item.producto_tecnico) && item.producto_tecnico.length > 0 && (
+                        <div className="small mt-1">
+                            {item.producto_tecnico.map((file, idx) => (
+                                <a key={idx} href={`/storage/${file}`} target="_blank" className="d-block text-primary">
+                                    <i className="bi bi-file-earmark-pdf"></i> Archivo {idx + 1}
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Actas y Resoluciones</label>
+                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('actas_resoluciones', e.target.files[0])} />
+                    {item.actas_resoluciones && (
+                        <a href={`/storage/${item.actas_resoluciones}`} target="_blank" className="small text-primary mt-1 d-block">
+                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
+                        </a>
+                    )}
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Conformidad Técnica</label>
+                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('conformidad_tecnica', e.target.files[0])} />
+                    {item.conformidad_tecnica && (
+                        <a href={`/storage/${item.conformidad_tecnica}`} target="_blank" className="small text-primary mt-1 d-block">
+                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
+                        </a>
+                    )}
                 </div>
             </div>
 
-            <div className="form-check form-switch mb-3">
-                <input className="form-check-input" type="checkbox" checked={data.consorcio} onChange={e => setData('consorcio', e.target.checked)} />
-                <label className="form-check-label fw-bold">Consorcio</label>
-            </div>
-
-            {data.consorcio && (
-                <div className="p-3 bg-light rounded mb-3">
-                    <div className="row g-3 mb-3">
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">R.C.</label>
-                            <input type="text" className="form-control" value={data.nombre_rc} onChange={e => setData('nombre_rc', e.target.value)} />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Consorcio</label>
-                            <input type="text" className="form-control" value={data.nombre_consorcio} onChange={e => setData('nombre_consorcio', e.target.value)} />
-                        </div>
-                    </div>
-                    <label className="form-label fw-bold small text-secondary">Consorciados</label>
-                    {data.consorciados.map((item, index) => (
-                        <div key={index} className="d-flex gap-2 mb-2">
-                            <input type="text" className="form-control" placeholder="Nombre" value={item.nombre} onChange={e => handleConsorciadoChange(e, index, 'nombre')} />
-                            <div className="input-group" style={{ width: '150px' }}>
-                                <input type="number" className="form-control" placeholder="%" value={item.porcentaje} onChange={e => handleConsorciadoChange(e, index, 'porcentaje')} />
-                                <span className="input-group-text">%</span>
-                            </div>
-                            {data.consorciados.length > 1 && (
-                                <button type="button" className="btn btn-outline-danger" onClick={() => handleRemoveConsorciado(index)}>
-                                    <i className="bi bi-trash"></i>
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={handleAddConsorciado}>
-                        <i className="bi bi-plus-circle me-1"></i> Agregar Consorciado
+            <div className="d-flex justify-content-between align-items-center mt-3">
+                <a href={route('licitaciones.index')} className="btn btn-link text-decoration-none btn-sm">
+                    <i className="bi bi-box-arrow-up-right me-1"></i> Ver Proceso (Licitación)
+                </a>
+                <div className="d-flex gap-2">
+                    <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
+                    <button type="submit" disabled={processing} className="btn btn-primary">
+                        <i className="bi bi-save me-2"></i> Guardar
                     </button>
-                    <div className="mt-3">
-                        <label className="form-label fw-bold small text-secondary">Promesa de Consorcio</label>
-                        <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('promesa_consorcio', e.target.files[0])} />
-                    </div>
                 </div>
-            )}
-
-            <div className="mb-3">
-                <label className="form-label fw-bold small text-secondary">Contrato</label>
-                <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('contrato_archivo', e.target.files[0])} />
-                {item.contrato_archivo && (
-                    <a href={`/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
-                        <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                    </a>
-                )}
-            </div>
-
-            <div className="d-flex justify-content-end gap-2">
-                <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
-                <button type="submit" disabled={processing} className="btn btn-primary">
-                    <i className="bi bi-save me-2"></i> Guardar
-                </button>
             </div>
         </form>
     );
 };
 
-export default function Index({ licitaciones, groupedByEspecialidad, filters, flash, userRole }) {
+export default function Index({ consultorias, groupedByEspecialidad, filters, flash, userRole }) {
     const { auth } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const [search, setSearch] = useState(filters.search || '');
-    const [dateStart, setDateStart] = useState(filters.date_start || '');
-    const [dateEnd, setDateEnd] = useState(filters.date_end || '');
     const [expandedRow, setExpandedRow] = useState(null);
     const [showGrouped, setShowGrouped] = useState(true);
 
@@ -203,8 +177,8 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (search !== (filters.search || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '')) {
-                router.get(route('licitaciones.index'), { ...filters, search, date_start: dateStart, date_end: dateEnd }, {
+            if (search !== (filters.search || '')) {
+                router.get(route('consultor-obras.index'), { ...filters, search }, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -212,7 +186,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search, dateStart, dateEnd]);
+    }, [search]);
 
     const handleDelete = (id) => {
         Swal.fire({
@@ -226,7 +200,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                router.delete(route('licitaciones.destroy', id));
+                router.delete(route('consultor-obras.destroy', id));
             }
         });
     };
@@ -235,19 +209,27 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
         const params = new URLSearchParams();
         if (filters.tipo) params.append('tipo', filters.tipo);
         if (filters.especialidad) params.append('especialidad', filters.especialidad);
-        window.location.href = route('licitaciones.export') + '?' + params.toString();
+        window.location.href = route('consultor-obras.export') + '?' + params.toString();
     };
 
     const handleExportProject = (id) => {
-        window.location.href = route('licitaciones.export-project', id);
+        window.location.href = route('consultor-obras.export-project', id);
     };
 
-    const allLicitaciones = licitaciones.data || [];
+    const handleCreate = () => {
+        router.post(route('consultor-obras.store'), {
+            titulo: 'Nuevo Proyecto',
+            entidad: 'Sin Entidad',
+            categoria: filters.tipo || 'Privada'
+        });
+    };
+
+    const allConsultorias = consultorias.data || [];
     const grouped = groupedByEspecialidad || {};
 
     return (
         <MainLayout>
-            <Head title="Licitaciones" />
+            <Head title="Consultor de Obras" />
 
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
@@ -258,14 +240,14 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
 
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
-                    <h2 className="fw-bold text-body mb-0">Licitaciones {filters.tipo ? `(${filters.tipo}s)` : ''}</h2>
-                    <p className="text-secondary mb-0">Gestión de licitaciones públicas y privadas</p>
+                    <h2 className="fw-bold text-body mb-0">Consultor de Obras {filters.tipo ? `(${filters.tipo}s)` : ''}</h2>
+                    <p className="text-secondary mb-0">Gestión de consultorías de obras públicas y privadas</p>
                 </div>
                 <div className="d-flex gap-2 flex-wrap">
-                    <Link href={route('licitaciones.index', { tipo: 'Publica' })} className={`btn ${filters.tipo === 'Publica' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
+                    <Link href={route('consultor-obras.index', { tipo: 'Publica' })} className={`btn ${filters.tipo === 'Publica' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
                         <i className="bi bi-building me-2"></i> PÚBLICAS
                     </Link>
-                    <Link href={route('licitaciones.index', { tipo: 'Privada' })} className={`btn ${filters.tipo === 'Privada' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
+                    <Link href={route('consultor-obras.index', { tipo: 'Privada' })} className={`btn ${filters.tipo === 'Privada' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
                         <i className="bi bi-shield-lock me-2"></i> PRIVADAS
                     </Link>
                     {currentUserRole !== 'Visualizador' && (
@@ -273,46 +255,24 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
                                 <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
                             </button>
-                            <Link href={route('licitaciones.create')} className="btn btn-success shadow-sm rounded-pill px-4">
-                                <i className="bi bi-plus-lg me-2"></i> Nueva Licitación
-                            </Link>
+                            <button onClick={handleCreate} className="btn btn-success shadow-sm rounded-pill px-4">
+                                <i className="bi bi-plus-lg me-2"></i> Nuevo Registro
+                            </button>
                         </>
                     )}
                 </div>
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
-                <div className="row g-3">
-                    <div className="col-lg-6">
-                        <div className="input-group">
-                            <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
-                            <input
-                                type="text"
-                                className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
-                                placeholder="Buscar por proyecto, entidad o especialidad..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <div className="col-lg-3">
-                        <input
-                            type="date"
-                            className="form-control rounded-pill bg-body-tertiary border-0 px-3"
-                            placeholder="Fecha Inicio"
-                            value={dateStart}
-                            onChange={(e) => setDateStart(e.target.value)}
-                        />
-                    </div>
-                    <div className="col-lg-3">
-                        <input
-                            type="date"
-                            className="form-control rounded-pill bg-body-tertiary border-0 px-3"
-                            placeholder="Fecha Fin"
-                            value={dateEnd}
-                            onChange={(e) => setDateEnd(e.target.value)}
-                        />
-                    </div>
+                <div className="input-group">
+                    <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
+                    <input
+                        type="text"
+                        className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
+                        placeholder="Buscar por proyecto, entidad o especialidad..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
                 </div>
             </div>
 
@@ -331,8 +291,10 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 <th scope="col" className="ps-4 py-3">PROYECTO</th>
                                 <th scope="col" className="py-3">ENTIDAD</th>
                                 <th scope="col" className="py-3">ESPECIALIDAD</th>
+                                <th scope="col" className="py-3">TIPO</th>
                                 <th scope="col" className="py-3">PRESUPUESTO</th>
                                 <th scope="col" className="py-3">ESTADO</th>
+                                <th scope="col" className="py-3">DURACION</th>
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>
@@ -341,29 +303,31 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 Object.entries(grouped).map(([especialidad, items]) => (
                                     <React.Fragment key={especialidad}>
                                         <tr className="bg-light">
-                                            <td colSpan="6" className="ps-4 py-2 fw-bold text-primary">
+                                            <td colSpan="8" className="ps-4 py-2 fw-bold text-primary">
                                                 <i className="bi bi-folder-fill me-2"></i>
                                                 {especialidad || 'Sin Especialidad'} ({items.length} {items.length === 1 ? 'registro' : 'registros'})
                                             </td>
                                         </tr>
-                                        {items.map(licitacion => (
-                                            <React.Fragment key={licitacion.id}>
+                                        {items.map(consultoria => (
+                                            <React.Fragment key={consultoria.id}>
                                                 <tr
                                                     className="cursor-pointer"
-                                                    onClick={() => setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id)}
-                                                    style={{ backgroundColor: expandedRow === licitacion.id ? 'var(--bs-light)' : 'transparent' }}
+                                                    onClick={() => setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id)}
+                                                    style={{ backgroundColor: expandedRow === consultoria.id ? 'var(--bs-light)' : 'transparent' }}
                                                 >
-                                                    <td className="ps-4 py-3 fw-medium text-body">{licitacion.titulo}</td>
-                                                    <td className="text-secondary">{licitacion.entidad}</td>
-                                                    <td className="text-secondary">{licitacion.especialidad || '-'}</td>
+                                                    <td className="ps-4 py-3 fw-medium text-body">{consultoria.titulo}</td>
+                                                    <td className="text-secondary">{consultoria.entidad}</td>
+                                                    <td className="text-secondary">{consultoria.especialidad || '-'}</td>
+                                                    <td className="text-secondary">{consultoria.tipo_servicio || '-'}</td>
                                                     <td className="text-secondary fw-bold text-body">
-                                                        S/ {parseFloat(licitacion.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        S/ {parseFloat(consultoria.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </td>
                                                     <td>
-                                                        <span className={`badge bg-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${licitacion.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
-                                                            {licitacion.estado}
+                                                        <span className={`badge bg-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${consultoria.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
+                                                            {consultoria.estado}
                                                         </span>
                                                     </td>
+                                                    <td className="text-secondary">{consultoria.duracion || '-'}</td>
                                                     <td className="text-end pe-4">
                                                         {currentUserRole === 'Visualizador' ? (
                                                             <button className="btn btn-sm btn-outline-info" title="Ver">
@@ -374,27 +338,27 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id);
+                                                                        setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id);
                                                                     }}
                                                                     className="btn btn-sm btn-outline-primary me-1"
                                                                 >
-                                                                    <i className={`bi bi-chevron-${expandedRow === licitacion.id ? 'up' : 'down'}`}></i>
+                                                                    <i className={`bi bi-chevron-${expandedRow === consultoria.id ? 'up' : 'down'}`}></i>
                                                                 </button>
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        handleExportProject(licitacion.id);
+                                                                        handleExportProject(consultoria.id);
                                                                     }}
                                                                     className="btn btn-sm btn-outline-success me-1"
                                                                     title="Exportar a Excel"
                                                                 >
                                                                     <i className="bi bi-file-earmark-excel"></i>
                                                                 </button>
-                                                                {canDelete(licitacion) && (
+                                                                {canDelete(consultoria) && (
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            handleDelete(licitacion.id);
+                                                                            handleDelete(consultoria.id);
                                                                         }}
                                                                         className="btn btn-sm btn-outline-danger"
                                                                     >
@@ -405,11 +369,11 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                         )}
                                                     </td>
                                                 </tr>
-                                                {expandedRow === licitacion.id && (
+                                                {expandedRow === consultoria.id && (
                                                     <tr>
-                                                        <td colSpan="6" className="p-0 border-0">
+                                                        <td colSpan="8" className="p-0 border-0">
                                                             <div className="p-3 bg-light">
-                                                                <DetailForm item={licitacion} onClose={() => setExpandedRow(null)} />
+                                                                <DetailForm item={consultoria} onClose={() => setExpandedRow(null)} />
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -418,25 +382,27 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                         ))}
                                     </React.Fragment>
                                 ))
-                            ) : allLicitaciones.length > 0 ? (
-                                allLicitaciones.map(licitacion => (
-                                    <React.Fragment key={licitacion.id}>
+                            ) : allConsultorias.length > 0 ? (
+                                allConsultorias.map(consultoria => (
+                                    <React.Fragment key={consultoria.id}>
                                         <tr
                                             className="cursor-pointer"
-                                            onClick={() => setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id)}
-                                            style={{ backgroundColor: expandedRow === licitacion.id ? 'var(--bs-light)' : 'transparent' }}
+                                            onClick={() => setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id)}
+                                            style={{ backgroundColor: expandedRow === consultoria.id ? 'var(--bs-light)' : 'transparent' }}
                                         >
-                                            <td className="ps-4 py-3 fw-medium text-body">{licitacion.titulo}</td>
-                                            <td className="text-secondary">{licitacion.entidad}</td>
-                                            <td className="text-secondary">{licitacion.especialidad || '-'}</td>
+                                            <td className="ps-4 py-3 fw-medium text-body">{consultoria.titulo}</td>
+                                            <td className="text-secondary">{consultoria.entidad}</td>
+                                            <td className="text-secondary">{consultoria.especialidad || '-'}</td>
+                                            <td className="text-secondary">{consultoria.tipo_servicio || '-'}</td>
                                             <td className="text-secondary fw-bold text-body">
-                                                S/ {parseFloat(licitacion.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                S/ {parseFloat(consultoria.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td>
-                                                <span className={`badge bg-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${licitacion.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
-                                                    {licitacion.estado}
+                                                <span className={`badge bg-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${consultoria.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
+                                                    {consultoria.estado}
                                                 </span>
                                             </td>
+                                            <td className="text-secondary">{consultoria.duracion || '-'}</td>
                                             <td className="text-end pe-4">
                                                 {currentUserRole === 'Visualizador' ? (
                                                     <button className="btn btn-sm btn-outline-info" title="Ver">
@@ -447,27 +413,27 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id);
+                                                                setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id);
                                                             }}
                                                             className="btn btn-sm btn-outline-primary me-1"
                                                         >
-                                                            <i className={`bi bi-chevron-${expandedRow === licitacion.id ? 'up' : 'down'}`}></i>
+                                                            <i className={`bi bi-chevron-${expandedRow === consultoria.id ? 'up' : 'down'}`}></i>
                                                         </button>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleExportProject(licitacion.id);
+                                                                handleExportProject(consultoria.id);
                                                             }}
                                                             className="btn btn-sm btn-outline-success me-1"
                                                             title="Exportar a Excel"
                                                         >
                                                             <i className="bi bi-file-earmark-excel"></i>
                                                         </button>
-                                                        {canDelete(licitacion) && (
+                                                        {canDelete(consultoria) && (
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    handleDelete(licitacion.id);
+                                                                    handleDelete(consultoria.id);
                                                                 }}
                                                                 className="btn btn-sm btn-outline-danger"
                                                             >
@@ -478,11 +444,11 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                 )}
                                             </td>
                                         </tr>
-                                        {expandedRow === licitacion.id && (
+                                        {expandedRow === consultoria.id && (
                                             <tr>
-                                                <td colSpan="6" className="p-0 border-0">
+                                                <td colSpan="8" className="p-0 border-0">
                                                     <div className="p-3 bg-light">
-                                                        <DetailForm item={licitacion} onClose={() => setExpandedRow(null)} />
+                                                        <DetailForm item={consultoria} onClose={() => setExpandedRow(null)} />
                                                     </div>
                                                 </td>
                                             </tr>
@@ -491,17 +457,17 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="text-center py-5 text-muted">No se encontraron licitaciones.</td>
+                                    <td colSpan="8" className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
-                {licitaciones.links && licitaciones.links.length > 3 && (
+                {consultorias.links && consultorias.links.length > 3 && (
                     <div className="card-footer bg-body border-top-0 py-3">
                         <nav aria-label="Page navigation">
                             <ul className="pagination justify-content-center mb-0">
-                                {licitaciones.links.map((link, key) => (
+                                {consultorias.links.map((link, key) => (
                                     <li key={key} className={`page-item ${link.active ? 'active' : ''} ${!link.url ? 'disabled' : ''}`}>
                                         <Link
                                             className="page-link"

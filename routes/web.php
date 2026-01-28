@@ -37,11 +37,33 @@ Route::middleware('auth')->group(function () {
 
     // Módulos existentes
     Route::resource('licitaciones', LicitacionController::class)->parameters(['licitaciones' => 'licitacion']);
+    Route::get('/licitaciones/export', [LicitacionController::class, 'export'])->name('licitaciones.export');
+    Route::get('/licitaciones/{licitacion}/export', [LicitacionController::class, 'exportProject'])->name('licitaciones.export-project');
     Route::resource('cvs', CurriculumController::class);
     Route::resource('users', UserController::class); // Config maps to users here
 
+    // TECCONING Modules
+    Route::resource('consultor-obras', \App\Http\Controllers\ConsultorObraController::class);
+    Route::get('/consultor-obras/export', [\App\Http\Controllers\ConsultorObraController::class, 'export'])->name('consultor-obras.export');
+    Route::get('/consultor-obras/{consultorObra}/export', [\App\Http\Controllers\ConsultorObraController::class, 'exportProject'])->name('consultor-obras.export-project');
+    Route::resource('ejecutor-obra', \App\Http\Controllers\EjecutorObraController::class);
+    Route::get('/ejecutor-obra/export', [\App\Http\Controllers\EjecutorObraController::class, 'export'])->name('ejecutor-obra.export');
+    Route::get('/ejecutor-obra/{ejecutorObra}/export', [\App\Http\Controllers\EjecutorObraController::class, 'exportProject'])->name('ejecutor-obra.export-project');
+    Route::resource('proveedor-servicios', \App\Http\Controllers\ProveedorServicioController::class);
+    Route::get('/proveedor-servicios/export', [\App\Http\Controllers\ProveedorServicioController::class, 'export'])->name('proveedor-servicios.export');
+    Route::get('/proveedor-servicios/{proveedorServicio}/export', [\App\Http\Controllers\ProveedorServicioController::class, 'exportProject'])->name('proveedor-servicios.export-project');
+    // Placeholder routes for others or reuse generic if needed, currently just resources
+    Route::resource('proveedor-bienes', \App\Http\Controllers\ProveedorBienController::class);
+    Route::resource('especialistas-ejecucion', \App\Http\Controllers\EspecialistaEjecucionController::class);
+    Route::resource('especialistas-consultoria', \App\Http\Controllers\EspecialistaConsultoriaController::class);
+    Route::resource('inmobiliaria', \App\Http\Controllers\InmobiliariaController::class);
+    Route::resource('topografia', \App\Http\Controllers\TopografiaController::class);
+    Route::resource('tecnologia', \App\Http\Controllers\TecnologiaController::class);
+    Route::resource('plantillas-ing', \App\Http\Controllers\PlantillaIngController::class);
+
     // Alias for config menu link
     Route::get('/config', [UserController::class, 'index'])->name('config');
+    Route::get('/panel-control', [UserController::class, 'index'])->name('panel-control');
 
     // Configuración de imagen 360
     Route::get('/config/image360', [ConfigurationController::class, 'image360'])->name('config.image360');

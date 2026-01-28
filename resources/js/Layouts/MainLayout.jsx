@@ -124,7 +124,7 @@ export default function MainLayout({ children }) {
                         <div className="bg-primary rounded-3 p-2 me-2 d-flex align-items-center justify-content-center shadow-lg" style={{ width: '40px', height: '40px' }}>
                             <i className="bi bi-building-fill fs-4 text-white"></i>
                         </div>
-                        <span className="fs-4 fw-bold tracking-tight">GestDoc</span>
+                        <span className="fs-4 fw-bold tracking-tight">TECCONING</span>
                     </a>
                     <button className="btn btn-dark d-lg-none p-1" onClick={toggleSidebar}>
                         <i className="bi bi-x-lg"></i>
@@ -134,16 +134,22 @@ export default function MainLayout({ children }) {
                 <div className="py-4 overflow-y-auto custom-scrollbar flex-grow-1">
                     <ul className="nav nav-pills flex-column gap-1 pe-0">
                         <div className="px-4 mb-2 text-uppercase text-white-50 small fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>Menu Principal</div>
-                        <NavItem href="/dashboard" icon="bi-speedometer2" label="Dashboard" />
-                        <NavItem href="/licitaciones" icon="bi-briefcase" label="Licitaciones" activePattern="/licitaciones" />
-                        <NavItem href="/folders" icon="bi-folder-fill" label="Gestión Documental" activePattern="/folders" />
-
-                        <div className="px-4 mt-4 mb-2 text-uppercase text-white-50 small fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>Gestión</div>
-                        <NavItem href="/cvs" icon="bi-people" label="Banco de CVs" activePattern="/cvs" />
-                        <NavItemWithSubmenu icon="bi-gear" label="Configuración" activePattern="/config">
-                            <SubNavItem href="/config" icon="bi-people-fill" label="Usuarios" />
-                            <SubNavItem href="/config/image360" icon="bi-image-fill" label="Imagen 360°" />
-                        </NavItemWithSubmenu>
+                        <NavItem href="/dashboard" icon="bi-house-door-fill" label="INICIO" activePattern="/dashboard" />
+                        <NavItem href="/licitaciones" icon="bi-briefcase" label="LICITACIONES" activePattern="/licitaciones" />
+                        <NavItem href="/consultor-obras" icon="bi-person-workspace" label="CONSULTOR DE OBRAS" activePattern="/consultor-obras" />
+                        <NavItem href="/ejecutor-obra" icon="bi-hammer" label="EJECUTOR DE OBRA" activePattern="/ejecutor-obra" />
+                        <NavItem href="/proveedor-servicios" icon="bi-tools" label="PROVEEDOR DE SERVICIOS" activePattern="/proveedor-servicios" />
+                        <NavItem href="/proveedor-bienes" icon="bi-box-seam" label="PROVEEDOR DE BIENES" activePattern="/proveedor-bienes" />
+                        <NavItem href="/especialistas-ejecucion" icon="bi-people-hard-hat" label="ESPECIALISTAS EN EJECUCION DE OBRA" activePattern="/especialistas-ejecucion" />
+                        <NavItem href="/especialistas-consultoria" icon="bi-people" label="ESPECIALISTAS EN CONSULTORIA DE OBRA" activePattern="/especialistas-consultoria" />
+                        <NavItem href="/inmobiliaria" icon="bi-buildings" label="INMOBILIARIA" activePattern="/inmobiliaria" />
+                        <NavItem href="/topografia" icon="bi-map" label="TOPOGRAFIA" activePattern="/topografia" />
+                        <NavItem href="/tecnologia" icon="bi-pc-display" label="TECNOLOGIA" activePattern="/tecnologia" />
+                        <NavItem href="/plantillas-ing" icon="bi-file-earmark-ruled" label="PLANTILLAS DE ING" activePattern="/plantillas-ing" />
+                        <NavItem href="/cvs" icon="bi-person-lines-fill" label="BANCO DE CVs" activePattern="/cvs" />
+                        <NavItem href="/folders" icon="bi-folder-fill" label="GESTION DOCUMENTAL" activePattern="/folders" />
+                        <NavItem href="/panel-control" icon="bi-speedometer" label="PANEL DE CONTROL" activePattern="/panel-control" />
+                        <NavItem href="/config" icon="bi-gear" label="CONFIGURACION" activePattern="/config" />
                     </ul>
                 </div>
 
@@ -195,7 +201,7 @@ export default function MainLayout({ children }) {
                             <div className="bg-primary rounded-3 p-1 me-2 d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>
                                 <i className="bi bi-building-fill fs-6 text-white"></i>
                             </div>
-                            <span className="fw-bold fs-5 text-body">GestDoc</span>
+                            <span className="fw-bold fs-5 text-body">TECCONING</span>
                         </div>
                         <button className="btn btn-light btn-sm shadow-sm border" type="button" onClick={toggleSidebar}>
                             <i className="bi bi-list fs-4"></i>
