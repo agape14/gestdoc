@@ -117,8 +117,8 @@ return new class extends Migration
         if (Schema::hasTable('licitacions')) {
             Schema::table('licitacions', function (Blueprint $table) {
                 $table->dropColumn([
-                    'tipo', 'especialidad', 'bases_integradas', 'propuesta_economica', 
-                    'propuesta_tecnica', 'modalidad', 'consorcio', 'nombre_rc', 
+                    'tipo', 'especialidad', 'bases_integradas', 'propuesta_economica',
+                    'propuesta_tecnica', 'modalidad', 'consorcio', 'nombre_rc',
                     'nombre_consorcio', 'consorciados', 'contrato_archivo', 'promesa_consorcio'
                 ]);
             });

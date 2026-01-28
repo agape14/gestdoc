@@ -172,12 +172,12 @@ export default function ModuleIndex({ title, description, items, columns, create
                                                                         </Link>
                                                                     )}
                                                                     {canDelete(item) && deleteRoute && (
-                                                                        <button 
+                                                                        <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 handleDelete(item, deleteRoute);
                                                                             }}
-                                                                            className="btn btn-sm btn-outline-danger" 
+                                                                            className="btn btn-sm btn-outline-danger"
                                                                             title="Eliminar"
                                                                         >
                                                                             <i className="bi bi-trash"></i>

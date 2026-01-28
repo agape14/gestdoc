@@ -14,10 +14,21 @@ class Configuration extends Model
      */
     public static function get($key, $default = null)
     {
-        return Cache::remember("config_{$key}", 3600, function () use ($key, $default) {
-            $config = self::where('key', $key)->first();
-            return $config ? $config->value : $default;
-        });
+        try {
+            return Cache::remember("config_{$key}", 3600, function () use ($key, $default) {
+                $config = self::where('key', $key)->first();
+                return $config ? $config->value : $default;
+            });
+        } catch (\Exception $e) {
+            // Si falla el cache, intentar directamente sin cache
+            try {
+                $config = self::where('key', $key)->first();
+                return $config ? $config->value : $default;
+            } catch (\Exception $e2) {
+                \Log::warning("Error getting Configuration key '{$key}': " . $e2->getMessage());
+                return $default;
+            }
+        }
     }
 
     /**
@@ -35,7 +46,7 @@ class Configuration extends Model
         );
 
         Cache::forget("config_{$key}");
-        
+
         return $config;
     }
 

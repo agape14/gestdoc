@@ -104,11 +104,11 @@ class DashboardController extends Controller
         // Obtener imagen 360° configurada de forma segura
         $image360 = '/images/360/default-panorama.jpg';
         try {
-            if (\Schema::hasTable('configurations')) {
+            if (Schema::hasTable('configurations')) {
                 $image360 = Configuration::get('dashboard_360_image', '/images/360/default-panorama.jpg');
             }
         } catch (\Exception $e) {
-            \Log::warning("Error getting Configuration: " . $e->getMessage());
+            Log::warning("Error getting Configuration: " . $e->getMessage());
         }
 
         return Inertia::render('Dashboard', [

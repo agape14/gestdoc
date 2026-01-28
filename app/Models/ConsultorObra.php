@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class ConsultorObra extends Model
 {
     protected $fillable = [
-        'titulo', 'entidad', 'especialidad', 'tipo_servicio', 'presupuesto', 
-        'estado', 'duracion', 'modalidad', 'contrato_archivo', 'tdr_archivo', 
-        'personal_clave', 'producto_tecnico', 'actas_resoluciones', 
+        'titulo', 'entidad', 'especialidad', 'tipo_servicio', 'presupuesto',
+        'estado', 'duracion', 'modalidad', 'contrato_archivo', 'tdr_archivo',
+        'personal_clave', 'producto_tecnico', 'actas_resoluciones',
         'conformidad_tecnica', 'categoria', 'user_id'
     ];
 

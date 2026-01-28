@@ -112,7 +112,7 @@ export default function Dashboard({ auth, stats }) {
                         100% { background-position: 0% 50%; }
                     }
                     .backdrop-blur-sm { backdrop-filter: blur(3px); }
-                    
+
                     /* Hide dark background in light mode */
                     [data-bs-theme="light"] .video-background-container {
                         display: none !important;
