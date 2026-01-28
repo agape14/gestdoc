@@ -7,6 +7,8 @@ use App\Models\Licitacion;
 use App\Models\Curriculum;
 use App\Models\Configuration;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 use App\Models\ConsultorObra;
 use App\Models\EjecutorObra;
@@ -24,58 +26,90 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Obtener contadores reales de la base de datos
-        // Nota: Agrupamos por tipo (Publica/Privada) donde aplica para mostrar detalles si es necesario en el futuro
+        // Función helper para contar de forma segura
+        $safeCount = function($model, $default = 0) {
+            try {
+                return $model::count();
+            } catch (\Exception $e) {
+                \Log::warning("Error counting {$model}: " . $e->getMessage());
+                return $default;
+            }
+        };
+
+        $safeCountWhere = function($model, $column, $value, $default = 0) {
+            try {
+                return $model::where($column, $value)->count();
+            } catch (\Exception $e) {
+                \Log::warning("Error counting {$model} where {$column}={$value}: " . $e->getMessage());
+                return $default;
+            }
+        };
+
+        // Obtener contadores reales de la base de datos con manejo de errores
         $stats = [
             'licitaciones' => [
-                'total' => Licitacion::count(),
-                'publicas' => Licitacion::where('tipo', 'Publica')->count(),
-                'privadas' => Licitacion::where('tipo', 'Privada')->count(),
+                'total' => $safeCount(Licitacion::class),
+                'publicas' => $safeCountWhere(Licitacion::class, 'tipo', 'Publica'),
+                'privadas' => $safeCountWhere(Licitacion::class, 'tipo', 'Privada'),
             ],
             'consultorObras' => [
-                'total' => ConsultorObra::count(),
-                'publicas' => ConsultorObra::where('categoria', 'Publica')->count(),
-                'privadas' => ConsultorObra::where('categoria', 'Privada')->count(),
+                'total' => $safeCount(ConsultorObra::class),
+                'publicas' => $safeCountWhere(ConsultorObra::class, 'categoria', 'Publica'),
+                'privadas' => $safeCountWhere(ConsultorObra::class, 'categoria', 'Privada'),
             ],
             'ejecutorObras' => [
-                'total' => EjecutorObra::count(),
-                'publicas' => EjecutorObra::where('categoria', 'Publica')->count(),
-                'privadas' => EjecutorObra::where('categoria', 'Privada')->count(),
+                'total' => $safeCount(EjecutorObra::class),
+                'publicas' => $safeCountWhere(EjecutorObra::class, 'categoria', 'Publica'),
+                'privadas' => $safeCountWhere(EjecutorObra::class, 'categoria', 'Privada'),
             ],
             'proveedorServicios' => [
-                'total' => ProveedorServicio::count(),
-                'publicas' => ProveedorServicio::where('categoria', 'Publica')->count(),
-                'privadas' => ProveedorServicio::where('categoria', 'Privada')->count(),
+                'total' => $safeCount(ProveedorServicio::class),
+                'publicas' => $safeCountWhere(ProveedorServicio::class, 'categoria', 'Publica'),
+                'privadas' => $safeCountWhere(ProveedorServicio::class, 'categoria', 'Privada'),
             ],
             'proveedorBienes' => [
-                'total' => ProveedorBien::count(),
-                'publicas' => ProveedorBien::where('categoria', 'Publica')->count(),
-                'privadas' => ProveedorBien::where('categoria', 'Privada')->count(),
+                'total' => $safeCount(ProveedorBien::class),
+                'publicas' => $safeCountWhere(ProveedorBien::class, 'categoria', 'Publica'),
+                'privadas' => $safeCountWhere(ProveedorBien::class, 'categoria', 'Privada'),
             ],
             'especialistasEjecucion' => [
-                'total' => EspecialistaEjecucion::count(),
-                'profesionales' => EspecialistaEjecucion::where('tipo', 'Profesional')->count(),
-                'empresas' => EspecialistaEjecucion::where('tipo', 'Empresa')->count(),
+                'total' => $safeCount(EspecialistaEjecucion::class),
+                'profesionales' => $safeCountWhere(EspecialistaEjecucion::class, 'tipo', 'Profesional'),
+                'empresas' => $safeCountWhere(EspecialistaEjecucion::class, 'tipo', 'Empresa'),
             ],
             'especialistasConsultoria' => [
-                'total' => EspecialistaConsultoria::count(),
-                'profesionales' => EspecialistaConsultoria::where('tipo', 'Profesional')->count(),
-                'empresas' => EspecialistaConsultoria::where('tipo', 'Empresa')->count(),
+                'total' => $safeCount(EspecialistaConsultoria::class),
+                'profesionales' => $safeCountWhere(EspecialistaConsultoria::class, 'tipo', 'Profesional'),
+                'empresas' => $safeCountWhere(EspecialistaConsultoria::class, 'tipo', 'Empresa'),
             ],
-            'inmobiliaria' => Inmobiliaria::count(),
-            'topografia' => Topografia::count(),
-            'tecnologia' => Tecnologia::count(),
-            'plantillasIng' => PlantillaIng::count(),
+            'inmobiliaria' => $safeCount(Inmobiliaria::class),
+            'topografia' => $safeCount(Topografia::class),
+            'tecnologia' => $safeCount(Tecnologia::class),
+            'plantillasIng' => $safeCount(PlantillaIng::class),
             'cvsRegistrados' => [
-                'total' => Curriculum::count(),
-                'profesionales' => Curriculum::where('tipo', 'Profesional')->orWhereNull('tipo')->count(),
-                'empresas' => Curriculum::where('tipo', 'Empresa')->count(),
+                'total' => $safeCount(Curriculum::class),
+                'profesionales' => function() use ($safeCountWhere) {
+                    try {
+                        return Curriculum::where('tipo', 'Profesional')->orWhereNull('tipo')->count();
+                    } catch (\Exception $e) {
+                        \Log::warning("Error counting Curriculum profesionales: " . $e->getMessage());
+                        return 0;
+                    }
+                }(),
+                'empresas' => $safeCountWhere(Curriculum::class, 'tipo', 'Empresa'),
             ],
-            'gestionDocumental' => Folder::count(),
+            'gestionDocumental' => $safeCount(Folder::class),
         ];
 
-        // Obtener imagen 360° configurada (Mantener si se usa, o si se desea reemplazar por video en frontend)
-        $image360 = Configuration::get('dashboard_360_image', '/images/360/default-panorama.jpg');
+        // Obtener imagen 360° configurada de forma segura
+        $image360 = '/images/360/default-panorama.jpg';
+        try {
+            if (\Schema::hasTable('configurations')) {
+                $image360 = Configuration::get('dashboard_360_image', '/images/360/default-panorama.jpg');
+            }
+        } catch (\Exception $e) {
+            \Log::warning("Error getting Configuration: " . $e->getMessage());
+        }
 
         return Inertia::render('Dashboard', [
             'stats' => $stats,
