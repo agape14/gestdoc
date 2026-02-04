@@ -3,7 +3,7 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 
-export default function Create() {
+export default function Create({ folderId = null, breadcrumbLabel = '' }) {
     const { data, setData, post, processing, errors } = useForm({
         titulo: '',
         entidad: '',
@@ -13,7 +13,8 @@ export default function Create() {
         estado: 'En Curso',
         modalidad: '',
         duracion: '',
-        categoria: 'Publica',
+        folder_id: folderId || '',
+        clasificacion: breadcrumbLabel || '',
     });
 
     const submit = (e) => {
@@ -22,6 +23,8 @@ export default function Create() {
             forceFormData: true,
         });
     };
+
+    const cancelUrl = folderId ? route('proveedor-servicios.index', { folder_id: folderId }) : route('proveedor-servicios.index');
 
     return (
         <MainLayout>
@@ -42,13 +45,6 @@ export default function Create() {
                             <label className="form-label fw-medium">Entidad</label>
                             <input type="text" className={`form-control ${errors.entidad ? 'is-invalid' : ''}`} value={data.entidad} onChange={e => setData('entidad', e.target.value)} required />
                             {errors.entidad && <div className="invalid-feedback">{errors.entidad}</div>}
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">Categoría</label>
-                            <select className="form-select" value={data.categoria} onChange={e => setData('categoria', e.target.value)}>
-                                <option value="Publica">Pública</option>
-                                <option value="Privada">Privada</option>
-                            </select>
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Especialidad</label>
@@ -83,7 +79,7 @@ export default function Create() {
                         </div>
                     </div>
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">
-                        <Link href={route('proveedor-servicios.index')} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</Link>
+                        <Link href={cancelUrl} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</Link>
                         <SubmitButton processing={processing} icon="bi-save" className="px-5 rounded-pill shadow-sm">Guardar</SubmitButton>
                     </div>
                 </form>

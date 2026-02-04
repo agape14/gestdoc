@@ -4,6 +4,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 
 const DetailForm = ({ item, onClose }) => {
+    const existingDocs = item.documentos || [];
     const { data, setData, post, processing, errors } = useForm({
         _method: 'PUT',
         titulo: item.titulo || '',
@@ -12,17 +13,16 @@ const DetailForm = ({ item, onClose }) => {
         presupuesto: item.presupuesto || '',
         estado: item.estado || 'En Curso',
         modalidad: item.modalidad || '',
+        clasificacion: item.clasificacion || '',
         consorcio: item.consorcio || false,
         nombre_rc: item.nombre_rc || '',
         nombre_consorcio: item.nombre_consorcio || '',
         consorciados: item.consorciados && typeof item.consorciados === 'string'
             ? JSON.parse(item.consorciados)
             : (item.consorciados || [{ nombre: '', porcentaje: '' }]),
-        bases_integradas: null,
-        propuesta_economica: null,
-        propuesta_tecnica: null,
-        contrato_archivo: null,
         promesa_consorcio: null,
+        documento_delete_ids: [],
+        documentos: [],
     });
 
     const handleAddConsorciado = () => {
@@ -41,6 +41,31 @@ const DetailForm = ({ item, onClose }) => {
         setData('consorciados', list);
     };
 
+    const addDocumento = () => {
+        setData('documentos', [...(data.documentos || []), { nombre: '', archivo: null }]);
+    };
+
+    const removeDocumento = (index) => {
+        const list = data.documentos ? [...data.documentos] : [];
+        list.splice(index, 1);
+        setData('documentos', list);
+    };
+
+    const removeExistingDoc = (id) => {
+        setData('documento_delete_ids', [...(data.documento_delete_ids || []), id]);
+    };
+
+    const undoRemoveExisting = (id) => {
+        setData('documento_delete_ids', (data.documento_delete_ids || []).filter(x => x !== id));
+    };
+
+    const handleDocumentoChange = (index, field, value) => {
+        const list = [...(data.documentos || [])];
+        if (!list[index]) list[index] = { nombre: '', archivo: null };
+        list[index][field] = value;
+        setData('documentos', list);
+    };
+
     const submit = (e) => {
         e.preventDefault();
         post(route('licitaciones.update', item.id), {
@@ -51,6 +76,8 @@ const DetailForm = ({ item, onClose }) => {
             }
         });
     };
+
+    const toDelete = data.documento_delete_ids || [];
 
     return (
         <form onSubmit={submit} className="p-4 bg-white rounded-4 shadow-sm">
@@ -93,25 +120,53 @@ const DetailForm = ({ item, onClose }) => {
                         <option value="En Curso">En Curso</option>
                     </select>
                 </div>
+                <div className="col-md-12">
+                    <label className="form-label fw-bold small text-secondary">Tipo / Clasificación</label>
+                    <input type="text" className="form-control bg-light" value={data.clasificacion} readOnly placeholder="Ej: PUBLICAS / CONSULTORIAS DE OBRA / PUENTES" />
+                </div>
             </div>
 
             <hr className="my-3" />
 
-            <div className="row g-3 mb-3">
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Bases Integradas</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('bases_integradas', e.target.files[0])} />
-                    {item.bases_integradas && (
-                        <a href={`/storage/${item.bases_integradas}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                        </a>
-                    )}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Propuesta (Económica y Técnica)</label>
-                    <input type="file" className="form-control form-control-sm mb-2" accept=".pdf,.doc,.docx" onChange={e => setData('propuesta_economica', e.target.files[0])} />
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('propuesta_tecnica', e.target.files[0])} />
-                </div>
+            <div className="mb-3">
+                <label className="form-label fw-bold small text-secondary">Documentación del Proceso (nombre + archivo)</label>
+                {existingDocs.length > 0 && (
+                    <div className="mb-2">
+                        <span className="small text-secondary d-block mb-1">Documentos existentes</span>
+                        {existingDocs.map((doc) => {
+                            const marked = toDelete.includes(doc.id);
+                            return (
+                                <div key={doc.id} className={`d-flex align-items-center gap-2 p-2 mb-2 rounded ${marked ? 'bg-danger bg-opacity-10' : 'bg-body-tertiary'}`}>
+                                    <span className="fw-medium small">{doc.nombre}</span>
+                                    <a href={`/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="small">Ver archivo</a>
+                                    {marked ? (
+                                        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => undoRemoveExisting(doc.id)}>Deshacer</button>
+                                    ) : (
+                                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => removeExistingDoc(doc.id)}>Eliminar</button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                <span className="small text-secondary d-block mb-1">Nuevos documentos</span>
+                {(data.documentos || []).map((doc, index) => (
+                    <div key={index} className="row g-2 align-items-end mb-2 p-2 bg-body-tertiary rounded">
+                        <div className="col-md-4">
+                            <input type="text" className="form-control form-control-sm" placeholder="Nombre" value={doc.nombre || ''} onChange={e => handleDocumentoChange(index, 'nombre', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)} />
+                            {doc.archivo && typeof doc.archivo === 'object' && doc.archivo.name && <small className="text-success">{doc.archivo.name}</small>}
+                        </div>
+                        <div className="col-md-2">
+                            <button type="button" className="btn btn-outline-danger btn-sm w-100" onClick={() => removeDocumento(index)} title="Eliminar"><i className="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                ))}
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={addDocumento}>
+                    <i className="bi bi-plus-lg me-1"></i> Agregar más documento
+                </button>
             </div>
 
             <div className="form-check form-switch mb-3">
@@ -156,16 +211,6 @@ const DetailForm = ({ item, onClose }) => {
                 </div>
             )}
 
-            <div className="mb-3">
-                <label className="form-label fw-bold small text-secondary">Contrato</label>
-                <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('contrato_archivo', e.target.files[0])} />
-                {item.contrato_archivo && (
-                    <a href={`/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
-                        <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                    </a>
-                )}
-            </div>
-
             <div className="d-flex justify-content-end gap-2">
                 <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
                 <button type="submit" disabled={processing} className="btn btn-primary">
@@ -176,14 +221,32 @@ const DetailForm = ({ item, onClose }) => {
     );
 };
 
-export default function Index({ licitaciones, groupedByEspecialidad, filters, flash, userRole }) {
+const getIconClass = (iconName) => {
+    const iconMap = {
+        Lock: 'bi-lock-fill', Globe: 'bi-globe', Package: 'bi-box-seam', Settings: 'bi-gear-fill',
+        MoreHorizontal: 'bi-three-dots', Briefcase: 'bi-briefcase-fill', HardHat: 'bi-hammer',
+        Droplets: 'bi-droplet-fill', Waves: 'bi-water', School: 'bi-building', Road: 'bi-signpost-fill',
+        Bridge: 'bi-bricks', Trophy: 'bi-trophy-fill', FileText: 'bi-file-text-fill', Folder: 'bi-folder-fill',
+        Diagram: 'bi-diagram-3-fill', Tools: 'bi-tools', Lightning: 'bi-lightning-charge-fill',
+        Tree: 'bi-tree-fill', Shield: 'bi-shield-fill-check', Star: 'bi-star-fill',
+        Calendar: 'bi-calendar-check-fill', Archive: 'bi-archive-fill', ClipboardCheck: 'bi-clipboard-check-fill',
+    };
+    return iconMap[iconName] || 'bi-folder-fill';
+};
+
+export default function Index({ licitaciones, groupedByEspecialidad, filters, flash, userRole, anulados = [], operadores = [], folders = [], currentFolder = null, breadcrumb = [] }) {
     const { auth } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
+    const isAdmin = currentUserRole === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
+    const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [expandedRow, setExpandedRow] = useState(null);
     const [showGrouped, setShowGrouped] = useState(true);
+    const [tab, setTab] = useState('activos');
+    const [showFolderModal, setShowFolderModal] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
 
     const canEdit = (item) => {
         if (currentUserRole === 'Administrador') return true;
@@ -203,8 +266,10 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (search !== (filters.search || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '')) {
-                router.get(route('licitaciones.index'), { ...filters, search, date_start: dateStart, date_end: dateEnd }, {
+            const params = { ...filters, search, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
+            if (isAdmin) params.user_id = operatorId || undefined;
+            if (search !== (filters.search || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '') || operatorId !== (filters.user_id || '')) {
+                router.get(route('licitaciones.index'), params, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -212,17 +277,34 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search, dateStart, dateEnd]);
+    }, [search, dateStart, dateEnd, operatorId]);
 
-    const handleDelete = (id) => {
+    const buildIndexParams = (extra = {}) => {
+        const params = { ...filters, ...extra };
+        if (filters.folder_id) params.folder_id = filters.folder_id;
+        return params;
+    };
+
+    const handleCreateFolder = (e) => {
+        e.preventDefault();
+        if (!newFolderName.trim()) return;
+        router.post(route('licitaciones.folders.store'), {
+            parent_id: currentFolder?.id || null,
+            name: newFolderName.trim(),
+            color: '#EAEAEA',
+            description: '',
+        }, { preserveScroll: true, onSuccess: () => { setShowFolderModal(false); setNewFolderName(''); } });
+    };
+
+    const handleAnular = (id) => {
         Swal.fire({
-            title: '¿Estás seguro?',
-            text: "No podrás revertir esta acción",
+            title: '¿Anular registro?',
+            text: 'El registro no se borrará pero dejará de mostrarse en el listado activo.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#dc3545',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, eliminar',
+            confirmButtonText: 'Sí, anular',
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
@@ -256,24 +338,71 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                 </div>
             )}
 
+            {/* Breadcrumb carpetas */}
+            {breadcrumb && breadcrumb.length > 0 && (
+                <nav aria-label="breadcrumb" className="mb-3">
+                    <ol className="breadcrumb bg-body-tertiary rounded-3 p-3">
+                        <li className="breadcrumb-item">
+                            <Link href={route('licitaciones.index')} className="text-decoration-none">
+                                <i className="bi bi-house-door-fill me-1"></i> Licitaciones
+                            </Link>
+                        </li>
+                        {breadcrumb.map((folder, index) => (
+                            <li key={folder.id} className={`breadcrumb-item ${index === breadcrumb.length - 1 ? 'active' : ''}`}>
+                                {index === breadcrumb.length - 1 ? folder.name : (
+                                    <Link href={route('licitaciones.index', { folder_id: folder.id })} className="text-decoration-none">{folder.name}</Link>
+                                )}
+                            </li>
+                        ))}
+                    </ol>
+                </nav>
+            )}
+
+            {/* Carpetas: siempre visible (raíz o dentro de carpeta) */}
+            <div className="mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h5 className="fw-bold text-body mb-0"><i className="bi bi-folder me-2"></i>Carpetas</h5>
+                    {currentUserRole !== 'Visualizador' && (
+                        <button type="button" className="btn btn-primary rounded-pill px-3" onClick={() => setShowFolderModal(true)}>
+                            <i className="bi bi-folder-plus me-2"></i> Nueva Carpeta
+                        </button>
+                    )}
+                </div>
+                {folders && folders.length > 0 && (
+                    <div className="row g-3">
+                        {folders.map((folder) => (
+                            <div key={folder.id} className="col-md-6 col-lg-4 col-xl-3">
+                                <Link
+                                    href={route('licitaciones.index', { ...buildIndexParams(), folder_id: folder.id })}
+                                    className="text-decoration-none text-body"
+                                >
+                                    <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden" style={{ transition: 'transform 0.2s' }}>
+                                        <div className="card-header border-0 p-4" style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '100px' }}>
+                                            <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
+                                        </div>
+                                        <div className="card-body p-3">
+                                            <h6 className="card-title fw-bold mb-0">{folder.name}</h6>
+                                        </div>
+                                    </div>
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
-                    <h2 className="fw-bold text-body mb-0">Licitaciones {filters.tipo ? `(${filters.tipo}s)` : ''}</h2>
-                    <p className="text-secondary mb-0">Gestión de licitaciones públicas y privadas</p>
+                    <h2 className="fw-bold text-body mb-0">Licitaciones</h2>
+                    <p className="text-secondary mb-0">Gestión de licitaciones</p>
                 </div>
                 <div className="d-flex gap-2 flex-wrap">
-                    <Link href={route('licitaciones.index', { tipo: 'Publica' })} className={`btn ${filters.tipo === 'Publica' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
-                        <i className="bi bi-building me-2"></i> PÚBLICAS
-                    </Link>
-                    <Link href={route('licitaciones.index', { tipo: 'Privada' })} className={`btn ${filters.tipo === 'Privada' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
-                        <i className="bi bi-shield-lock me-2"></i> PRIVADAS
-                    </Link>
                     {currentUserRole !== 'Visualizador' && (
                         <>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
                                 <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
                             </button>
-                            <Link href={route('licitaciones.create')} className="btn btn-success shadow-sm rounded-pill px-4">
+                            <Link href={route('licitaciones.create', currentFolder?.id ? { folder_id: currentFolder.id } : {})} className="btn btn-success shadow-sm rounded-pill px-4">
                                 <i className="bi bi-plus-lg me-2"></i> Nueva Licitación
                             </Link>
                         </>
@@ -282,20 +411,37 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
-                <div className="row g-3">
-                    <div className="col-lg-6">
+                <div className="row g-3 align-items-end">
+                    {isAdmin && operadores.length > 0 && (
+                        <div className="col-md-6 col-lg-3">
+                            <label className="form-label small text-secondary mb-1">Operador</label>
+                            <select
+                                className="form-select rounded-pill bg-body-tertiary border-0"
+                                value={operatorId}
+                                onChange={(e) => setOperatorId(e.target.value)}
+                            >
+                                <option value="">Todos los operadores</option>
+                                {operadores.map(op => (
+                                    <option key={op.id} value={op.id}>{op.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <div className="col-md-6 col-lg-4">
+                        <label className="form-label small text-secondary mb-1 d-none d-lg-block">Buscar</label>
                         <div className="input-group">
                             <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
                             <input
                                 type="text"
                                 className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
-                                placeholder="Buscar por proyecto, entidad o especialidad..."
+                                placeholder="Proyecto, entidad o especialidad..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
                     </div>
-                    <div className="col-lg-3">
+                    <div className="col-6 col-md-3 col-lg-2">
+                        <label className="form-label small text-secondary mb-1 d-none d-lg-block">Desde</label>
                         <input
                             type="date"
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
@@ -304,7 +450,8 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                             onChange={(e) => setDateStart(e.target.value)}
                         />
                     </div>
-                    <div className="col-lg-3">
+                    <div className="col-6 col-md-3 col-lg-2">
+                        <label className="form-label small text-secondary mb-1 d-none d-lg-block">Hasta</label>
                         <input
                             type="date"
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
@@ -317,8 +464,30 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
-                <div className="card-header bg-body border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h6 className="mb-0 fw-bold">Listado {showGrouped ? 'Agrupado por Especialidad' : 'General'}</h6>
+                <div className="card-header bg-body border-0 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                        <h6 className="mb-0 fw-bold">Listado {showGrouped ? 'Agrupado por Especialidad' : 'General'}</h6>
+                        {currentUserRole === 'Administrador' && (
+                            <ul className="nav nav-pills nav-pills-sm mb-0">
+                                <li className="nav-item">
+                                    <button
+                                        className={`nav-link py-1 px-2 rounded-pill ${tab === 'activos' ? 'active' : ''}`}
+                                        onClick={() => setTab('activos')}
+                                    >
+                                        Activos
+                                    </button>
+                                </li>
+                                <li className="nav-item">
+                                    <button
+                                        className={`nav-link py-1 px-2 rounded-pill ${tab === 'anulados' ? 'active' : ''}`}
+                                        onClick={() => setTab('anulados')}
+                                    >
+                                        Anulados ({anulados.length})
+                                    </button>
+                                </li>
+                            </ul>
+                        )}
+                    </div>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowGrouped(!showGrouped)}>
                         <i className={`bi bi-${showGrouped ? 'list' : 'grid'} me-1`}></i>
                         {showGrouped ? 'Vista General' : 'Vista Agrupada'}
@@ -337,7 +506,36 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                             </tr>
                         </thead>
                         <tbody>
-                            {showGrouped && Object.keys(grouped).length > 0 ? (
+                            {tab === 'anulados' && isAdmin ? (
+                                anulados.length > 0 ? (
+                                    anulados.map(licitacion => (
+                                        <tr key={licitacion.id}>
+                                            <td className="ps-4 py-3 fw-medium text-body">{licitacion.titulo}</td>
+                                            <td className="text-secondary">{licitacion.entidad}</td>
+                                            <td className="text-secondary">{licitacion.especialidad || '-'}</td>
+                                            <td className="text-secondary fw-bold text-body">
+                                                S/ {parseFloat(licitacion.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                            <td>
+                                                <span className="badge bg-secondary rounded-pill px-3">Anulado</span>
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id); }}
+                                                    className="btn btn-sm btn-outline-primary"
+                                                    title="Ver"
+                                                >
+                                                    <i className="bi bi-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" className="text-center py-5 text-muted">No hay registros anulados.</td>
+                                    </tr>
+                                )
+                            ) : showGrouped && Object.keys(grouped).length > 0 ? (
                                 Object.entries(grouped).map(([especialidad, items]) => (
                                     <React.Fragment key={especialidad}>
                                         <tr className="bg-light">
@@ -394,11 +592,12 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            handleDelete(licitacion.id);
+                                                                            handleAnular(licitacion.id);
                                                                         }}
                                                                         className="btn btn-sm btn-outline-danger"
+                                                                        title="Anular"
                                                                     >
-                                                                        <i className="bi bi-trash"></i>
+                                                                        <i className="bi bi-x-circle"></i>
                                                                     </button>
                                                                 )}
                                                             </>
@@ -467,11 +666,12 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    handleDelete(licitacion.id);
+                                                                    handleAnular(licitacion.id);
                                                                 }}
                                                                 className="btn btn-sm btn-outline-danger"
+                                                                title="Anular"
                                                             >
-                                                                <i className="bi bi-trash"></i>
+                                                                <i className="bi bi-x-circle"></i>
                                                             </button>
                                                         )}
                                                     </>
@@ -515,6 +715,38 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                     </div>
                 )}
             </div>
+
+            {/* Modal Nueva Carpeta */}
+            {showFolderModal && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-0">
+                                <h5 className="modal-title fw-bold">Nueva Carpeta</h5>
+                                <button type="button" className="btn-close" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}></button>
+                            </div>
+                            <form onSubmit={handleCreateFolder}>
+                                <div className="modal-body">
+                                    <label className="form-label fw-semibold">Nombre de la carpeta</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        placeholder="Ej: Proyectos 2025"
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="modal-footer border-0">
+                                    <button type="button" className="btn btn-secondary" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}>Cancelar</button>
+                                    <button type="submit" className="btn btn-primary">Crear Carpeta</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
         </MainLayout>
     );
 }

@@ -3,19 +3,23 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 
-export default function Create() {
+export default function Create({ folderId = null, breadcrumbLabel = '' }) {
     const { data, setData, post, processing, errors } = useForm({
         nombre: '',
         especialidad: '',
         tipo: 'Profesional',
         estado: 'Activo',
         documento: null,
+        folder_id: folderId || '',
+        clasificacion: breadcrumbLabel || '',
     });
 
     const submit = (e) => {
         e.preventDefault();
         post(route('especialistas-ejecucion.store'), { forceFormData: true });
     };
+
+    const cancelUrl = folderId ? route('especialistas-ejecucion.index', { folder_id: folderId }) : route('especialistas-ejecucion.index');
 
     return (
         <MainLayout>
@@ -55,7 +59,7 @@ export default function Create() {
                         </div>
                     </div>
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">
-                        <Link href={route('especialistas-ejecucion.index')} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</Link>
+                        <Link href={cancelUrl} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</Link>
                         <SubmitButton processing={processing} icon="bi-save" className="px-5 rounded-pill shadow-sm">Guardar</SubmitButton>
                     </div>
                 </form>

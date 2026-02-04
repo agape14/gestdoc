@@ -1,7 +1,9 @@
 import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 
-export default function Index({ especialistas, filters, userRole }) {
+export default function Index({ especialistas, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [] }) {
+    const getDocumentLinks = (item) => (item.documento ? [{ label: 'Documento', path: item.documento }] : []);
+
     const columns = [
         { header: 'NOMBRE / RAZÓN SOCIAL', accessor: 'nombre' },
         { header: 'ESPECIALIDAD', accessor: 'especialidad' },
@@ -10,23 +12,26 @@ export default function Index({ especialistas, filters, userRole }) {
         { header: 'ACCIONES', accessor: 'actions' }
     ];
 
-    const filterOptions = [
-        { key: 'tipo', value: 'Profesional', label: 'PROFESIONALES', icon: 'bi-person' },
-        { key: 'tipo', value: 'Empresa', label: 'EMPRESAS', icon: 'bi-building' }
-    ];
-
     return (
         <ModuleIndex
+            getDocumentLinks={getDocumentLinks}
             title="Especialistas en Ejecución"
             description="Registro de profesionales y empresas de ejecución"
             items={especialistas}
             columns={columns}
-            createRoute={route('especialistas-ejecucion.create')}
+            createRoute={currentFolder?.id ? route('especialistas-ejecucion.create', { folder_id: currentFolder.id }) : route('especialistas-ejecucion.create')}
             editRoute={(id) => route('especialistas-ejecucion.edit', id)}
             deleteRoute="especialistas-ejecucion.destroy"
-            filters={filterOptions}
+            filters={[]}
             routeParams={filters}
             userRole={userRole}
+            folders={folders}
+            currentFolder={currentFolder}
+            breadcrumb={breadcrumb}
+            storeFolderRoute="especialistas-ejecucion.folders.store"
+            indexRoute="especialistas-ejecucion.index"
+            indexTitle="Especialistas en Ejecución"
+            operadores={operadores}
         />
     );
 }

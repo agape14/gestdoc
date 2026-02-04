@@ -152,12 +152,21 @@ const DetailForm = ({ item, onClose }) => {
     );
 };
 
-export default function Index({ consultorias, groupedByEspecialidad, filters, flash, userRole }) {
+const getIconClass = (iconName) => {
+    const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Package: 'bi-box-seam', Settings: 'bi-gear-fill', MoreHorizontal: 'bi-three-dots', Briefcase: 'bi-briefcase-fill', HardHat: 'bi-hammer', Droplets: 'bi-droplet-fill', Waves: 'bi-water', School: 'bi-building', Road: 'bi-signpost-fill', Bridge: 'bi-bricks', Trophy: 'bi-trophy-fill', FileText: 'bi-file-text-fill', Folder: 'bi-folder-fill', Diagram: 'bi-diagram-3-fill', Tools: 'bi-tools', Lightning: 'bi-lightning-charge-fill', Tree: 'bi-tree-fill', Shield: 'bi-shield-fill-check', Star: 'bi-star-fill', Calendar: 'bi-calendar-check-fill', Archive: 'bi-archive-fill', ClipboardCheck: 'bi-clipboard-check-fill' };
+    return iconMap[iconName] || 'bi-folder-fill';
+};
+
+export default function Index({ consultorias, groupedByEspecialidad, filters, flash, userRole, anulados = [], operadores = [], folders = [], currentFolder = null, breadcrumb = [] }) {
     const { auth } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
+    const isAdmin = currentUserRole === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
+    const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [expandedRow, setExpandedRow] = useState(null);
     const [showGrouped, setShowGrouped] = useState(true);
+    const [showFolderModal, setShowFolderModal] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
 
     const canEdit = (item) => {
         if (currentUserRole === 'Administrador') return true;
@@ -177,16 +186,22 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (search !== (filters.search || '')) {
-                router.get(route('consultor-obras.index'), { ...filters, search }, {
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                });
+            const params = { ...filters, search, folder_id: filters.folder_id };
+            if (isAdmin) params.user_id = operatorId || undefined;
+            if (search !== (filters.search || '') || operatorId !== (filters.user_id || '')) {
+                router.get(route('consultor-obras.index'), params, { preserveState: true, preserveScroll: true, replace: true });
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [search, operatorId]);
+
+    const buildIndexParams = (extra = {}) => ({ ...filters, ...extra, folder_id: filters.folder_id });
+
+    const handleCreateFolder = (e) => {
+        e.preventDefault();
+        if (!newFolderName.trim()) return;
+        router.post(route('consultor-obras.folders.store'), { parent_id: currentFolder?.id || null, name: newFolderName.trim(), color: '#EAEAEA', description: '' }, { preserveScroll: true, onSuccess: () => { setShowFolderModal(false); setNewFolderName(''); } });
+    };
 
     const handleDelete = (id) => {
         Swal.fire({
@@ -216,14 +231,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
         window.location.href = route('consultor-obras.export-project', id);
     };
 
-    const handleCreate = () => {
-        router.post(route('consultor-obras.store'), {
-            titulo: 'Nuevo Proyecto',
-            entidad: 'Sin Entidad',
-            categoria: filters.tipo || 'Privada'
-        });
-    };
-
     const allConsultorias = consultorias.data || [];
     const grouped = groupedByEspecialidad || {};
 
@@ -238,41 +245,92 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                 </div>
             )}
 
+            {breadcrumb && breadcrumb.length > 0 && (
+                <nav aria-label="breadcrumb" className="mb-3">
+                    <ol className="breadcrumb bg-body-tertiary rounded-3 p-3">
+                        <li className="breadcrumb-item">
+                            <Link href={route('consultor-obras.index')} className="text-decoration-none"><i className="bi bi-house-door-fill me-1"></i> Consultor de Obras</Link>
+                        </li>
+                        {breadcrumb.map((folder, index) => (
+                            <li key={folder.id} className={`breadcrumb-item ${index === breadcrumb.length - 1 ? 'active' : ''}`}>
+                                {index === breadcrumb.length - 1 ? folder.name : <Link href={route('consultor-obras.index', { folder_id: folder.id })} className="text-decoration-none">{folder.name}</Link>}
+                            </li>
+                        ))}
+                    </ol>
+                </nav>
+            )}
+
+            <div className="mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h5 className="fw-bold text-body mb-0"><i className="bi bi-folder me-2"></i>Carpetas</h5>
+                    {currentUserRole !== 'Visualizador' && (
+                        <button type="button" className="btn btn-primary rounded-pill px-3" onClick={() => setShowFolderModal(true)}>
+                            <i className="bi bi-folder-plus me-2"></i> Nueva Carpeta
+                        </button>
+                    )}
+                </div>
+                {folders && folders.length > 0 && (
+                    <div className="row g-3">
+                        {folders.map((folder) => (
+                            <div key={folder.id} className="col-md-6 col-lg-4 col-xl-3">
+                                <Link href={route('consultor-obras.index', { ...buildIndexParams(), folder_id: folder.id })} className="text-decoration-none text-body">
+                                    <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                                        <div className="card-header border-0 p-4" style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '100px' }}>
+                                            <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
+                                        </div>
+                                        <div className="card-body p-3">
+                                            <h6 className="card-title fw-bold mb-0">{folder.name}</h6>
+                                        </div>
+                                    </div>
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
-                    <h2 className="fw-bold text-body mb-0">Consultor de Obras {filters.tipo ? `(${filters.tipo}s)` : ''}</h2>
-                    <p className="text-secondary mb-0">Gestión de consultorías de obras públicas y privadas</p>
+                    <h2 className="fw-bold text-body mb-0">Consultor de Obras</h2>
+                    <p className="text-secondary mb-0">Gestión de consultorías de obras</p>
                 </div>
                 <div className="d-flex gap-2 flex-wrap">
-                    <Link href={route('consultor-obras.index', { tipo: 'Publica' })} className={`btn ${filters.tipo === 'Publica' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
-                        <i className="bi bi-building me-2"></i> PÚBLICAS
-                    </Link>
-                    <Link href={route('consultor-obras.index', { tipo: 'Privada' })} className={`btn ${filters.tipo === 'Privada' ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4`}>
-                        <i className="bi bi-shield-lock me-2"></i> PRIVADAS
-                    </Link>
                     {currentUserRole !== 'Visualizador' && (
                         <>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
                                 <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
                             </button>
-                            <button onClick={handleCreate} className="btn btn-success shadow-sm rounded-pill px-4">
+                            <Link href={route('consultor-obras.create', currentFolder?.id ? { folder_id: currentFolder.id } : {})} className="btn btn-success shadow-sm rounded-pill px-4">
                                 <i className="bi bi-plus-lg me-2"></i> Nuevo Registro
-                            </button>
+                            </Link>
                         </>
                     )}
                 </div>
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
-                <div className="input-group">
-                    <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
-                    <input
-                        type="text"
-                        className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
-                        placeholder="Buscar por proyecto, entidad o especialidad..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div className="row g-3 align-items-end">
+                    {isAdmin && operadores.length > 0 && (
+                        <div className="col-md-6 col-lg-3">
+                            <label className="form-label small text-secondary mb-1">Operador</label>
+                            <select className="form-select rounded-pill bg-body-tertiary border-0" value={operatorId} onChange={(e) => setOperatorId(e.target.value)}>
+                                <option value="">Todos los operadores</option>
+                                {operadores.map(op => (<option key={op.id} value={op.id}>{op.name}</option>))}
+                            </select>
+                        </div>
+                    )}
+                    <div className="col-md-6 col-lg-4">
+                        <div className="input-group">
+                            <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
+                            <input
+                                type="text"
+                                className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
+                                placeholder="Buscar por proyecto, entidad o especialidad..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -481,6 +539,29 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                     </div>
                 )}
             </div>
+
+            {showFolderModal && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-0">
+                                <h5 className="modal-title fw-bold">Nueva Carpeta</h5>
+                                <button type="button" className="btn-close" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}></button>
+                            </div>
+                            <form onSubmit={handleCreateFolder}>
+                                <div className="modal-body">
+                                    <label className="form-label fw-semibold">Nombre de la carpeta</label>
+                                    <input type="text" className="form-control" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Ej: Proyectos 2025" required autoFocus />
+                                </div>
+                                <div className="modal-footer border-0">
+                                    <button type="button" className="btn btn-secondary" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}>Cancelar</button>
+                                    <button type="submit" className="btn btn-primary">Crear Carpeta</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
         </MainLayout>
     );
 }

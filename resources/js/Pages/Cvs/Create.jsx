@@ -3,17 +3,20 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 
-export default function Create() {
+export default function Create({ folderId = null, breadcrumbLabel = '' }) {
     const { data, setData, post, processing, errors } = useForm({
         nombre_candidato: '',
         especialidad: '',
         archivo_cv: null,
+        folder_id: folderId || '',
     });
 
     const submit = (e) => {
         e.preventDefault();
         post(route('cvs.store'));
     };
+
+    const cancelUrl = folderId ? route('cvs.index', { folder_id: folderId }) : route('cvs.index');
 
     return (
         <MainLayout>
@@ -69,7 +72,7 @@ export default function Create() {
                     </div>
 
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top">
-                        <Link href={route('cvs.index')} className="btn btn-outline-secondary me-2">Cancelar</Link>
+                        <Link href={cancelUrl} className="btn btn-outline-secondary me-2">Cancelar</Link>
                         <SubmitButton processing={processing} icon="bi-save">
                             Guardar CV
                         </SubmitButton>

@@ -1,7 +1,7 @@
 import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 
-export default function Index({ bienes, filters, userRole }) {
+export default function Index({ bienes, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [] }) {
     const columns = [
         { header: 'ITEM / BIEN', accessor: 'titulo' },
         { header: 'ENTIDAD', accessor: 'entidad' },
@@ -10,23 +10,25 @@ export default function Index({ bienes, filters, userRole }) {
         { header: 'ACCIONES', accessor: 'actions' }
     ];
 
-    const filterOptions = [
-        { key: 'tipo', value: 'Publica', label: 'PÚBLICAS', icon: 'bi-building' },
-        { key: 'tipo', value: 'Privada', label: 'PRIVADAS', icon: 'bi-shield-lock' }
-    ];
-
     return (
         <ModuleIndex
             title="Proveedor de Bienes"
             description="Gestión de bienes públicos y privados"
             items={bienes}
             columns={columns}
-            createRoute={route('proveedor-bienes.create')}
+            createRoute={currentFolder?.id ? route('proveedor-bienes.create', { folder_id: currentFolder.id }) : route('proveedor-bienes.create')}
             editRoute={(id) => route('proveedor-bienes.edit', id)}
             deleteRoute="proveedor-bienes.destroy"
-            filters={filterOptions}
+            filters={[]}
             routeParams={filters}
             userRole={userRole}
+            folders={folders}
+            currentFolder={currentFolder}
+            breadcrumb={breadcrumb}
+            storeFolderRoute="proveedor-bienes.folders.store"
+            indexRoute="proveedor-bienes.index"
+            indexTitle="Proveedor de Bienes"
+            operadores={operadores}
         />
     );
 }

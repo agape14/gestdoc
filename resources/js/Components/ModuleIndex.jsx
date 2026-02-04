@@ -2,13 +2,33 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import PdfModal from '@/Components/PdfModal';
+import ModuleFolderModal from '@/Components/ModuleFolderModal';
 
-export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole }) {
+const getIconClass = (iconName) => {
+    const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
+    return iconMap[iconName] || 'bi-folder-fill';
+};
+
+export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null }) {
     const { auth } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
-    const [search, setSearch] = useState('');
+    const isAdmin = currentUserRole === 'Administrador';
+    const [search, setSearch] = useState(routeParams.search || '');
+    const [operatorId, setOperatorId] = useState(routeParams.user_id || '');
     const [currentFilters, setCurrentFilters] = useState(routeParams);
     const [expandedRow, setExpandedRow] = useState(null);
+    const [showFolderModal, setShowFolderModal] = useState(false);
+    const [showDocumentsModal, setShowDocumentsModal] = useState(false);
+    const [listDocumentLinks, setListDocumentLinks] = useState([]);
+    const [showPdfModal, setShowPdfModal] = useState(false);
+    const [pdfModalUrl, setPdfModalUrl] = useState('');
+    const [pdfModalTitle, setPdfModalTitle] = useState('');
+
+    const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (indexTitle || title);
+    const buildIndexParams = (extra = {}) => ({ ...currentFilters, ...extra });
+    const hasFolders = Boolean(indexRoute && (storeFolderRoute || (folders && folders.length > 0)));
+    const canCreateFolder = Boolean(storeFolderRoute);
 
     const handleRowClick = (id) => {
         setExpandedRow(expandedRow === id ? null : id);
@@ -16,8 +36,10 @@ export default function ModuleIndex({ title, description, items, columns, create
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (search !== (routeParams.search || '')) {
-                router.get(window.location.pathname, { ...currentFilters, search }, {
+            const params = { ...currentFilters, search, folder_id: routeParams.folder_id };
+            if (isAdmin) params.user_id = operatorId || undefined;
+            if (search !== (routeParams.search || '') || operatorId !== (routeParams.user_id || '')) {
+                router.get(window.location.pathname, params, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -25,7 +47,9 @@ export default function ModuleIndex({ title, description, items, columns, create
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [search, operatorId]);
+
+    const handleCloseFolderModal = () => setShowFolderModal(false);
 
     const handleFilterClick = (key, value) => {
         const newFilters = { ...currentFilters, [key]: value };
@@ -70,9 +94,68 @@ export default function ModuleIndex({ title, description, items, columns, create
         });
     };
 
+    const openDocumentsModal = (item) => {
+        if (!getDocumentLinks) return;
+        const links = (getDocumentLinks(item) || []).filter(d => d.path);
+        setListDocumentLinks(links);
+        setShowDocumentsModal(true);
+    };
+
+    const openPdfInModal = (label, path) => {
+        setPdfModalTitle(`${breadcrumbTitle} - ${label}`);
+        setPdfModalUrl(`/storage/${path}`);
+        setShowPdfModal(true);
+    };
+
     return (
         <MainLayout>
             <Head title={title} />
+
+            {hasFolders && breadcrumb && breadcrumb.length > 0 && (
+                <nav aria-label="breadcrumb" className="mb-3">
+                    <ol className="breadcrumb bg-body-tertiary rounded-3 p-3">
+                        <li className="breadcrumb-item">
+                            <Link href={route(indexRoute)} className="text-decoration-none"><i className="bi bi-house-door-fill me-1"></i> {indexTitle || title}</Link>
+                        </li>
+                        {breadcrumb.map((folder, index) => (
+                            <li key={folder.id} className={`breadcrumb-item ${index === breadcrumb.length - 1 ? 'active' : ''}`}>
+                                {index === breadcrumb.length - 1 ? folder.name : <Link href={route(indexRoute, { folder_id: folder.id })} className="text-decoration-none">{folder.name}</Link>}
+                            </li>
+                        ))}
+                    </ol>
+                </nav>
+            )}
+
+            {hasFolders && (
+                <div className="mb-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h5 className="fw-bold text-body mb-0"><i className="bi bi-folder me-2"></i>Carpetas</h5>
+                        {canCreateFolder && currentUserRole !== 'Visualizador' && (
+                            <button type="button" className="btn btn-primary rounded-pill px-3" onClick={() => setShowFolderModal(true)}>
+                                <i className="bi bi-folder-plus me-2"></i> Nueva carpeta
+                            </button>
+                        )}
+                    </div>
+                    {folders && folders.length > 0 && (
+                        <div className="row g-3">
+                            {folders.map((folder) => (
+                                <div key={folder.id} className="col-md-6 col-lg-4 col-xl-3">
+                                    <Link href={route(indexRoute, { ...buildIndexParams(), folder_id: folder.id })} className="text-decoration-none text-body">
+                                        <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                                            <div className="card-header border-0 p-4" style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '100px' }}>
+                                                <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
+                                            </div>
+                                            <div className="card-body p-3">
+                                                <h6 className="card-title fw-bold mb-0">{folder.name}</h6>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
@@ -122,15 +205,29 @@ export default function ModuleIndex({ title, description, items, columns, create
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
-                <div className="input-group">
-                    <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
-                    <input
-                        type="text"
-                        className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
-                        placeholder="Buscar..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div className="row g-3 align-items-end">
+                    {isAdmin && operadores.length > 0 && (
+                        <div className="col-md-6 col-lg-3">
+                            <label className="form-label small text-secondary mb-1">Operador</label>
+                            <select className="form-select rounded-pill bg-body-tertiary border-0" value={operatorId} onChange={(e) => setOperatorId(e.target.value)}>
+                                <option value="">Todos los operadores</option>
+                                {operadores.map(op => (<option key={op.id} value={op.id}>{op.name}</option>))}
+                            </select>
+                        </div>
+                    )}
+                    <div className="col-md-6 col-lg-4">
+                        <label className="form-label small text-secondary mb-1 d-none d-lg-block">Buscar</label>
+                        <div className="input-group">
+                            <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
+                            <input
+                                type="text"
+                                className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
+                                placeholder="Buscar..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -156,10 +253,22 @@ export default function ModuleIndex({ title, description, items, columns, create
                                     >
                                         {columns.map((col, i) => {
                                             // Si es la columna de acciones y no tiene render personalizado, usar el render por defecto
-                                            if (col.header === 'ACCIONES' && !col.render && (editRoute || deleteRoute)) {
+                                            if (col.header === 'ACCIONES' && !col.render && (editRoute || deleteRoute || getDocumentLinks)) {
+                                                const docLinks = getDocumentLinks ? (getDocumentLinks(item) || []).filter(d => d.path) : [];
+                                                const hasDocs = docLinks.length > 0;
                                                 return (
                                                     <td key={i} className="text-end pe-4">
-                                                        <div className="d-flex gap-1 justify-content-end">
+                                                        <div className="d-flex gap-1 justify-content-end flex-wrap">
+                                                            {hasDocs && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.stopPropagation(); openDocumentsModal(item); }}
+                                                                    className="btn btn-sm btn-outline-primary"
+                                                                    title="Ver documentos"
+                                                                >
+                                                                    <i className="bi bi-file-earmark-pdf"></i>
+                                                                </button>
+                                                            )}
                                                             {currentUserRole === 'Visualizador' ? (
                                                                 <button className="btn btn-sm btn-outline-info" title="Ver">
                                                                     <i className="bi bi-eye"></i>
@@ -237,6 +346,45 @@ export default function ModuleIndex({ title, description, items, columns, create
                     </div>
                 )}
             </div>
+
+            {hasFolders && canCreateFolder && showFolderModal && (
+                <ModuleFolderModal
+                    show={showFolderModal}
+                    onClose={handleCloseFolderModal}
+                    storeFolderRoute={storeFolderRoute}
+                    parentId={currentFolder?.id ?? null}
+                />
+            )}
+
+            {showDocumentsModal && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-bottom">
+                                <h5 className="modal-title fw-bold">{breadcrumbTitle} — Documentos adjuntos</h5>
+                                <button type="button" className="btn-close" onClick={() => { setShowDocumentsModal(false); setListDocumentLinks([]); }}></button>
+                            </div>
+                            <div className="modal-body">
+                                <ul className="list-group list-group-flush">
+                                    {listDocumentLinks.map((doc, idx) => (
+                                        <li key={idx} className="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                            <span>{doc.label}</span>
+                                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setShowDocumentsModal(false); openPdfInModal(doc.label, doc.path); }}>
+                                                <i className="bi bi-file-earmark-pdf me-1"></i> Ver PDF
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button type="button" className="btn btn-secondary" onClick={() => { setShowDocumentsModal(false); setListDocumentLinks([]); }}>Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} />
         </MainLayout >
     );
 }

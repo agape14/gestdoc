@@ -1,7 +1,9 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import React, { useEffect } from 'react';
 
-export default function Login({ status, canResetPassword }) {
+const DEMO_PASSWORD = 'password';
+
+export default function Login({ status, canResetPassword, demoUsers = [] }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -22,6 +24,11 @@ export default function Login({ status, canResetPassword }) {
         });
     };
 
+    const iniciarConUsuario = (email) => {
+        setData('email', email);
+        setData('password', DEMO_PASSWORD);
+    };
+
     return (
         <div className="d-flex min-vh-100 align-items-center justify-content-center bg-body-tertiary font-sans">
             <Head title="Iniciar Sesión - GestDoc" />
@@ -29,6 +36,35 @@ export default function Login({ status, canResetPassword }) {
             <div className="container">
                 <div className="row justify-content-center">
                     <div className="col-md-10 col-lg-8 col-xl-7">
+                        {demoUsers && demoUsers.length > 0 && (
+                            <div className="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                                <div className="card-body p-4">
+                                    <h6 className="fw-bold text-body mb-3">
+                                        <i className="bi bi-person-check me-2 text-primary"></i>
+                                        Iniciar sesión con usuario de prueba
+                                    </h6>
+                                    <p className="text-secondary small mb-3">Haz clic en un usuario para rellenar el formulario. Contraseña: <kbd className="px-2 py-1 rounded">password</kbd></p>
+                                    <div className="row g-2">
+                                        {demoUsers.map((user) => (
+                                            <div key={user.id} className="col-12">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-primary w-100 d-flex align-items-center justify-content-between py-3 px-4 rounded-3 text-start"
+                                                    onClick={() => iniciarConUsuario(user.email)}
+                                                >
+                                                    <span>
+                                                        <span className="fw-bold d-block">{user.name}</span>
+                                                        <span className="small text-secondary">{user.email}</span>
+                                                    </span>
+                                                    <span className="badge bg-primary rounded-pill">{user.role}</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="card border-0 shadow-lg rounded-5 overflow-hidden">
                             <div className="row g-0">
                                 {/* Left Side - Image/Brand */}

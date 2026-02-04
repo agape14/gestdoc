@@ -1,8 +1,29 @@
 import React from 'react';
 import MainLayout from '@/Layouts/MainLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
+
+const DASHBOARD_CARDS = [
+    { key: 'licitaciones', statsKey: 'licitaciones', title: 'Licitaciones', icon: 'bi-briefcase', color: 'primary', route: '/licitaciones' },
+    { key: 'consultor-obras', statsKey: 'consultorObras', title: 'Consultor Obras', icon: 'bi-person-workspace', color: 'success', route: '/consultor-obras' },
+    { key: 'ejecutor-obra', statsKey: 'ejecutorObras', title: 'Ejecutor Obra', icon: 'bi-hammer', color: 'warning', route: '/ejecutor-obra' },
+    { key: 'proveedor-servicios', statsKey: 'proveedorServicios', title: 'Prov. Servicios', icon: 'bi-tools', color: 'info', route: '/proveedor-servicios' },
+    { key: 'proveedor-bienes', statsKey: 'proveedorBienes', title: 'Prov. Bienes', icon: 'bi-box-seam', color: 'danger', route: '/proveedor-bienes' },
+    { key: 'especialistas-ejecucion', statsKey: 'especialistasEjecucion', title: 'Esp. Ejecución', icon: 'bi-people-hard-hat', color: 'secondary', route: '/especialistas-ejecucion' },
+    { key: 'especialistas-consultoria', statsKey: 'especialistasConsultoria', title: 'Esp. Consultoría', icon: 'bi-people', color: 'light', route: '/especialistas-consultoria' },
+    { key: 'inmobiliaria', statsKey: 'inmobiliaria', title: 'Inmobiliaria', icon: 'bi-buildings', color: 'primary', route: '/inmobiliaria' },
+    { key: 'topografia', statsKey: 'topografia', title: 'Topografía', icon: 'bi-map', color: 'success', route: '/topografia' },
+    { key: 'tecnologia', statsKey: 'tecnologia', title: 'Tecnología', icon: 'bi-pc-display', color: 'info', route: '/tecnologia' },
+    { key: 'plantillas-ing', statsKey: 'plantillasIng', title: 'Plantillas Ing', icon: 'bi-file-earmark-ruled', color: 'warning', route: '/plantillas-ing' },
+    { key: 'cvs', statsKey: 'cvsRegistrados', title: 'Banco de CVs', icon: 'bi-person-lines-fill', color: 'danger', route: '/cvs' },
+    { key: 'folders', statsKey: 'gestionDocumental', title: 'Gestión Doc', icon: 'bi-folder-fill', color: 'light', route: '/folders' },
+];
 
 export default function Dashboard({ auth, stats }) {
+    const { props } = usePage();
+    const user = props.auth?.user;
+    const isAdmin = user?.role === 'Administrador';
+    const allowedMenus = user?.allowed_menus ?? [];
+    const visibleCards = isAdmin ? DASHBOARD_CARDS : DASHBOARD_CARDS.filter(c => allowedMenus.includes(c.key));
 
     // Helper to render a card with public/private breakdown or just total
     const StatCard = ({ title, icon, color, route, data }) => {
@@ -42,31 +63,41 @@ export default function Dashboard({ auth, stats }) {
                             <h5 className="card-title fw-bold text-uppercase mb-3 tracking-wide text-white-50 small">{title}</h5>
 
                             {hasPublicPrivate && (
-                                <div className="d-flex justify-content-between mt-3 pt-3 border-top border-light border-opacity-25">
-                                    <div className="text-center">
-                                        <span className="d-block small text-white-50">PUBLICAS</span>
-                                        <span className="fw-bold fs-5 text-white">{data.publicas || 0}</span>
+                                <>
+                                    <div className="d-flex justify-content-between mt-3 pt-3 border-top border-light border-opacity-25">
+                                        <div className="text-center">
+                                            <span className="d-block small text-white-50">PÚBLICAS</span>
+                                            <span className="fw-bold fs-5 text-white">{data.publicas || 0}</span>
+                                        </div>
+                                        <div className="vr bg-light opacity-25"></div>
+                                        <div className="text-center">
+                                            <span className="d-block small text-white-50">PRIVADAS</span>
+                                            <span className="fw-bold fs-5 text-white">{data.privadas || 0}</span>
+                                        </div>
                                     </div>
-                                    <div className="vr bg-light opacity-25"></div>
-                                    <div className="text-center">
-                                        <span className="d-block small text-white-50">PRIVADAS</span>
-                                        <span className="fw-bold fs-5 text-white">{data.privadas || 0}</span>
+                                    <div className="mt-3 pt-2">
+                                        <Link href={route} className="btn btn-sm btn-outline-light w-100 rounded-pill">Explorar</Link>
                                     </div>
-                                </div>
+                                </>
                             )}
 
                             {hasProfesionalEmpresa && (
-                                <div className="d-flex justify-content-between mt-3 pt-3 border-top border-light border-opacity-25">
-                                    <div className="text-center">
-                                        <span className="d-block small text-white-50">PROFESIONALES</span>
-                                        <span className="fw-bold fs-5 text-white">{data.profesionales || 0}</span>
+                                <>
+                                    <div className="d-flex justify-content-between mt-3 pt-3 border-top border-light border-opacity-25">
+                                        <div className="text-center">
+                                            <span className="d-block small text-white-50">PROFESIONALES</span>
+                                            <span className="fw-bold fs-5 text-white">{data.profesionales || 0}</span>
+                                        </div>
+                                        <div className="vr bg-light opacity-25"></div>
+                                        <div className="text-center">
+                                            <span className="d-block small text-white-50">EMPRESAS</span>
+                                            <span className="fw-bold fs-5 text-white">{data.empresas || 0}</span>
+                                        </div>
                                     </div>
-                                    <div className="vr bg-light opacity-25"></div>
-                                    <div className="text-center">
-                                        <span className="d-block small text-white-50">EMPRESAS</span>
-                                        <span className="fw-bold fs-5 text-white">{data.empresas || 0}</span>
+                                    <div className="mt-3 pt-2">
+                                        <Link href={route} className="btn btn-sm btn-outline-light w-100 rounded-pill">Explorar</Link>
                                     </div>
-                                </div>
+                                </>
                             )}
 
                             {!hasPublicPrivate && !hasProfesionalEmpresa && (
@@ -141,22 +172,16 @@ export default function Dashboard({ auth, stats }) {
                 </div>
 
                 <div className="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-5">
-                    <StatCard title="Licitaciones" icon="bi-briefcase" color="primary" route="/licitaciones" data={stats.licitaciones} />
-                    <StatCard title="Consultor Obras" icon="bi-person-workspace" color="success" route="/consultor-obras" data={stats.consultorObras} />
-                    <StatCard title="Ejecutor Obra" icon="bi-hammer" color="warning" route="/ejecutor-obra" data={stats.ejecutorObras} />
-                    <StatCard title="Prov. Servicios" icon="bi-tools" color="info" route="/proveedor-servicios" data={stats.proveedorServicios} />
-
-                    <StatCard title="Prov. Bienes" icon="bi-box-seam" color="danger" route="/proveedor-bienes" data={stats.proveedorBienes} />
-                    <StatCard title="Esp. Ejecución" icon="bi-people-hard-hat" color="secondary" route="/especialistas-ejecucion" data={stats.especialistasEjecucion} />
-                    <StatCard title="Esp. Consultoría" icon="bi-people" color="light" route="/especialistas-consultoria" data={stats.especialistasConsultoria} />
-                    <StatCard title="Inmobiliaria" icon="bi-buildings" color="primary" route="/inmobiliaria" data={stats.inmobiliaria} />
-
-                    <StatCard title="Topografía" icon="bi-map" color="success" route="/topografia" data={stats.topografia} />
-                    <StatCard title="Tecnología" icon="bi-pc-display" color="info" route="/tecnologia" data={stats.tecnologia} />
-                    <StatCard title="Plantillas Ing" icon="bi-file-earmark-ruled" color="warning" route="/plantillas-ing" data={stats.plantillasIng} />
-                    <StatCard title="Banco de CVs" icon="bi-person-lines-fill" color="danger" route="/cvs" data={stats.cvsRegistrados} />
-
-                    <StatCard title="Gestión Doc" icon="bi-folder-fill" color="light" route="/folders" data={stats.gestionDocumental} />
+                    {visibleCards.map(card => (
+                        <StatCard
+                            key={card.key}
+                            title={card.title}
+                            icon={card.icon}
+                            color={card.color}
+                            route={card.route}
+                            data={stats[card.statsKey]}
+                        />
+                    ))}
                 </div>
             </div>
         </MainLayout>

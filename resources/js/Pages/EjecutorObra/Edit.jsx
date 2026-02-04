@@ -13,6 +13,7 @@ export default function Edit({ obra }) {
         estado: obra.estado || 'En Curso',
         modalidad: obra.modalidad || '',
         categoria: obra.categoria || 'Publica',
+        clasificacion: obra.clasificacion || '',
     });
 
     const submit = (e) => {
@@ -75,6 +76,10 @@ export default function Edit({ obra }) {
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Modalidad</label>
                             <input type="text" className="form-control" value={data.modalidad} onChange={e => setData('modalidad', e.target.value)} />
+                        </div>
+                        <div className="col-md-12">
+                            <label className="form-label fw-medium">Tipo / Clasificación</label>
+                            <input type="text" className="form-control bg-light" value={data.clasificacion} readOnly />
                         </div>
                     </div>
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">

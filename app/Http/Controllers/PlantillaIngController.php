@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PlantillaIng;
+use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -12,11 +13,30 @@ class PlantillaIngController extends Controller
 {
     use HasRoleBasedAccess;
 
+    const MODULE = 'plantillas-ing';
+
     public function index(Request $request)
     {
         $user = auth()->user();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        if ($folderId) {
+            $currentFolder = Folder::where('module', self::MODULE)->findOrFail($folderId);
+            $currentFolder->load(['parent']);
+            $folders = $currentFolder->children()->orderBy('name')->get();
+            $breadcrumb = $currentFolder->path;
+        } else {
+            $currentFolder = null;
+            $folders = Folder::whereNull('parent_id')->where('module', self::MODULE)->orderBy('name')->get();
+            $breadcrumb = [];
+        }
+
         $query = PlantillaIng::query();
         $query = $this->applyRoleBasedFilter($query, $user);
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
 
         if ($request->filled('search')) {
             $query->where(function($q) use ($request) {
@@ -26,15 +46,31 @@ class PlantillaIngController extends Controller
         }
 
         return Inertia::render('PlantillaIng/Index', [
-            'items' => $query->latest()->paginate(10),
-            'filters' => $request->only(['search']),
+            'items' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id'])),
+            'filters' => $request->only(['search', 'folder_id']),
             'userRole' => $user->role,
+            'folders' => $folders,
+            'currentFolder' => $currentFolder,
+            'breadcrumb' => $breadcrumb,
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return Inertia::render('PlantillaIng/Create');
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        $breadcrumbLabel = '';
+        if ($folderId) {
+            $folder = Folder::where('module', self::MODULE)->find($folderId);
+            if ($folder) {
+                $folder->load(['parent']);
+                $path = $folder->path;
+                $breadcrumbLabel = is_array($path) ? implode(' / ', array_column($path, 'name')) : $folder->name;
+            }
+        }
+        return Inertia::render('PlantillaIng/Create', [
+            'folderId' => $folderId,
+            'breadcrumbLabel' => $breadcrumbLabel,
+        ]);
     }
 
     public function store(Request $request)
@@ -47,14 +83,20 @@ class PlantillaIngController extends Controller
 
         $data = $request->except(['archivo']);
         $data['user_id'] = auth()->id();
+        if ($request->filled('folder_id')) {
+            $folder = Folder::where('module', self::MODULE)->find($request->folder_id);
+            if ($folder) {
+                $data['folder_id'] = $folder->id;
+            }
+        }
 
         if ($request->hasFile('archivo')) {
             $data['archivo'] = $request->file('archivo')->store('plantillas_ing', 'public');
         }
 
-        PlantillaIng::create($data);
-
-        return redirect()->route('plantillas-ing.index')->with('success', 'Registro creado.');
+        $item = PlantillaIng::create($data);
+        $folderId = $item->folder_id;
+        return redirect()->route('plantillas-ing.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro creado.');
     }
 
     public function edit(PlantillaIng $plantilla_ing)
@@ -93,7 +135,8 @@ class PlantillaIngController extends Controller
 
         $plantilla_ing->update($data);
 
-        return redirect()->route('plantillas-ing.index')->with('success', 'Registro actualizado.');
+        $folderId = $plantilla_ing->folder_id;
+        return redirect()->route('plantillas-ing.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro actualizado.');
     }
 
     public function destroy(PlantillaIng $plantilla_ing)
@@ -106,7 +149,8 @@ class PlantillaIngController extends Controller
         if ($plantilla_ing->archivo) {
             Storage::disk('public')->delete($plantilla_ing->archivo);
         }
+        $folderId = $plantilla_ing->folder_id;
         $plantilla_ing->delete();
-        return redirect()->route('plantillas-ing.index')->with('success', 'Registro eliminado.');
+        return redirect()->route('plantillas-ing.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
     }
 }

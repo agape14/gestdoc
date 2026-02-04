@@ -7,8 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class PlantillaIng extends Model
 {
     protected $fillable = [
-        'titulo', 'especialidad', 'archivo', 'user_id'
+        'titulo', 'especialidad', 'archivo', 'user_id', 'folder_id'
     ];
+
+    public function folder()
+    {
+        return $this->belongsTo(Folder::class);
+    }
 
     public function scopeForUser($query, $user)
     {

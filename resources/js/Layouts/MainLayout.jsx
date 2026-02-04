@@ -72,7 +72,7 @@ export default function MainLayout({ children }) {
     };
 
     const SubNavItem = ({ href, icon, label }) => {
-        const isActive = url === href;
+        const isActive = href === '/config' ? (url === '/config' || url === '/config/') : (url && url.startsWith(href));
         return (
             <li className="nav-item">
                 <Link
@@ -87,6 +87,27 @@ export default function MainLayout({ children }) {
         );
     };
 
+    const isAdmin = auth?.user?.role === 'Administrador';
+    const allowedMenus = auth?.user?.allowed_menus ?? [];
+    // Visualizador/Operador: solo ven menús indicados en configuración (allowed_menus). Admin ve todos los módulos; Panel Control y Config solo Admin.
+    const canSeeMenu = (key) => isAdmin || (Array.isArray(allowedMenus) && allowedMenus.includes(key));
+
+    const menuItemsPrincipal = [
+        { key: 'dashboard', href: '/dashboard', icon: 'bi-house-door-fill', label: 'INICIO', activePattern: '/dashboard' },
+        { key: 'licitaciones', href: '/licitaciones', icon: 'bi-briefcase', label: 'LICITACIONES', activePattern: '/licitaciones' },
+        { key: 'consultor-obras', href: '/consultor-obras', icon: 'bi-person-workspace', label: 'CONSULTOR DE OBRAS', activePattern: '/consultor-obras' },
+        { key: 'ejecutor-obra', href: '/ejecutor-obra', icon: 'bi-hammer', label: 'EJECUTOR DE OBRA', activePattern: '/ejecutor-obra' },
+        { key: 'proveedor-servicios', href: '/proveedor-servicios', icon: 'bi-tools', label: 'PROVEEDOR DE SERVICIOS', activePattern: '/proveedor-servicios' },
+        { key: 'proveedor-bienes', href: '/proveedor-bienes', icon: 'bi-box-seam', label: 'PROVEEDOR DE BIENES', activePattern: '/proveedor-bienes' },
+        { key: 'especialistas-ejecucion', href: '/especialistas-ejecucion', icon: 'bi-people-hard-hat', label: 'ESPECIALISTAS EN EJECUCION DE OBRA', activePattern: '/especialistas-ejecucion' },
+        { key: 'especialistas-consultoria', href: '/especialistas-consultoria', icon: 'bi-people', label: 'ESPECIALISTAS EN CONSULTORIA DE OBRA', activePattern: '/especialistas-consultoria' },
+        { key: 'inmobiliaria', href: '/inmobiliaria', icon: 'bi-buildings', label: 'INMOBILIARIA', activePattern: '/inmobiliaria' },
+        { key: 'topografia', href: '/topografia', icon: 'bi-map', label: 'TOPOGRAFIA', activePattern: '/topografia' },
+        { key: 'tecnologia', href: '/tecnologia', icon: 'bi-pc-display', label: 'TECNOLOGIA', activePattern: '/tecnologia' },
+        { key: 'plantillas-ing', href: '/plantillas-ing', icon: 'bi-file-earmark-ruled', label: 'PLANTILLAS DE ING', activePattern: '/plantillas-ing' },
+        { key: 'cvs', href: '/cvs', icon: 'bi-person-lines-fill', label: 'BANCO DE CVs', activePattern: '/cvs' },
+        { key: 'folders', href: '/folders', icon: 'bi-folder-fill', label: 'GESTION DOCUMENTAL', activePattern: '/folders' },
+    ];
     return (
         <div className="d-flex min-vh-100 bg-body-tertiary">
             {/* Mobile Backdrop */}
@@ -134,22 +155,16 @@ export default function MainLayout({ children }) {
                 <div className="py-4 overflow-y-auto custom-scrollbar flex-grow-1">
                     <ul className="nav nav-pills flex-column gap-1 pe-0">
                         <div className="px-4 mb-2 text-uppercase text-white-50 small fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>Menu Principal</div>
-                        <NavItem href="/dashboard" icon="bi-house-door-fill" label="INICIO" activePattern="/dashboard" />
-                        <NavItem href="/licitaciones" icon="bi-briefcase" label="LICITACIONES" activePattern="/licitaciones" />
-                        <NavItem href="/consultor-obras" icon="bi-person-workspace" label="CONSULTOR DE OBRAS" activePattern="/consultor-obras" />
-                        <NavItem href="/ejecutor-obra" icon="bi-hammer" label="EJECUTOR DE OBRA" activePattern="/ejecutor-obra" />
-                        <NavItem href="/proveedor-servicios" icon="bi-tools" label="PROVEEDOR DE SERVICIOS" activePattern="/proveedor-servicios" />
-                        <NavItem href="/proveedor-bienes" icon="bi-box-seam" label="PROVEEDOR DE BIENES" activePattern="/proveedor-bienes" />
-                        <NavItem href="/especialistas-ejecucion" icon="bi-people-hard-hat" label="ESPECIALISTAS EN EJECUCION DE OBRA" activePattern="/especialistas-ejecucion" />
-                        <NavItem href="/especialistas-consultoria" icon="bi-people" label="ESPECIALISTAS EN CONSULTORIA DE OBRA" activePattern="/especialistas-consultoria" />
-                        <NavItem href="/inmobiliaria" icon="bi-buildings" label="INMOBILIARIA" activePattern="/inmobiliaria" />
-                        <NavItem href="/topografia" icon="bi-map" label="TOPOGRAFIA" activePattern="/topografia" />
-                        <NavItem href="/tecnologia" icon="bi-pc-display" label="TECNOLOGIA" activePattern="/tecnologia" />
-                        <NavItem href="/plantillas-ing" icon="bi-file-earmark-ruled" label="PLANTILLAS DE ING" activePattern="/plantillas-ing" />
-                        <NavItem href="/cvs" icon="bi-person-lines-fill" label="BANCO DE CVs" activePattern="/cvs" />
-                        <NavItem href="/folders" icon="bi-folder-fill" label="GESTION DOCUMENTAL" activePattern="/folders" />
-                        <NavItem href="/panel-control" icon="bi-speedometer" label="PANEL DE CONTROL" activePattern="/panel-control" />
-                        <NavItem href="/config" icon="bi-gear" label="CONFIGURACION" activePattern="/config" />
+                        {menuItemsPrincipal.filter(m => canSeeMenu(m.key)).map(m => (
+                            <NavItem key={m.key} href={m.href} icon={m.icon} label={m.label} activePattern={m.activePattern} />
+                        ))}
+                        {isAdmin && (
+                            <NavItemWithSubmenu icon="bi-gear" label="CONFIGURACION" activePattern="/config">
+                                <SubNavItem href="/config" icon="bi-people" label="Usuarios" />
+                                <SubNavItem href="/config/image360" icon="bi-image" label="Imagen 360°" />
+                                <SubNavItem href="/config/reset-data" icon="bi-trash3" label="Resetear datos" />
+                            </NavItemWithSubmenu>
+                        )}
                     </ul>
                 </div>
 
@@ -208,8 +223,8 @@ export default function MainLayout({ children }) {
                         </button>
                     </div>
 
-                    {/* Page Content */}
-                    <main className="flex-grow-1 p-3 p-md-4 p-lg-5 overflow-x-hidden">
+                    {/* Page Content - container-fluid para responsive en móvil */}
+                    <main className="flex-grow-1 p-3 p-md-4 p-lg-5 overflow-x-hidden container-fluid">
                         {children}
                     </main>
                 </div>

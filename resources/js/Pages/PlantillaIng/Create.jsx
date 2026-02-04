@@ -3,17 +3,20 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 
-export default function Create() {
+export default function Create({ folderId = null, breadcrumbLabel = '' }) {
     const { data, setData, post, processing, errors } = useForm({
         titulo: '',
         especialidad: '',
         archivo: null,
+        folder_id: folderId || '',
     });
 
     const submit = (e) => {
         e.preventDefault();
         post(route('plantillas-ing.store'), { forceFormData: true });
     };
+
+    const cancelUrl = folderId ? route('plantillas-ing.index', { folder_id: folderId }) : route('plantillas-ing.index');
 
     return (
         <MainLayout>
@@ -39,7 +42,7 @@ export default function Create() {
                         </div>
                     </div>
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">
-                        <Link href={route('plantillas-ing.index')} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</Link>
+                        <Link href={cancelUrl} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</Link>
                         <SubmitButton processing={processing} icon="bi-save" className="px-5 rounded-pill shadow-sm">Guardar</SubmitButton>
                     </div>
                 </form>

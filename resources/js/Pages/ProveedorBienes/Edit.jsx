@@ -7,7 +7,6 @@ export default function Edit({ bien }) {
     const { data, setData, put, processing, errors } = useForm({
         titulo: bien.titulo || '',
         entidad: bien.entidad || '',
-        categoria: bien.categoria || 'Publica',
         estado: bien.estado || 'En Stock',
         costo: bien.costo || '',
     });
@@ -35,13 +34,6 @@ export default function Edit({ bien }) {
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Entidad</label>
                             <input type="text" className="form-control" value={data.entidad} onChange={e => setData('entidad', e.target.value)} />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">Categoría</label>
-                            <select className="form-select" value={data.categoria} onChange={e => setData('categoria', e.target.value)}>
-                                <option value="Publica">Pública</option>
-                                <option value="Privada">Privada</option>
-                            </select>
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Costo (S/)</label>

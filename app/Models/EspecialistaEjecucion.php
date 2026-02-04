@@ -7,8 +7,24 @@ use Illuminate\Database\Eloquent\Model;
 class EspecialistaEjecucion extends Model
 {
     protected $fillable = [
-        'nombre', 'especialidad', 'tipo', 'documento', 'estado', 'user_id'
+        'nombre', 'especialidad', 'tipo', 'documento', 'estado', 'user_id',
+        'anulado', 'folder_id', 'clasificacion'
     ];
+
+    public function folder()
+    {
+        return $this->belongsTo(\App\Models\Folder::class);
+    }
+
+    public function documentos()
+    {
+        return $this->hasMany(EspecialistaEjecucionDocumento::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('anulado', false);
+    }
 
     public function scopeForUser($query, $user)
     {

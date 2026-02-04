@@ -7,8 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Tecnologia extends Model
 {
     protected $fillable = [
-        'titulo', 'descripcion', 'archivo', 'user_id'
+        'titulo', 'descripcion', 'archivo', 'user_id', 'folder_id'
     ];
+
+    public function folder()
+    {
+        return $this->belongsTo(Folder::class);
+    }
 
     public function scopeForUser($query, $user)
     {

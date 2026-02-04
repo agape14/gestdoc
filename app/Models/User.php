@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'allowed_menus',
     ];
 
     /**
@@ -44,6 +45,22 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'allowed_menus' => 'array',
         ];
+    }
+
+    /**
+     * Indica si el usuario puede ver un menú (por clave, ej: 'licitaciones').
+     * Administrador ve todo. Null/empty allowed_menus = todos los menús.
+     */
+    public function canAccessMenu(string $menuKey): bool
+    {
+        if ($this->role === 'Administrador') {
+            return true;
+        }
+        if (empty($this->allowed_menus)) {
+            return true;
+        }
+        return in_array($menuKey, $this->allowed_menus, true);
     }
 }

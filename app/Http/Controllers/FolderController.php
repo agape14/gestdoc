@@ -3,46 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Models\Folder;
-use App\Models\Contrato;
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Exports\ContractsExport;
-use Maatwebsite\Excel\Facades\Excel;
 
 class FolderController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     * Muestra las carpetas raíz (sin parent_id)
+     * Gestión Documental: solo carpetas con module = null (tipos de documento: Cartas, Oficios, Memos).
+     */
+    private function scopeGestionDocumental($query)
+    {
+        return $query->whereNull('module');
+    }
+
+    /**
+     * Listado de carpetas (tipos de documento). Sin jerarquía: solo carpetas raíz.
      */
     public function index()
     {
         $folders = Folder::whereNull('parent_id')
-            ->withCount('contratos')
-            ->with(['children' => function($query) {
-                $query->withCount('contratos')
-                      ->with(['children' => function($q) {
-                          $q->withCount('contratos');
-                      }]);
-            }, 'contratos'])
+            ->whereNull('module')
+            ->withCount('documents')
+            ->orderBy('name')
             ->get();
 
-        $allFolders = Folder::with('children.children.children')
-            ->whereNull('parent_id')
-            ->get();
-
-        // Obtener los últimos 10 contratos insertados con información de carpeta
-        $recentContracts = Contrato::with(['folder.parent.parent.parent'])
+        $recentDocuments = Document::with(['folder', 'files'])
+            ->whereHas('folder', fn ($q) => $q->whereNull('module'))
             ->latest()
             ->limit(10)
             ->get()
-            ->map(function ($contract) {
+            ->map(function ($doc) {
                 return [
-                    'id' => $contract->id,
-                    'project_name' => $contract->project_name,
-                    'client' => $contract->client,
-                    'created_at' => $contract->created_at,
-                    'folder_path' => $contract->folder ? $contract->folder->path : [],
+                    'id' => $doc->id,
+                    'numero' => $doc->numero,
+                    'asunto' => $doc->asunto,
+                    'fecha_documento' => $doc->fecha_documento?->format('Y-m-d'),
+                    'folder_name' => $doc->folder?->name,
+                    'created_at' => $doc->created_at,
                 ];
             });
 
@@ -50,71 +48,52 @@ class FolderController extends Controller
             'folders' => $folders,
             'currentFolder' => null,
             'breadcrumb' => [],
-            'allFolders' => $allFolders,
-            'recentContracts' => $recentContracts,
+            'documents' => [],
+            'recentDocuments' => $recentDocuments,
+            'filters' => [],
         ]);
     }
 
     /**
-     * Muestra el contenido de una carpeta específica
+     * Contenido de una carpeta (tipo de documento): listado de documentos.
      */
     public function show(Request $request, $id)
     {
         $folder = Folder::with(['parent'])
-            ->withCount('contratos')
+            ->whereNull('module')
+            ->withCount('documents')
             ->findOrFail($id);
 
-        // Cargar children con sus conteos
-        $folder->load(['children' => function($query) {
-            $query->withCount('contratos')
-                  ->with(['children' => function($q) {
-                      $q->withCount('contratos');
-                  }]);
-        }, 'contratos']);
+        $query = $folder->documents()->with('files');
 
-        $allFolders = Folder::with('children.children.children')
-            ->whereNull('parent_id')
-            ->get();
-
-        // Query de contratos con filtros
-        $query = $folder->contratos();
-
-        // Aplicar filtros
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('project_name', 'like', '%' . $search . '%')
-                  ->orWhere('client', 'like', '%' . $search . '%')
-                  ->orWhere('contract_number', 'like', '%' . $search . '%')
-                  ->orWhere('contract_object', 'like', '%' . $search . '%');
+            $query->where(function ($q) use ($search) {
+                $q->where('numero', 'like', '%' . $search . '%')
+                    ->orWhere('asunto', 'like', '%' . $search . '%')
+                    ->orWhere('remitente', 'like', '%' . $search . '%')
+                    ->orWhere('destinatario', 'like', '%' . $search . '%')
+                    ->orWhere('referencia', 'like', '%' . $search . '%');
             });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('currency')) {
-            $query->where('currency', $request->currency);
-        }
-
         if ($request->filled('date_start')) {
-            $query->whereDate('contract_date', '>=', $request->date_start);
+            $query->whereDate('fecha_documento', '>=', $request->date_start);
         }
 
         if ($request->filled('date_end')) {
-            $query->whereDate('contract_date', '<=', $request->date_end);
+            $query->whereDate('fecha_documento', '<=', $request->date_end);
         }
 
-        $contracts = $query->latest()->get();
+        $documents = $query->latest('fecha_documento')->latest()->get();
 
         return Inertia::render('Folders/Index', [
-            'folders' => $folder->children,
-            'contracts' => $contracts,
+            'folders' => Folder::whereNull('parent_id')->whereNull('module')->withCount('documents')->orderBy('name')->get(),
             'currentFolder' => $folder,
             'breadcrumb' => $folder->path,
-            'allFolders' => $allFolders,
-            'filters' => $request->only(['search', 'status', 'currency', 'date_start', 'date_end']),
+            'documents' => $documents,
+            'recentDocuments' => [],
+            'filters' => $request->only(['search', 'date_start', 'date_end']),
         ]);
     }
 
@@ -130,10 +109,12 @@ class FolderController extends Controller
             'icon' => 'nullable|string|max:50',
             'description' => 'nullable|string|max:500',
         ]);
+        $validated['module'] = null;
+        $validated['parent_id'] = $validated['parent_id'] ?? null; // Solo carpetas raíz como tipos de documento
 
-        $folder = Folder::create($validated);
+        Folder::create($validated);
 
-        return redirect()->back()->with('success', 'Carpeta creada exitosamente.');
+        return redirect()->back()->with('success', 'Carpeta (tipo de documento) creada exitosamente.');
     }
 
     /**
@@ -141,7 +122,6 @@ class FolderController extends Controller
      */
     public function update(Request $request, Folder $folder)
     {
-        // Verificar si es carpeta del sistema y solo permitir ciertos cambios
         if ($folder->is_system) {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
@@ -167,7 +147,6 @@ class FolderController extends Controller
      */
     public function destroy(Folder $folder)
     {
-        // No permitir borrar carpetas del sistema
         if ($folder->is_system) {
             return redirect()->back()->with('error', 'No se pueden eliminar carpetas del sistema.');
         }
@@ -178,58 +157,15 @@ class FolderController extends Controller
     }
 
     /**
-     * Obtiene las carpetas para el selector de carpetas
+     * Obtiene las carpetas para el selector (gestión documental).
      */
     public function getTree()
     {
-        $folders = Folder::with('children.children.children')
-            ->whereNull('parent_id')
+        $folders = Folder::whereNull('parent_id')
+            ->whereNull('module')
+            ->orderBy('name')
             ->get();
 
         return response()->json($folders);
-    }
-
-    /**
-     * Exporta los contratos de una carpeta a Excel
-     */
-    public function exportContracts(Request $request, $id)
-    {
-        $folder = Folder::findOrFail($id);
-
-        // Query de contratos con los mismos filtros que la vista
-        $query = $folder->contratos();
-
-        // Aplicar filtros
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('project_name', 'like', '%' . $search . '%')
-                  ->orWhere('client', 'like', '%' . $search . '%')
-                  ->orWhere('contract_number', 'like', '%' . $search . '%')
-                  ->orWhere('contract_object', 'like', '%' . $search . '%');
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('currency')) {
-            $query->where('currency', $request->currency);
-        }
-
-        if ($request->filled('date_start')) {
-            $query->whereDate('contract_date', '>=', $request->date_start);
-        }
-
-        if ($request->filled('date_end')) {
-            $query->whereDate('contract_date', '<=', $request->date_end);
-        }
-
-        $contracts = $query->latest()->get();
-
-        $filename = 'contratos_' . \Str::slug($folder->name) . '_' . date('Y-m-d_His') . '.xlsx';
-
-        return Excel::download(new ContractsExport($contracts), $filename);
     }
 }

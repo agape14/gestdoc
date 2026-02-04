@@ -34,47 +34,48 @@ export default function PdfModal({ show, onClose, pdfUrl, title = 'Ver PDF' }) {
     if (!show) return null;
 
     return (
-        <div 
-            className="modal fade show d-block" 
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}
+        <div
+            className="modal fade show d-block"
+            style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1055 }}
             onClick={onClose}
             tabIndex="-1"
         >
-            <div 
-                className="modal-dialog modal-xl modal-dialog-centered" 
+            <div
+                className="modal-dialog modal-dialog-centered"
+                style={{ maxWidth: '95vw', width: '95vw', margin: '1rem auto' }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="modal-content border-0 shadow-lg">
-                    <div className="modal-header border-bottom">
-                        <h5 className="modal-title fw-bold">{title}</h5>
-                        <button 
-                            type="button" 
-                            className="btn-close" 
+                <div className="modal-content border-0 shadow-lg rounded-3">
+                    <div className="modal-header border-bottom py-3">
+                        <h5 className="modal-title fw-bold text-truncate pe-3" title={title}>{title}</h5>
+                        <button
+                            type="button"
+                            className="btn-close"
                             onClick={onClose}
                             aria-label="Cerrar"
                         ></button>
                     </div>
-                    <div className="modal-body p-0" style={{ height: '80vh', minHeight: '500px' }}>
+                    <div className="modal-body p-0" style={{ height: '85vh', minHeight: '400px' }}>
                         <iframe
                             src={pdfUrl}
                             className="w-100 h-100 border-0"
                             title={title}
-                            style={{ minHeight: '500px' }}
+                            style={{ minHeight: '400px' }}
                         ></iframe>
                     </div>
-                    <div className="modal-footer border-top">
-                        <a 
-                            href={pdfUrl} 
-                            target="_blank" 
+                    <div className="modal-footer border-top py-3">
+                        <a
+                            href={pdfUrl}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="btn btn-outline-primary"
                         >
                             <i className="bi bi-box-arrow-up-right me-2"></i>
                             Abrir en nueva pestaña
                         </a>
-                        <button 
-                            type="button" 
-                            className="btn btn-secondary" 
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
                             onClick={onClose}
                         >
                             Cerrar

@@ -22,6 +22,11 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
+        // Usuarios demo (Admin, Operador, Visualizador) - contraseña: password
+        $this->call([
+            DemoUsersSeeder::class,
+        ]);
+
         // Ejecutar seeder de carpetas
         $this->call([
             FolderSeeder::class,

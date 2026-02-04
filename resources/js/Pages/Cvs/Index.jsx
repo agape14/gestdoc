@@ -4,7 +4,12 @@ import { Head, Link, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import PdfModal from '@/Components/PdfModal';
 
-export default function Index({ cvs, filters, flash }) {
+const getIconClass = (iconName) => {
+    const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
+    return iconMap[iconName] || 'bi-folder-fill';
+};
+
+export default function Index({ cvs, filters, flash, folders = [], currentFolder = null, breadcrumb = [] }) {
     const [search, setSearch] = useState(filters.search || '');
     const [especialidad, setEspecialidad] = useState(filters.especialidad || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
@@ -13,10 +18,14 @@ export default function Index({ cvs, filters, flash }) {
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
     const [selectedPdfTitle, setSelectedPdfTitle] = useState('');
 
+    const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (currentFolder?.name || 'Banco de CVs');
+    const buildParams = (extra = {}) => ({ ...filters, ...extra });
+
     useEffect(() => {
         const timer = setTimeout(() => {
+            const params = { search, especialidad, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
             if (search !== (filters.search || '') || especialidad !== (filters.especialidad || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '')) {
-                router.get(route('cvs.index'), { search, especialidad, date_start: dateStart, date_end: dateEnd }, {
+                router.get(route('cvs.index'), params, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -66,12 +75,49 @@ export default function Index({ cvs, filters, flash }) {
                 </div>
             )}
 
+            {breadcrumb && breadcrumb.length > 0 && (
+                <nav aria-label="breadcrumb" className="mb-3">
+                    <ol className="breadcrumb bg-body-tertiary rounded-3 p-3">
+                        <li className="breadcrumb-item">
+                            <Link href={route('cvs.index')} className="text-decoration-none"><i className="bi bi-house-door-fill me-1"></i> Banco de CVs</Link>
+                        </li>
+                        {breadcrumb.map((folder, index) => (
+                            <li key={folder.id} className={`breadcrumb-item ${index === breadcrumb.length - 1 ? 'active' : ''}`}>
+                                {index === breadcrumb.length - 1 ? folder.name : <Link href={route('cvs.index', { folder_id: folder.id })} className="text-decoration-none">{folder.name}</Link>}
+                            </li>
+                        ))}
+                    </ol>
+                </nav>
+            )}
+
+            {folders && folders.length > 0 && (
+                <div className="mb-4">
+                    <h5 className="fw-bold text-body mb-3"><i className="bi bi-folder me-2"></i>Carpetas</h5>
+                    <div className="row g-3">
+                        {folders.map((folder) => (
+                            <div key={folder.id} className="col-md-6 col-lg-4 col-xl-3">
+                                <Link href={route('cvs.index', { ...buildParams(), folder_id: folder.id })} className="text-decoration-none text-body">
+                                    <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                                        <div className="card-header border-0 p-4" style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '100px' }}>
+                                            <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
+                                        </div>
+                                        <div className="card-body p-3">
+                                            <h6 className="card-title fw-bold mb-0">{folder.name}</h6>
+                                        </div>
+                                    </div>
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
                     <h2 className="fw-bold text-body mb-0">Banco de CVs</h2>
                     <p className="text-secondary mb-0">Registro y búsqueda de talento</p>
                 </div>
-                <Link href={route('cvs.create')} className="btn btn-primary shadow-sm rounded-pill px-4">
+                <Link href={currentFolder?.id ? route('cvs.create', { folder_id: currentFolder.id }) : route('cvs.create')} className="btn btn-primary shadow-sm rounded-pill px-4">
                     <i className="bi bi-upload me-2"></i>
                     Subir CV
                 </Link>

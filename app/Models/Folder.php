@@ -15,6 +15,7 @@ class Folder extends Model
         'icon',
         'description',
         'is_system',
+        'module',
     ];
 
     protected $casts = [
@@ -42,11 +43,19 @@ class Folder extends Model
     }
 
     /**
-     * Contratos contenidos en esta carpeta
+     * Contratos contenidos en esta carpeta (legacy / otros módulos)
      */
     public function contratos()
     {
         return $this->hasMany(Contrato::class, 'folder_id');
+    }
+
+    /**
+     * Documentos de gestión documental (cartas, oficios, memos)
+     */
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'folder_id');
     }
 
     /**
@@ -98,12 +107,14 @@ class Folder extends Model
         static::creating(function ($folder) {
             if (empty($folder->slug)) {
                 $folder->slug = Str::slug($folder->name);
-
-                // Asegurar unicidad del slug
                 $originalSlug = $folder->slug;
                 $count = 1;
-
-                while (static::where('slug', $folder->slug)->exists()) {
+                while (true) {
+                    $q = static::where('slug', $folder->slug);
+                    $q = $folder->module !== null ? $q->where('module', $folder->module) : $q->whereNull('module');
+                    if (!$q->exists()) {
+                        break;
+                    }
                     $folder->slug = $originalSlug . '-' . $count;
                     $count++;
                 }

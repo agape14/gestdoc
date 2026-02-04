@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EjecutorObra;
+use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -14,14 +15,34 @@ class EjecutorObraController extends Controller
 {
     use HasRoleBasedAccess;
 
+    const MODULE = 'ejecutor-obra';
+
     public function index(Request $request)
     {
         $user = auth()->user();
-        $query = EjecutorObra::query();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
 
-        // Aplicar filtro por rol
+        if ($folderId) {
+            $currentFolder = Folder::where('module', self::MODULE)->findOrFail($folderId);
+            $currentFolder->load(['parent']);
+            $folders = $currentFolder->children()->orderBy('name')->get();
+            $breadcrumb = $currentFolder->path;
+        } else {
+            $currentFolder = null;
+            $folders = Folder::whereNull('parent_id')->where('module', self::MODULE)->orderBy('name')->get();
+            $breadcrumb = [];
+        }
+
+        $query = EjecutorObra::query()->active()->with('documentos');
         $query = $this->applyRoleBasedFilter($query, $user);
-
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        if ($request->filled('user_id') && $user->role === 'Administrador') {
+            $query->where('user_id', $request->user_id);
+        }
         if ($request->filled('search')) {
             $query->where(function($q) use ($request) {
                 $q->where('titulo', 'like', '%' . $request->search . '%')
@@ -29,24 +50,44 @@ class EjecutorObraController extends Controller
                   ->orWhere('especialidad', 'like', '%' . $request->search . '%');
             });
         }
-
         if ($request->filled('tipo')) {
             $query->where('categoria', $request->tipo);
         }
-
         if ($request->filled('especialidad')) {
             $query->where('especialidad', $request->especialidad);
         }
 
+        $obrasPaginated = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
         $obras = $query->latest()->get();
         $groupedByEspecialidad = $obras->groupBy('especialidad');
+        $operadores = $user->role === 'Administrador'
+            ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
+            : collect();
 
         return Inertia::render('EjecutorObra/Index', [
-            'obras' => $query->latest()->paginate(10),
+            'obras' => $obrasPaginated,
             'groupedByEspecialidad' => $groupedByEspecialidad,
-            'filters' => $request->only(['search', 'tipo', 'especialidad']),
+            'filters' => $request->only(['search', 'tipo', 'especialidad', 'user_id', 'folder_id']),
             'userRole' => $user->role,
+            'operadores' => $operadores,
+            'folders' => $folders,
+            'currentFolder' => $currentFolder,
+            'breadcrumb' => $breadcrumb,
         ]);
+    }
+
+    public function storeFolder(Request $request)
+    {
+        $validated = $request->validate([
+            'parent_id' => 'nullable|exists:folders,id',
+            'name' => 'required|string|max:255',
+            'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:50',
+            'description' => 'nullable|string|max:500',
+        ]);
+        $validated['module'] = self::MODULE;
+        Folder::create($validated);
+        return redirect()->back()->with('success', 'Carpeta creada.');
     }
 
     public function export(Request $request)
@@ -71,9 +112,22 @@ class EjecutorObraController extends Controller
         return Excel::download(new EjecutorObrasExport(collect([$ejecutorObra])), "ejecutor-obra_{$ejecutorObra->id}.xlsx");
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return Inertia::render('EjecutorObra/Create');
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        $breadcrumbLabel = '';
+        if ($folderId) {
+            $folder = Folder::where('module', self::MODULE)->find($folderId);
+            if ($folder) {
+                $folder->load(['parent']);
+                $path = $folder->path;
+                $breadcrumbLabel = is_array($path) ? implode(' / ', array_column($path, 'name')) : $folder->name;
+            }
+        }
+        return Inertia::render('EjecutorObra/Create', [
+            'folderId' => $folderId,
+            'breadcrumbLabel' => $breadcrumbLabel,
+        ]);
     }
 
     public function store(Request $request)
@@ -87,14 +141,56 @@ class EjecutorObraController extends Controller
             'presupuesto' => 'nullable|numeric',
             'estado' => 'nullable|string',
             'modalidad' => 'nullable|string|max:255',
+            'clasificacion' => 'nullable|string|max:500',
         ]);
 
-        $data = $request->except(['contrato_archivo', 'tdr_archivo', 'valorizaciones', 'informes_tecnicos', 'cargos', 'expediente_tecnico', 'actas_resoluciones', 'conformidad_tecnica', 'panel_fotografico', 'liquidacion']);
+        $data = $request->except(['contrato_archivo', 'tdr_archivo', 'valorizaciones', 'informes_tecnicos', 'expediente_tecnico', 'actas_resoluciones', 'conformidad_tecnica', 'panel_fotografico', 'liquidacion', 'documentos']);
+        $cargosInput = $request->input('cargos');
+        if (is_string($cargosInput)) {
+            $decoded = json_decode($cargosInput, true);
+            if (is_array($decoded)) {
+                $data['cargos'] = $decoded;
+            }
+        } elseif (is_array($cargosInput)) {
+            $data['cargos'] = $cargosInput;
+        }
         $data['user_id'] = auth()->id();
+        if ($request->filled('folder_id')) {
+            $folder = Folder::where('module', self::MODULE)->find($request->folder_id);
+            if ($folder) {
+                $data['folder_id'] = $folder->id;
+            }
+        }
 
-        EjecutorObra::create($data);
+        $obra = EjecutorObra::create($data);
+        $this->storeDocumentos($request, $obra);
 
-        return redirect()->route('ejecutor-obra.index')->with('success', 'Registro creado.');
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : ($obra->folder_id ?? null);
+        return redirect()->route('ejecutor-obra.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro creado.');
+    }
+
+    private function storeDocumentos(Request $request, EjecutorObra $obra): void
+    {
+        $documentos = $request->input('documentos', []);
+        if (!is_array($documentos)) {
+            return;
+        }
+        foreach ($documentos as $index => $doc) {
+            $nombre = is_array($doc) ? ($doc['nombre'] ?? '') : '';
+            if ($nombre === '' && !$request->hasFile("documentos.{$index}.archivo")) {
+                continue;
+            }
+            if (!$request->hasFile("documentos.{$index}.archivo")) {
+                continue;
+            }
+            $file = $request->file("documentos.{$index}.archivo");
+            $path = $file->store('ejecutor_obras/documentos', 'public');
+            \App\Models\EjecutorObraDocumento::create([
+                'ejecutor_obra_id' => $obra->id,
+                'nombre' => $nombre ?: $file->getClientOriginalName(),
+                'file_path' => $path,
+            ]);
+        }
     }
 
     public function edit(EjecutorObra $ejecutor_obra)
@@ -103,7 +199,7 @@ class EjecutorObraController extends Controller
         if (!$this->canEdit($ejecutor_obra, $user)) {
             return redirect()->route('ejecutor-obra.index')->with('error', 'No tienes permiso para editar este registro.');
         }
-
+        $ejecutor_obra->load('documentos');
         return Inertia::render('EjecutorObra/Edit', [
             'obra' => $ejecutor_obra
         ]);
@@ -116,7 +212,16 @@ class EjecutorObraController extends Controller
             return redirect()->back()->with('error', 'No tienes permiso para editar este registro.');
         }
 
-        $data = $request->except(['contrato_archivo', 'tdr_archivo', 'valorizaciones', 'informes_tecnicos', 'cargos', 'expediente_tecnico', 'actas_resoluciones', 'conformidad_tecnica', 'panel_fotografico', 'liquidacion']);
+        $data = $request->except(['contrato_archivo', 'tdr_archivo', 'valorizaciones', 'informes_tecnicos', 'expediente_tecnico', 'actas_resoluciones', 'conformidad_tecnica', 'panel_fotografico', 'liquidacion']);
+        $cargosInput = $request->input('cargos');
+        if (is_string($cargosInput)) {
+            $decoded = json_decode($cargosInput, true);
+            if (is_array($decoded)) {
+                $data['cargos'] = $decoded;
+            }
+        } elseif (is_array($cargosInput)) {
+            $data['cargos'] = $cargosInput;
+        }
 
         $handleFile = function($field, $path) use ($request, &$data, $ejecutor_obra) {
             if ($request->hasFile($field)) {
@@ -162,10 +267,9 @@ class EjecutorObraController extends Controller
     {
         $user = auth()->user();
         if (!$this->canDelete($ejecutor_obra, $user)) {
-            return redirect()->back()->with('error', 'No tienes permiso para eliminar este registro.');
+            return redirect()->back()->with('error', 'No tienes permiso para anular este registro.');
         }
-
-        $ejecutor_obra->delete();
-        return redirect()->route('ejecutor-obra.index')->with('success', 'Registro eliminado.');
+        $ejecutor_obra->update(['anulado' => true]);
+        return redirect()->route('ejecutor-obra.index')->with('success', 'Registro anulado.');
     }
 }

@@ -13,8 +13,7 @@ export default function Edit({ servicio }) {
         estado: servicio.estado || 'En Curso',
         modalidad: servicio.modalidad || '',
         duracion: servicio.duracion || '',
-        categoria: servicio.categoria || 'Publica',
-    });
+        });
 
     const submit = (e) => {
         e.preventDefault();
@@ -42,13 +41,6 @@ export default function Edit({ servicio }) {
                             <label className="form-label fw-medium">Entidad</label>
                             <input type="text" className={`form-control ${errors.entidad ? 'is-invalid' : ''}`} value={data.entidad} onChange={e => setData('entidad', e.target.value)} required />
                             {errors.entidad && <div className="invalid-feedback">{errors.entidad}</div>}
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">Categoría</label>
-                            <select className="form-select" value={data.categoria} onChange={e => setData('categoria', e.target.value)}>
-                                <option value="Publica">Pública</option>
-                                <option value="Privada">Privada</option>
-                            </select>
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Especialidad</label>
