@@ -18,6 +18,7 @@ return new class extends Migration
                     $blueprint->string('clasificacion', 500)->nullable()->after('folder_id');
                 });
             }
+
         }
 
         if (Schema::hasTable('consultor_obras') && !Schema::hasTable('consultor_obra_documentos')) {
@@ -59,7 +60,8 @@ return new class extends Migration
         if (Schema::hasTable('especialista_ejecucions') && !Schema::hasTable('especialista_ejecucion_documentos')) {
             Schema::create('especialista_ejecucion_documentos', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('especialista_ejecucion_id')->constrained('especialista_ejecucions')->onDelete('cascade');
+                $table->unsignedBigInteger('especialista_ejecucion_id');
+                $table->foreign('especialista_ejecucion_id', 'esp_ejec_doc_esp_ejec_id_fk')->references('id')->on('especialista_ejecucions')->onDelete('cascade');
                 $table->string('nombre');
                 $table->string('file_path');
                 $table->timestamps();
@@ -68,7 +70,8 @@ return new class extends Migration
         if (Schema::hasTable('especialista_consultorias') && !Schema::hasTable('especialista_consultoria_documentos')) {
             Schema::create('especialista_consultoria_documentos', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('especialista_consultoria_id')->constrained('especialista_consultorias')->onDelete('cascade');
+                $table->unsignedBigInteger('especialista_consultoria_id');
+                $table->foreign('especialista_consultoria_id', 'esp_cons_doc_esp_cons_id_fk')->references('id')->on('especialista_consultorias')->onDelete('cascade');
                 $table->string('nombre');
                 $table->string('file_path');
                 $table->timestamps();
