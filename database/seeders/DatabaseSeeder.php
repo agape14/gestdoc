@@ -27,9 +27,10 @@ class DatabaseSeeder extends Seeder
             DemoUsersSeeder::class,
         ]);
 
-        // Ejecutar seeder de carpetas
+        // Ejecutar seeders de carpetas: jerarquía inicial (Públicas/Privadas -> Obras, etc.)
         $this->call([
             FolderSeeder::class,
+            FolderHierarchySeeder::class,
         ]);
     }
 }

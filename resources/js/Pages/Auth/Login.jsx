@@ -36,35 +36,6 @@ export default function Login({ status, canResetPassword, demoUsers = [] }) {
             <div className="container">
                 <div className="row justify-content-center">
                     <div className="col-md-10 col-lg-8 col-xl-7">
-                        {demoUsers && demoUsers.length > 0 && (
-                            <div className="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
-                                <div className="card-body p-4">
-                                    <h6 className="fw-bold text-body mb-3">
-                                        <i className="bi bi-person-check me-2 text-primary"></i>
-                                        Iniciar sesión con usuario de prueba
-                                    </h6>
-                                    <p className="text-secondary small mb-3">Haz clic en un usuario para rellenar el formulario. Contraseña: <kbd className="px-2 py-1 rounded">password</kbd></p>
-                                    <div className="row g-2">
-                                        {demoUsers.map((user) => (
-                                            <div key={user.id} className="col-12">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-primary w-100 d-flex align-items-center justify-content-between py-3 px-4 rounded-3 text-start"
-                                                    onClick={() => iniciarConUsuario(user.email)}
-                                                >
-                                                    <span>
-                                                        <span className="fw-bold d-block">{user.name}</span>
-                                                        <span className="small text-secondary">{user.email}</span>
-                                                    </span>
-                                                    <span className="badge bg-primary rounded-pill">{user.role}</span>
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                         <div className="card border-0 shadow-lg rounded-5 overflow-hidden">
                             <div className="row g-0">
                                 {/* Left Side - Image/Brand */}
@@ -162,6 +133,31 @@ export default function Login({ status, canResetPassword, demoUsers = [] }) {
                                 </div>
                             </div>
                         </div>
+
+                        {demoUsers && demoUsers.length > 0 && (
+                            <div className="mt-4 p-3 rounded-3 bg-body-tertiary border border-secondary border-opacity-25">
+                                <p className="text-secondary small mb-2 d-flex align-items-center gap-1">
+                                    <i className="bi bi-person-check text-primary"></i>
+                                    <span>Iniciar sesión con usuario de prueba</span>
+                                </p>
+                                <p className="text-muted small mb-2" style={{ fontSize: '0.8rem' }}>Contraseña: <kbd className="px-1 py-0 rounded" style={{ fontSize: '0.75rem' }}>password</kbd></p>
+                                <div className="d-flex flex-wrap gap-2">
+                                    {demoUsers.map((user) => (
+                                        <button
+                                            key={user.id}
+                                            type="button"
+                                            className="btn btn-sm btn-outline-secondary py-2 px-3 rounded-pill"
+                                            onClick={() => iniciarConUsuario(user.email)}
+                                            title={user.email}
+                                        >
+                                            <span className="d-inline-block text-truncate" style={{ maxWidth: '140px' }}>{user.name}</span>
+                                            <span className="badge bg-secondary ms-1 rounded-pill" style={{ fontSize: '0.65rem' }}>{user.role}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="text-center mt-4 text-secondary small opacity-75">
                             &copy; {new Date().getFullYear()} GestDoc. Todos los derechos reservados.
                         </div>

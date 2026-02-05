@@ -145,7 +145,7 @@ export default function MainLayout({ children }) {
                         <div className="bg-primary rounded-3 p-2 me-2 d-flex align-items-center justify-content-center shadow-lg" style={{ width: '40px', height: '40px' }}>
                             <i className="bi bi-building-fill fs-4 text-white"></i>
                         </div>
-                        <span className="fs-4 fw-bold tracking-tight">TECCONING</span>
+                        <span className="fs-4 fw-bold tracking-tight text-white">TECCONING</span>
                     </a>
                     <button className="btn btn-dark d-lg-none p-1" onClick={toggleSidebar}>
                         <i className="bi bi-x-lg"></i>
@@ -216,7 +216,7 @@ export default function MainLayout({ children }) {
                             <div className="bg-primary rounded-3 p-1 me-2 d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>
                                 <i className="bi bi-building-fill fs-6 text-white"></i>
                             </div>
-                            <span className="fw-bold fs-5 text-body">TECCONING</span>
+                            <span className="fw-bold fs-5" style={{ color: 'var(--bs-body-color)' }}>TECCONING</span>
                         </div>
                         <button className="btn btn-light btn-sm shadow-sm border" type="button" onClick={toggleSidebar}>
                             <i className="bi bi-list fs-4"></i>

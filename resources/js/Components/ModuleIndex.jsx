@@ -4,6 +4,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import PdfModal from '@/Components/PdfModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
+import FolderCardModule from '@/Components/FolderCardModule';
+import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 
 const getIconClass = (iconName) => {
     const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
@@ -19,6 +21,7 @@ export default function ModuleIndex({ title, description, items, columns, create
     const [currentFilters, setCurrentFilters] = useState(routeParams);
     const [expandedRow, setExpandedRow] = useState(null);
     const [showFolderModal, setShowFolderModal] = useState(false);
+    const [editingFolder, setEditingFolder] = useState(null);
     const [showDocumentsModal, setShowDocumentsModal] = useState(false);
     const [listDocumentLinks, setListDocumentLinks] = useState([]);
     const [showPdfModal, setShowPdfModal] = useState(false);
@@ -139,18 +142,14 @@ export default function ModuleIndex({ title, description, items, columns, create
                     {folders && folders.length > 0 && (
                         <div className="row g-3">
                             {folders.map((folder) => (
-                                <div key={folder.id} className="col-md-6 col-lg-4 col-xl-3">
-                                    <Link href={route(indexRoute, { ...buildIndexParams(), folder_id: folder.id })} className="text-decoration-none text-body">
-                                        <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                                            <div className="card-header border-0 p-4" style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '100px' }}>
-                                                <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
-                                            </div>
-                                            <div className="card-body p-3">
-                                                <h6 className="card-title fw-bold mb-0">{folder.name}</h6>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                </div>
+                                <FolderCardModule
+                                    key={folder.id}
+                                    folder={folder}
+                                    indexRoute={indexRoute}
+                                    indexParams={buildIndexParams()}
+                                    isAdmin={isAdmin}
+                                    onEdit={(f) => setEditingFolder(f)}
+                                />
                             ))}
                         </div>
                     )}
@@ -354,6 +353,10 @@ export default function ModuleIndex({ title, description, items, columns, create
                     storeFolderRoute={storeFolderRoute}
                     parentId={currentFolder?.id ?? null}
                 />
+            )}
+
+            {editingFolder && (
+                <ModuleFolderEditModal show={!!editingFolder} onClose={() => setEditingFolder(null)} folder={editingFolder} />
             )}
 
             {showDocumentsModal && (

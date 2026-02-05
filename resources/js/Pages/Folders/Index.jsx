@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import FolderModal from '@/Components/FolderModal';
 import DocumentModal from '@/Components/DocumentModal';
@@ -15,6 +15,8 @@ export default function Index({
     flash,
     filters = {},
 }) {
+    const { auth } = usePage().props;
+    const isAdmin = auth?.user?.role === 'Administrador';
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [showDocumentModal, setShowDocumentModal] = useState(false);
     const [showPdfModal, setShowPdfModal] = useState(false);
@@ -423,7 +425,7 @@ export default function Index({
                                                 {folder.description}
                                             </p>
                                         )}
-                                        {!folder.is_system && (
+                                        {isAdmin && (
                                             <div className="d-flex gap-1 mt-2">
                                                 <button
                                                     onClick={(e) => {
@@ -431,20 +433,22 @@ export default function Index({
                                                         handleEditFolder(folder);
                                                     }}
                                                     className="btn btn-sm btn-outline-secondary"
-                                                    title="Editar"
+                                                    title="Editar carpeta"
                                                 >
                                                     <i className="bi bi-pencil"></i>
                                                 </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        handleDeleteFolder(folder);
-                                                    }}
-                                                    className="btn btn-sm btn-outline-danger"
-                                                    title="Eliminar"
-                                                >
-                                                    <i className="bi bi-trash"></i>
-                                                </button>
+                                                {!folder.is_system && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            handleDeleteFolder(folder);
+                                                        }}
+                                                        className="btn btn-sm btn-outline-danger"
+                                                        title="Eliminar"
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -124,8 +124,8 @@ export default function Dashboard({ auth, stats }) {
         <MainLayout>
             <Head title="TECCONING - Dashboard" />
 
-            {/* Background Video/Animation Container */}
-            <div className="position-fixed top-0 start-0 w-100 h-100 video-background-container" style={{ zIndex: -1 }}>
+            {/* Background Video/Animation Container - scoped to avoid affecting sidebar */}
+            <div className="dashboard-page position-fixed top-0 start-0 w-100 h-100 video-background-container" style={{ zIndex: -1 }}>
                 <div className="position-absolute top-0 start-0 w-100 h-100 bg-dark"></div>
                 {/* CSS Animated Background gradient as placeholder for video */}
                 <div className="w-100 h-100" style={{
@@ -148,14 +148,14 @@ export default function Dashboard({ auth, stats }) {
                     [data-bs-theme="light"] .video-background-container {
                         display: none !important;
                     }
-                    /* Ensure text is readable in light mode (revert text-white) */
-                    [data-bs-theme="light"] .text-white {
+                    /* Ensure text is readable in light mode - scoped to dashboard content only (not sidebar) */
+                    [data-bs-theme="light"] .dashboard-content .text-white {
                         color: #212529 !important;
                     }
-                     [data-bs-theme="light"] .text-white-50 {
+                    [data-bs-theme="light"] .dashboard-content .text-white-50 {
                         color: #6c757d !important;
                     }
-                    [data-bs-theme="light"] .card {
+                    [data-bs-theme="light"] .dashboard-content .card {
                          background: rgba(255,255,255,0.9) !important;
                          border: 1px solid rgba(0,0,0,0.1) !important;
                          backdrop-filter: none !important;
@@ -163,7 +163,7 @@ export default function Dashboard({ auth, stats }) {
                 `}</style>
             </div>
 
-            <div className="container-fluid py-2">
+            <div className="dashboard-content container-fluid py-2">
                 <div className="d-flex align-items-center justify-content-between mb-5">
                     <div>
                         <h1 className="display-5 fw-bold text-white mb-2 text-shadow">Panel de Control</h1>

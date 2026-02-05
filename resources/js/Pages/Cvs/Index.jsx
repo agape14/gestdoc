@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import PdfModal from '@/Components/PdfModal';
+import FolderCardModule from '@/Components/FolderCardModule';
+import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 
 const getIconClass = (iconName) => {
     const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
@@ -10,10 +12,13 @@ const getIconClass = (iconName) => {
 };
 
 export default function Index({ cvs, filters, flash, folders = [], currentFolder = null, breadcrumb = [] }) {
+    const { auth } = usePage().props;
+    const isAdmin = auth?.user?.role === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
     const [especialidad, setEspecialidad] = useState(filters.especialidad || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
+    const [editingFolder, setEditingFolder] = useState(null);
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
     const [selectedPdfTitle, setSelectedPdfTitle] = useState('');
@@ -95,18 +100,14 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                     <h5 className="fw-bold text-body mb-3"><i className="bi bi-folder me-2"></i>Carpetas</h5>
                     <div className="row g-3">
                         {folders.map((folder) => (
-                            <div key={folder.id} className="col-md-6 col-lg-4 col-xl-3">
-                                <Link href={route('cvs.index', { ...buildParams(), folder_id: folder.id })} className="text-decoration-none text-body">
-                                    <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                                        <div className="card-header border-0 p-4" style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '100px' }}>
-                                            <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
-                                        </div>
-                                        <div className="card-body p-3">
-                                            <h6 className="card-title fw-bold mb-0">{folder.name}</h6>
-                                        </div>
-                                    </div>
-                                </Link>
-                            </div>
+                            <FolderCardModule
+                                key={folder.id}
+                                folder={folder}
+                                indexRoute="cvs.index"
+                                indexParams={buildParams()}
+                                isAdmin={isAdmin}
+                                onEdit={(f) => setEditingFolder(f)}
+                            />
                         ))}
                     </div>
                 </div>
@@ -240,6 +241,10 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                     </div>
                 )}
             </div>
+
+            {editingFolder && (
+                <ModuleFolderEditModal show={!!editingFolder} onClose={() => setEditingFolder(null)} folder={editingFolder} />
+            )}
 
             <PdfModal
                 show={showPdfModal}

@@ -119,23 +119,20 @@ class FolderController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * Solo el Administrador puede editar carpetas.
      */
     public function update(Request $request, Folder $folder)
     {
-        if ($folder->is_system) {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'color' => 'nullable|string|max:7',
-                'description' => 'nullable|string|max:500',
-            ]);
-        } else {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'color' => 'nullable|string|max:7',
-                'icon' => 'nullable|string|max:50',
-                'description' => 'nullable|string|max:500',
-            ]);
+        if ($request->user()->role !== 'Administrador') {
+            abort(403, 'Solo el Administrador puede editar carpetas.');
         }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'color' => 'nullable|string|max:9',
+            'icon' => 'nullable|string|max:50',
+            'description' => 'nullable|string|max:500',
+        ]);
 
         $folder->update($validated);
 

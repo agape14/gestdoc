@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import FolderCardModule from '@/Components/FolderCardModule';
+import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 
 const DetailForm = ({ item, onClose }) => {
     const { data, setData, post, processing, errors } = useForm({
@@ -167,6 +169,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     const [showGrouped, setShowGrouped] = useState(true);
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [editingFolder, setEditingFolder] = useState(null);
 
     const canEdit = (item) => {
         if (currentUserRole === 'Administrador') return true;
@@ -272,18 +275,14 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                 {folders && folders.length > 0 && (
                     <div className="row g-3">
                         {folders.map((folder) => (
-                            <div key={folder.id} className="col-md-6 col-lg-4 col-xl-3">
-                                <Link href={route('consultor-obras.index', { ...buildIndexParams(), folder_id: folder.id })} className="text-decoration-none text-body">
-                                    <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                                        <div className="card-header border-0 p-4" style={{ backgroundColor: folder.color || '#EAEAEA', minHeight: '100px' }}>
-                                            <i className={`bi ${getIconClass(folder.icon)} fs-1 opacity-75`}></i>
-                                        </div>
-                                        <div className="card-body p-3">
-                                            <h6 className="card-title fw-bold mb-0">{folder.name}</h6>
-                                        </div>
-                                    </div>
-                                </Link>
-                            </div>
+                            <FolderCardModule
+                                key={folder.id}
+                                folder={folder}
+                                indexRoute="consultor-obras.index"
+                                indexParams={buildIndexParams()}
+                                isAdmin={isAdmin}
+                                onEdit={(f) => setEditingFolder(f)}
+                            />
                         ))}
                     </div>
                 )}
@@ -561,6 +560,10 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                         </div>
                     </div>
                 </div>
+            )}
+
+            {editingFolder && (
+                <ModuleFolderEditModal show={!!editingFolder} onClose={() => setEditingFolder(null)} folder={editingFolder} />
             )}
         </MainLayout>
     );
