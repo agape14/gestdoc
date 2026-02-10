@@ -14,7 +14,7 @@ export default function ResetData({ auth, flash }) {
             alert('Escribe exactamente BORRAR TODO para confirmar.');
             return;
         }
-        if (!confirm('¿Estás seguro? Se eliminarán TODOS los datos ingresados (licitaciones, consultores, ejecutores, CVs, gestión documental, etc.) y los contadores quedarán en 0. Esta acción no se puede deshacer.')) {
+        if (!confirm('¿Estás seguro? Se eliminarán TODOS los datos y TODAS las carpetas creadas (registros y carpetas de todos los módulos). Los contadores quedarán en 0. Esta acción no se puede deshacer.')) {
             return;
         }
         setLoading(true);
@@ -64,15 +64,16 @@ export default function ResetData({ auth, flash }) {
                 </div>
                 <div className="card-body p-4">
                     <p className="text-body mb-3">
-                        Esta acción eliminará <strong>todos</strong> los registros de:
+                        Esta acción eliminará <strong>todos</strong> los registros y <strong>todas las carpetas creadas</strong>:
                     </p>
                     <ul className="mb-4 text-secondary">
                         <li>Licitaciones, Consultor de Obras, Ejecutor de Obra, Proveedor de Servicios/Bienes</li>
                         <li>Especialistas en Ejecución y Consultoría, Inmobiliaria, Topografía, Tecnología, Plantillas de Ing.</li>
-                        <li>Banco de CVs, Contratos y todas las Carpetas (gestión documental y carpetas de módulos)</li>
+                        <li>Banco de CVs, Contratos, Gestión documental (cartas, oficios, memos)</li>
+                        <li><strong>Carpetas creadas por operadores y administradores</strong> en todos los módulos (se borran por completo)</li>
                     </ul>
                     <p className="text-danger fw-semibold mb-4">
-                        No se eliminan: usuarios ni configuración (imagen 360). Los contadores del inicio quedarán en 0. Tras el reset se recrean automáticamente las carpetas fijas (Públicas/Privadas, Profesionales/Empresas) para los módulos correspondientes.
+                        No se eliminan: usuarios ni configuración (imagen 360). Los contadores del inicio quedarán en 0. Tras el reset se recrean automáticamente solo las carpetas fijas del sistema (Públicas/Privadas, Profesionales/Empresas) para los módulos correspondientes.
                     </p>
 
                     <form onSubmit={handleSubmit}>
@@ -104,7 +105,7 @@ export default function ResetData({ auth, flash }) {
                             ) : (
                                 <>
                                     <i className="bi bi-trash3 me-2"></i>
-                                    Eliminar todos los datos y resetear contadores
+                                    Eliminar todos los datos y carpetas creadas
                                 </>
                             )}
                         </button>

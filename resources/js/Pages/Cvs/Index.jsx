@@ -11,13 +11,14 @@ const getIconClass = (iconName) => {
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function Index({ cvs, filters, flash, folders = [], currentFolder = null, breadcrumb = [] }) {
+export default function Index({ cvs, filters, flash, folders = [], currentFolder = null, breadcrumb = [], userRole, operadores = [] }) {
     const { auth } = usePage().props;
-    const isAdmin = auth?.user?.role === 'Administrador';
+    const isAdmin = (userRole || auth?.user?.role) === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
     const [especialidad, setEspecialidad] = useState(filters.especialidad || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
+    const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [editingFolder, setEditingFolder] = useState(null);
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
@@ -29,7 +30,8 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     useEffect(() => {
         const timer = setTimeout(() => {
             const params = { search, especialidad, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
-            if (search !== (filters.search || '') || especialidad !== (filters.especialidad || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '')) {
+            if (isAdmin) params.user_id = operatorId || undefined;
+            if (search !== (filters.search || '') || especialidad !== (filters.especialidad || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '') || operatorId !== (filters.user_id || '')) {
                 router.get(route('cvs.index'), params, {
                     preserveState: true,
                     preserveScroll: true,
@@ -38,7 +40,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search, especialidad, dateStart, dateEnd]);
+    }, [search, especialidad, dateStart, dateEnd, operatorId]);
 
     const handleDelete = (id) => {
         Swal.fire({
@@ -170,6 +172,18 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                             onChange={(e) => setDateEnd(e.target.value)}
                         />
                     </div>
+                    {isAdmin && operadores.length > 0 && (
+                        <div className="col-lg-3">
+                            <select
+                                className="form-select rounded-pill bg-body-tertiary border-0 px-3 text-secondary"
+                                value={operatorId}
+                                onChange={(e) => setOperatorId(e.target.value)}
+                            >
+                                <option value="">Todos los operadores</option>
+                                {operadores.map(op => (<option key={op.id} value={op.id}>{op.name}</option>))}
+                            </select>
+                        </div>
+                    )}
                 </div>
             </div>
 

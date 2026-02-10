@@ -1,7 +1,7 @@
 import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 
-export default function Index({ items, filters, userRole, folders = [], currentFolder = null, breadcrumb = [] }) {
+export default function Index({ items, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [] }) {
     const getDocumentLinks = (item) => (item.archivo ? [{ label: 'Documento', path: item.archivo }] : []);
 
     const columns = [
@@ -27,6 +27,7 @@ export default function Index({ items, filters, userRole, folders = [], currentF
             breadcrumb={breadcrumb}
             indexRoute="plantillas-ing.index"
             indexTitle="Plantillas de Ingeniería"
+            operadores={operadores}
             getDocumentLinks={getDocumentLinks}
         />
     );

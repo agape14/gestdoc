@@ -22,16 +22,22 @@ class LicitacionController extends Controller
     {
         $user = auth()->user();
         $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        $effectiveUserId = $user->role === 'Administrador'
+            ? ($request->filled('user_id') ? (int) $request->user_id : null)
+            : $user->id;
 
         if ($folderId) {
-            $currentFolder = Folder::where('module', self::MODULE)->findOrFail($folderId);
+            $currentFolder = Folder::where('module', self::MODULE)
+                ->forEffectiveUser($effectiveUserId)
+                ->findOrFail($folderId);
             $currentFolder->load(['parent']);
-            $folders = $currentFolder->children()->orderBy('name')->get();
+            $folders = $currentFolder->children()->forEffectiveUser($effectiveUserId)->orderBy('name')->get();
             $breadcrumb = $currentFolder->path;
         } else {
             $currentFolder = null;
-            $folders = Folder::whereNull('parent_id')->where('module', self::MODULE)
-                ->with(['children' => fn($q) => $q->withCount('children')])
+            $folders = Folder::whereNull('parent_id')
+                ->visibleForUser(self::MODULE, $effectiveUserId)
+                ->with(['children' => fn($q) => $q->forEffectiveUser($effectiveUserId)->withCount('children')])
                 ->orderBy('name')
                 ->get();
             $breadcrumb = [];
@@ -118,6 +124,7 @@ class LicitacionController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
         $validated['module'] = self::MODULE;
+        $validated['user_id'] = auth()->id();
         Folder::create($validated);
         return redirect()->back()->with('success', 'Carpeta creada.');
     }

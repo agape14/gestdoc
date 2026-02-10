@@ -11,9 +11,9 @@ export default function Index({
     documents = [],
     currentFolder = null,
     breadcrumb = [],
-    recentDocuments = [],
     flash,
     filters = {},
+    operadores = [],
 }) {
     const { auth } = usePage().props;
     const isAdmin = auth?.user?.role === 'Administrador';
@@ -28,24 +28,36 @@ export default function Index({
     const [search, setSearch] = useState(filters.search || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
+    const [operatorId, setOperatorId] = useState(filters.user_id || '');
 
     useEffect(() => {
         if (!currentFolder) return;
         const timer = setTimeout(() => {
+            const params = { search, date_start: dateStart, date_end: dateEnd };
+            if (isAdmin) params.user_id = operatorId || undefined;
             const hasChanges =
                 search !== (filters.search || '') ||
                 dateStart !== (filters.date_start || '') ||
-                dateEnd !== (filters.date_end || '');
+                dateEnd !== (filters.date_end || '') ||
+                operatorId !== (filters.user_id || '');
             if (hasChanges) {
-                router.get(route('folders.show', currentFolder.id), {
-                    search,
-                    date_start: dateStart,
-                    date_end: dateEnd,
-                }, { preserveState: true, preserveScroll: true, replace: true });
+                router.get(route('folders.show', currentFolder.id), params, { preserveState: true, preserveScroll: true, replace: true });
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search, dateStart, dateEnd]);
+    }, [search, dateStart, dateEnd, operatorId]);
+
+    useEffect(() => {
+        if (currentFolder) return;
+        const timer = setTimeout(() => {
+            const currentFilterUserId = filters.user_id != null ? String(filters.user_id) : '';
+            if (String(operatorId) === currentFilterUserId) return;
+            const params = {};
+            if (operatorId) params.user_id = operatorId;
+            router.get(route('folders.index'), params, { preserveState: true, preserveScroll: true, replace: true });
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [operatorId]);
 
     const handleCreateFolder = () => {
         setEditingFolder(null);
@@ -172,6 +184,26 @@ export default function Index({
                 </div>
             )}
 
+            {isAdmin && operadores.length > 0 && (
+                <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
+                    <label className="form-label fw-semibold text-body mb-2">
+                        <i className="bi bi-person-fill me-2 text-primary"></i>
+                        Filtrar por operador
+                    </label>
+                    <select
+                        className="form-select rounded-pill bg-body-tertiary border-0 px-3 text-secondary"
+                        style={{ maxWidth: '320px' }}
+                        value={operatorId}
+                        onChange={(e) => setOperatorId(e.target.value)}
+                    >
+                        <option value="">Todos los operadores</option>
+                        {operadores.map((op) => (
+                            <option key={op.id} value={op.id}>{op.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
                     <h2 className="fw-bold text-body mb-0">Gestión Documental</h2>
@@ -195,7 +227,7 @@ export default function Index({
                 <nav aria-label="breadcrumb" className="mb-4">
                     <ol className="breadcrumb bg-body-tertiary rounded-3 p-3">
                         <li className="breadcrumb-item">
-                            <Link href={route('folders.index')} className="text-decoration-none">
+                            <Link href={filters.user_id ? `${route('folders.index')}?user_id=${filters.user_id}` : route('folders.index')} className="text-decoration-none">
                                 <i className="bi bi-house-door-fill me-1"></i>
                                 Inicio
                             </Link>
@@ -208,7 +240,7 @@ export default function Index({
                                 {index === breadcrumb.length - 1 ? (
                                     folder.name
                                 ) : (
-                                    <Link href={route('folders.show', folder.id)} className="text-decoration-none">
+                                    <Link href={filters.user_id ? `${route('folders.show', folder.id)}?user_id=${filters.user_id}` : route('folders.show', folder.id)} className="text-decoration-none">
                                         {folder.name}
                                     </Link>
                                 )}
@@ -367,7 +399,7 @@ export default function Index({
                                 {folders.map((folder) => (
                                     <Link
                                         key={folder.id}
-                                        href={route('folders.show', folder.id)}
+                                        href={filters.user_id ? `${route('folders.show', folder.id)}?user_id=${filters.user_id}` : route('folders.show', folder.id)}
                                         className={`btn btn-sm rounded-pill ${currentFolder?.id === folder.id ? 'btn-primary' : 'btn-outline-secondary'}`}
                                     >
                                         {folder.name}
@@ -399,7 +431,7 @@ export default function Index({
                                     onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                                 >
                                     <Link
-                                        href={route('folders.show', folder.id)}
+                                        href={filters.user_id ? `${route('folders.show', folder.id)}?user_id=${filters.user_id}` : route('folders.show', folder.id)}
                                         className="text-decoration-none text-body"
                                     >
                                         <div
@@ -455,30 +487,6 @@ export default function Index({
                                 </div>
                             </div>
                         ))}
-                    </div>
-                </div>
-            )}
-
-            {!currentFolder && recentDocuments && recentDocuments.length > 0 && (
-                <div className="mb-4">
-                    <div className="card border-0 shadow-sm rounded-4 bg-body">
-                        <div className="card-body p-4">
-                            <h6 className="fw-bold text-body mb-3">
-                                <i className="bi bi-clock-history me-2 text-primary"></i>
-                                Documentos recientes
-                            </h6>
-                            <ul className="list-unstyled mb-0">
-                                {recentDocuments.map((doc) => (
-                                    <li key={doc.id} className="mb-2 text-body">
-                                        <i className="bi bi-dot text-primary fs-4 me-1" style={{ verticalAlign: 'middle' }}></i>
-                                        <strong>{doc.numero || doc.asunto || 'Sin número'}</strong>
-                                        <span className="text-secondary ms-2">
-                                            {doc.folder_name && `→ ${doc.folder_name}`}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
                     </div>
                 </div>
             )}

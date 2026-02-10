@@ -21,14 +21,23 @@ class ProveedorServicioController extends Controller
     {
         $user = auth()->user();
         $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        $effectiveUserId = $user->role === 'Administrador'
+            ? ($request->filled('user_id') ? (int) $request->user_id : null)
+            : $user->id;
+
         if ($folderId) {
-            $currentFolder = Folder::where('module', self::MODULE)->findOrFail($folderId);
+            $currentFolder = Folder::where('module', self::MODULE)
+                ->forEffectiveUser($effectiveUserId)
+                ->findOrFail($folderId);
             $currentFolder->load(['parent']);
-            $folders = $currentFolder->children()->orderBy('name')->get();
+            $folders = $currentFolder->children()->forEffectiveUser($effectiveUserId)->orderBy('name')->get();
             $breadcrumb = $currentFolder->path;
         } else {
             $currentFolder = null;
-            $folders = Folder::whereNull('parent_id')->where('module', self::MODULE)->orderBy('name')->get();
+            $folders = Folder::whereNull('parent_id')
+                ->visibleForUser(self::MODULE, $effectiveUserId)
+                ->orderBy('name')
+                ->get();
             $breadcrumb = [];
         }
 
@@ -88,6 +97,7 @@ class ProveedorServicioController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
         $validated['module'] = self::MODULE;
+        $validated['user_id'] = auth()->id();
         Folder::create($validated);
         return redirect()->back()->with('success', 'Carpeta creada.');
     }

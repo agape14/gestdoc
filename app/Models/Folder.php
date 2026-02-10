@@ -16,6 +16,7 @@ class Folder extends Model
         'description',
         'is_system',
         'module',
+        'user_id',
     ];
 
     protected $casts = [
@@ -25,6 +26,14 @@ class Folder extends Model
     ];
 
     protected $appends = ['path', 'contracts_summary'];
+
+    /**
+     * Usuario creador (null = carpeta del sistema, visible para todos)
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /**
      * Relación padre (carpeta contenedora)
@@ -96,6 +105,54 @@ class Folder extends Model
         ];
     }
 
+
+    /**
+     * Carpeta visible para el usuario efectivo en un módulo.
+     * - Operador: carpetas del sistema (user_id null) + propias (user_id = id).
+     * - Administrador sin filtro: todas las carpetas del módulo.
+     * - Administrador con filtro user_id: carpetas del sistema + de ese usuario.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string|null $module
+     * @param int|null $effectiveUserId null = ver todas (solo admin), int = ver sistema + de ese usuario
+     */
+    public function scopeVisibleForUser($query, $module, $effectiveUserId)
+    {
+        $q = $query->where('module', $module);
+        if ($effectiveUserId === null) {
+            return $q;
+        }
+        return $q->where(function ($q2) use ($effectiveUserId) {
+            $q2->whereNull('user_id')->orWhere('user_id', $effectiveUserId);
+        });
+    }
+
+    /**
+     * Filtro solo por usuario efectivo (sin filtrar por module). Útil para hijos y listas ya scoped por module.
+     *
+     * @param int|null $effectiveUserId null = no filtrar, int = solo sistema o de ese usuario
+     */
+    public function scopeForEffectiveUser($query, $effectiveUserId)
+    {
+        if ($effectiveUserId === null) {
+            return $query;
+        }
+        return $query->where(function ($q) use ($effectiveUserId) {
+            $q->whereNull('user_id')->orWhere('user_id', $effectiveUserId);
+        });
+    }
+
+    /**
+     * Para gestión documental (module null): carpetas visibles para el usuario.
+     * Operador: solo propias (user_id = id). Administrador: todas.
+     */
+    public function scopeVisibleForGestionDocumental($query, $user)
+    {
+        if ($user->role === 'Administrador') {
+            return $query;
+        }
+        return $query->where('user_id', $user->id);
+    }
 
     /**
      * Genera slug automáticamente al crear

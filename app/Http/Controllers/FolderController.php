@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Folder;
-use App\Models\Document;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class FolderController extends Controller
 {
@@ -19,38 +19,32 @@ class FolderController extends Controller
 
     /**
      * Listado de carpetas (tipos de documento). Sin jerarquía: solo carpetas raíz.
+     * Operador: solo sus carpetas. Administrador: todas o filtradas por user_id.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $folders = Folder::whereNull('parent_id')
-            ->whereNull('module')
-            ->withCount('documents')
-            ->orderBy('name')
-            ->get();
+        $user = Auth::user();
+        $query = Folder::whereNull('parent_id')->whereNull('module');
 
-        $recentDocuments = Document::with(['folder', 'files'])
-            ->whereHas('folder', fn ($q) => $q->whereNull('module'))
-            ->latest()
-            ->limit(10)
-            ->get()
-            ->map(function ($doc) {
-                return [
-                    'id' => $doc->id,
-                    'numero' => $doc->numero,
-                    'asunto' => $doc->asunto,
-                    'fecha_documento' => $doc->fecha_documento?->format('Y-m-d'),
-                    'folder_name' => $doc->folder?->name,
-                    'created_at' => $doc->created_at,
-                ];
-            });
+        if ($user->role === 'Administrador' && $request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        } else {
+            $query->visibleForGestionDocumental($user);
+        }
+
+        $folders = $query->withCount('documents')->orderBy('name')->get();
+
+        $operadores = $user->role === 'Administrador'
+            ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
+            : collect();
 
         return Inertia::render('Folders/Index', [
             'folders' => $folders,
             'currentFolder' => null,
             'breadcrumb' => [],
             'documents' => [],
-            'recentDocuments' => $recentDocuments,
-            'filters' => [],
+            'operadores' => $operadores,
+            'filters' => $request->only(['user_id']),
         ]);
     }
 
@@ -59,8 +53,10 @@ class FolderController extends Controller
      */
     public function show(Request $request, $id)
     {
+        $user = Auth::user();
         $folder = Folder::with(['parent'])
             ->whereNull('module')
+            ->visibleForGestionDocumental($user)
             ->withCount('documents')
             ->findOrFail($id);
 
@@ -87,13 +83,25 @@ class FolderController extends Controller
 
         $documents = $query->latest('fecha_documento')->latest()->get();
 
+        $foldersQuery = Folder::whereNull('parent_id')->whereNull('module');
+        if ($user->role === 'Administrador' && $request->filled('user_id')) {
+            $foldersQuery->where('user_id', $request->user_id);
+        } else {
+            $foldersQuery->visibleForGestionDocumental($user);
+        }
+        $foldersList = $foldersQuery->withCount('documents')->orderBy('name')->get();
+
+        $operadores = $user->role === 'Administrador'
+            ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
+            : collect();
+
         return Inertia::render('Folders/Index', [
-            'folders' => Folder::whereNull('parent_id')->whereNull('module')->withCount('documents')->orderBy('name')->get(),
+            'folders' => $foldersList,
             'currentFolder' => $folder,
             'breadcrumb' => $folder->path,
             'documents' => $documents,
-            'recentDocuments' => [],
-            'filters' => $request->only(['search', 'date_start', 'date_end']),
+            'operadores' => $operadores,
+            'filters' => $request->only(['search', 'date_start', 'date_end', 'user_id']),
         ]);
     }
 
@@ -111,6 +119,7 @@ class FolderController extends Controller
         ]);
         $validated['module'] = null;
         $validated['parent_id'] = $validated['parent_id'] ?? null; // Solo carpetas raíz como tipos de documento
+        $validated['user_id'] = $request->user()->id;
 
         Folder::create($validated);
 
@@ -119,12 +128,17 @@ class FolderController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * Solo el Administrador puede editar carpetas.
+     * Administrador puede editar cualquier carpeta; Operador solo las propias.
      */
     public function update(Request $request, Folder $folder)
     {
-        if ($request->user()->role !== 'Administrador') {
-            abort(403, 'Solo el Administrador puede editar carpetas.');
+        $user = $request->user();
+        if ($user->role === 'Administrador') {
+            // ok
+        } elseif ($user->role === 'Operador' && $folder->user_id !== $user->id) {
+            abort(403, 'Solo puedes editar tus propias carpetas.');
+        } else {
+            abort(403, 'No tienes permiso para editar esta carpeta.');
         }
 
         $validated = $request->validate([
@@ -147,6 +161,10 @@ class FolderController extends Controller
         if ($folder->is_system) {
             return redirect()->back()->with('error', 'No se pueden eliminar carpetas del sistema.');
         }
+        $user = request()->user();
+        if ($user->role === 'Operador' && $folder->user_id !== $user->id) {
+            return redirect()->back()->with('error', 'Solo puedes eliminar tus propias carpetas.');
+        }
 
         $folder->delete();
 
@@ -158,8 +176,10 @@ class FolderController extends Controller
      */
     public function getTree()
     {
+        $user = Auth::user();
         $folders = Folder::whereNull('parent_id')
             ->whereNull('module')
+            ->visibleForGestionDocumental($user)
             ->orderBy('name')
             ->get();
 

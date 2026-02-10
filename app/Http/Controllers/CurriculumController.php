@@ -14,15 +14,25 @@ class CurriculumController extends Controller
 
     public function index(Request $request)
     {
+        $user = auth()->user();
         $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        $effectiveUserId = $user->role === 'Administrador'
+            ? ($request->filled('user_id') ? (int) $request->user_id : null)
+            : $user->id;
+
         if ($folderId) {
-            $currentFolder = Folder::where('module', self::MODULE)->findOrFail($folderId);
+            $currentFolder = Folder::where('module', self::MODULE)
+                ->forEffectiveUser($effectiveUserId)
+                ->findOrFail($folderId);
             $currentFolder->load(['parent']);
-            $folders = $currentFolder->children()->orderBy('name')->get();
+            $folders = $currentFolder->children()->forEffectiveUser($effectiveUserId)->orderBy('name')->get();
             $breadcrumb = $currentFolder->path;
         } else {
             $currentFolder = null;
-            $folders = Folder::whereNull('parent_id')->where('module', self::MODULE)->orderBy('name')->get();
+            $folders = Folder::whereNull('parent_id')
+                ->visibleForUser(self::MODULE, $effectiveUserId)
+                ->orderBy('name')
+                ->get();
             $breadcrumb = [];
         }
 
@@ -52,12 +62,18 @@ class CurriculumController extends Controller
             $query->whereDate('created_at', '<=', $request->date_end);
         }
 
+        $operadores = $user->role === 'Administrador'
+            ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
+            : collect();
+
         return Inertia::render('Cvs/Index', [
-            'cvs' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id'])),
-            'filters' => $request->only(['search', 'especialidad', 'date_start', 'date_end', 'folder_id']),
+            'cvs' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
+            'filters' => $request->only(['search', 'especialidad', 'date_start', 'date_end', 'folder_id', 'user_id']),
             'folders' => $folders,
             'currentFolder' => $currentFolder,
             'breadcrumb' => $breadcrumb,
+            'userRole' => $user->role,
+            'operadores' => $operadores,
         ]);
     }
 
