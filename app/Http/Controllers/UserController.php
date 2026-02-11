@@ -128,8 +128,10 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
 
+        $users = $query->latest()->paginate(10)->withQueryString();
+
         return Inertia::render('Config/Index', [
-            'users' => $query->latest()->paginate(10),
+            'users' => $users,
             'filters' => $request->only(['search', 'date_start', 'date_end', 'role']),
         ]);
     }

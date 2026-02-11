@@ -173,21 +173,26 @@ export default function Index({ users, filters, flash }) {
                         </tbody>
                     </table>
                 </div>
-                {users.visible_links && users.links.length > 3 && ( // Using a check to avoid crashing if links undefined
+                {users.links && users.last_page > 1 && (
                     <div className="card-footer bg-body border-top-0 py-3">
-                        <nav aria-label="Page navigation">
-                            <ul className="pagination justify-content-center mb-0">
-                                {users.links.map((link, key) => (
-                                    <li key={key} className={`page-item ${link.active ? 'active' : ''} ${!link.url ? 'disabled' : ''}`}>
-                                        <Link
-                                            className="page-link"
-                                            href={link.url || '#'}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    </li>
-                                ))}
-                            </ul>
-                        </nav>
+                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <small className="text-secondary">
+                                Mostrando {users.from ?? 0} a {users.to ?? 0} de {users.total} usuarios
+                            </small>
+                            <nav aria-label="Paginación">
+                                <ul className="pagination pagination-sm mb-0">
+                                    {users.links.map((link, key) => (
+                                        <li key={key} className={`page-item ${link.active ? 'active' : ''} ${!link.url ? 'disabled' : ''}`}>
+                                            <Link
+                                                className="page-link"
+                                                href={link.url || '#'}
+                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            </nav>
+                        </div>
                     </div>
                 )}
             </div>
