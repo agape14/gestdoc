@@ -8,6 +8,7 @@ import DocumentPdfModal from '@/Components/DocumentPdfModal';
 
 export default function Index({
     folders = [],
+    subfolders = [],
     documents = [],
     currentFolder = null,
     breadcrumb = [],
@@ -29,6 +30,7 @@ export default function Index({
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
+    const [selectedDocIds, setSelectedDocIds] = useState([]);
 
     useEffect(() => {
         if (!currentFolder) return;
@@ -123,10 +125,49 @@ export default function Index({
         setShowPdfModal(true);
     };
 
+    const toggleDocSelection = (docId) => {
+        setSelectedDocIds((prev) =>
+            prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
+        );
+    };
+
+    const toggleSelectAllDocs = () => {
+        if (!documents || documents.length === 0) return;
+        if (selectedDocIds.length === documents.length) {
+            setSelectedDocIds([]);
+        } else {
+            setSelectedDocIds(documents.map((d) => d.id));
+        }
+    };
+
+    const getDownloadZipUrl = (all = false) => {
+        if (!currentFolder) return '#';
+        const base = route('folders.documents.download-zip', currentFolder.id);
+        const params = new URLSearchParams();
+        if (all) {
+            params.set('all', '1');
+        } else {
+            selectedDocIds.forEach((id) => params.append('ids[]', id));
+        }
+        return `${base}?${params.toString()}`;
+    };
+
+    const handleDownloadZip = (all) => {
+        if (!currentFolder) return;
+        if (!all && selectedDocIds.length === 0) return;
+        window.location.href = getDownloadZipUrl(all);
+    };
+
     const clearFilters = () => {
         setSearch('');
         setDateStart('');
         setDateEnd('');
+    };
+
+    const canEditOrDeleteFolder = (folder) => {
+        if (isAdmin) return true;
+        if (auth?.user?.role === 'Operador' && folder.user_id === auth?.user?.id) return true;
+        return false;
     };
 
     const formatDate = (dateString) => {
@@ -250,6 +291,70 @@ export default function Index({
                 </nav>
             )}
 
+            {/* Carpetas creadas: justo debajo de la miga de pan */}
+            {currentFolder && subfolders && subfolders.length > 0 && (
+                <div className="mb-4">
+                    <h5 className="fw-bold text-body mb-3">
+                        <i className="bi bi-folder2 me-2"></i>
+                        Carpetas dentro de {currentFolder.name}
+                    </h5>
+                    <div className="row g-3">
+                        {subfolders.map((sub) => (
+                            <div key={sub.id} className="col-md-6 col-lg-4 col-xl-3">
+                                <div
+                                    className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden position-relative"
+                                    style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                                >
+                                    <Link
+                                        href={filters.user_id ? `${route('folders.show', sub.id)}?user_id=${filters.user_id}` : route('folders.show', sub.id)}
+                                        className="text-decoration-none text-body"
+                                    >
+                                        <div
+                                            className="card-header border-0 p-4 position-relative"
+                                            style={{ backgroundColor: sub.color || '#EAEAEA', minHeight: '100px' }}
+                                        >
+                                            <div className="d-flex justify-content-between align-items-start">
+                                                <i className={`bi ${getIconClass(sub.icon)} fs-2 opacity-75`}></i>
+                                                <span className="badge bg-primary text-white rounded-pill shadow-sm" style={{ fontSize: '0.75rem' }}>
+                                                    {sub.documents_count ?? 0}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                    <div className="card-body p-3">
+                                        <h6 className="card-title fw-bold mb-1">{sub.name}</h6>
+                                        {canEditOrDeleteFolder(sub) && (
+                                            <div className="d-flex gap-1 mt-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); handleEditFolder(sub); }}
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    title="Editar carpeta"
+                                                >
+                                                    <i className="bi bi-pencil"></i>
+                                                </button>
+                                                {!sub.is_system && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.preventDefault(); handleDeleteFolder(sub); }}
+                                                        className="btn btn-sm btn-outline-danger"
+                                                        title="Eliminar"
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {currentFolder && (
                 <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
                     <div className="row g-3">
@@ -298,21 +403,53 @@ export default function Index({
                 </div>
             )}
 
-            {/* Dentro de una carpeta: lista de documentos como contenido principal */}
+            {/* Dentro de una carpeta: documentos */}
             {currentFolder && (
                 <>
                     {documents && documents.length > 0 ? (
                         <div className="mb-4">
-                            <h5 className="fw-bold text-body mb-3">
-                                <i className="bi bi-file-earmark-text me-2"></i>
-                                Documentos en {currentFolder.name} ({documents.length})
-                            </h5>
+                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                                <h5 className="fw-bold text-body mb-0">
+                                    <i className="bi bi-file-earmark-text me-2"></i>
+                                    Documentos en {currentFolder.name} ({documents.length})
+                                </h5>
+                                <div className="d-flex gap-2 align-items-center">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-primary btn-sm"
+                                        onClick={() => handleDownloadZip(false)}
+                                        disabled={selectedDocIds.length === 0}
+                                        title={selectedDocIds.length === 0 ? 'Seleccione al menos un documento' : `Descargar ${selectedDocIds.length} documento(s) en ZIP`}
+                                    >
+                                        <i className="bi bi-file-zip me-1"></i>
+                                        Descargar seleccionados ({selectedDocIds.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => handleDownloadZip(true)}
+                                        title="Descargar todos los PDF en un ZIP (con el nombre indicado en Archivos PDF)"
+                                    >
+                                        <i className="bi bi-download me-1"></i>
+                                        Descargar todos (ZIP)
+                                    </button>
+                                </div>
+                            </div>
                             <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
                                 <div className="table-responsive">
                                     <table className="table table-hover align-middle mb-0">
                                         <thead className="border-bottom text-secondary small text-uppercase">
                                             <tr>
-                                                <th className="ps-4 py-3">Número</th>
+                                                <th className="ps-4 py-3" style={{ width: '40px' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        checked={documents.length > 0 && selectedDocIds.length === documents.length}
+                                                        onChange={toggleSelectAllDocs}
+                                                        title="Seleccionar todos"
+                                                    />
+                                                </th>
+                                                <th className="py-3">Número</th>
                                                 <th className="py-3">Fecha</th>
                                                 <th className="py-3">Asunto</th>
                                                 <th className="py-3">Remitente</th>
@@ -324,7 +461,16 @@ export default function Index({
                                         <tbody>
                                             {documents.map((doc) => (
                                                 <tr key={doc.id}>
-                                                    <td className="ps-4 py-3 fw-medium text-body">{doc.numero || '—'}</td>
+                                                    <td className="ps-4 py-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="form-check-input"
+                                                            checked={selectedDocIds.includes(doc.id)}
+                                                            onChange={() => toggleDocSelection(doc.id)}
+                                                            title="Seleccionar para descargar en ZIP"
+                                                        />
+                                                    </td>
+                                                    <td className="py-3 fw-medium text-body">{doc.numero || '—'}</td>
                                                     <td className="text-secondary">{formatDate(doc.fecha_documento)}</td>
                                                     <td className="text-body">{doc.asunto || '—'}</td>
                                                     <td className="text-secondary">{doc.remitente || '—'}</td>
@@ -395,18 +541,41 @@ export default function Index({
                                 <i className="bi bi-folder2 me-1"></i>
                                 Otros tipos de documento
                             </h6>
-                            <div className="d-flex flex-wrap gap-2">
+                            <div className="d-flex flex-wrap gap-2 align-items-center">
                                 {folders.map((folder) => (
-                                    <Link
-                                        key={folder.id}
-                                        href={filters.user_id ? `${route('folders.show', folder.id)}?user_id=${filters.user_id}` : route('folders.show', folder.id)}
-                                        className={`btn btn-sm rounded-pill ${currentFolder?.id === folder.id ? 'btn-primary' : 'btn-outline-secondary'}`}
-                                    >
-                                        {folder.name}
-                                        {folder.documents_count != null && (
-                                            <span className="ms-1 badge bg-white text-dark rounded-pill">{folder.documents_count}</span>
+                                    <span key={folder.id} className="d-inline-flex align-items-center gap-1">
+                                        <Link
+                                            href={filters.user_id ? `${route('folders.show', folder.id)}?user_id=${filters.user_id}` : route('folders.show', folder.id)}
+                                            className={`btn btn-sm rounded-pill ${currentFolder?.id === folder.id ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                        >
+                                            {folder.name}
+                                            {folder.documents_count != null && (
+                                                <span className="ms-1 badge bg-white text-dark rounded-pill">{folder.documents_count}</span>
+                                            )}
+                                        </Link>
+                                        {canEditOrDeleteFolder(folder) && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditFolder(folder)}
+                                                    className="btn btn-sm btn-outline-secondary rounded-pill p-1"
+                                                    title="Editar carpeta"
+                                                >
+                                                    <i className="bi bi-pencil"></i>
+                                                </button>
+                                                {!folder.is_system && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteFolder(folder)}
+                                                        className="btn btn-sm btn-outline-danger rounded-pill p-1"
+                                                        title="Eliminar"
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
-                                    </Link>
+                                    </span>
                                 ))}
                             </div>
                         </div>
@@ -457,9 +626,10 @@ export default function Index({
                                                 {folder.description}
                                             </p>
                                         )}
-                                        {isAdmin && (
+                                        {canEditOrDeleteFolder(folder) && (
                                             <div className="d-flex gap-1 mt-2">
                                                 <button
+                                                    type="button"
                                                     onClick={(e) => {
                                                         e.preventDefault();
                                                         handleEditFolder(folder);
@@ -471,6 +641,7 @@ export default function Index({
                                                 </button>
                                                 {!folder.is_system && (
                                                     <button
+                                                        type="button"
                                                         onClick={(e) => {
                                                             e.preventDefault();
                                                             handleDeleteFolder(folder);
@@ -516,7 +687,7 @@ export default function Index({
                 show={showFolderModal}
                 onClose={() => setShowFolderModal(false)}
                 folder={editingFolder}
-                parentId={null}
+                parentId={currentFolder?.id ?? null}
             />
 
             <DocumentModal

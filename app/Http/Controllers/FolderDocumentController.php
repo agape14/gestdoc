@@ -7,6 +7,7 @@ use App\Models\DocumentFile;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 class FolderDocumentController extends Controller
 {
@@ -24,7 +25,8 @@ class FolderDocumentController extends Controller
             'destinatario' => 'nullable|string|max:255',
             'referencia' => 'nullable|string|max:255',
             'observaciones' => 'nullable|string',
-        ], [], []);
+            'folios' => 'required|integer|min:0',
+        ], [], ['folios' => 'folios']);
 
         $folder = Folder::findOrFail($validated['folder_id']);
         if ($folder->module !== null) {
@@ -46,6 +48,7 @@ class FolderDocumentController extends Controller
             'destinatario' => $validated['destinatario'] ?? null,
             'referencia' => $validated['referencia'] ?? null,
             'observaciones' => $validated['observaciones'] ?? null,
+            'folios' => (int) ($validated['folios'] ?? 0),
         ]);
 
         foreach ($archivosData as $index => $item) {
@@ -84,6 +87,7 @@ class FolderDocumentController extends Controller
             'destinatario' => 'nullable|string|max:255',
             'referencia' => 'nullable|string|max:255',
             'observaciones' => 'nullable|string',
+            'folios' => 'required|integer|min:0',
             'archivos' => 'nullable|array',
             'archivos.*.nombre_archivo' => 'required_with:archivos.*.file|string|max:255',
             'archivos.*.file' => 'nullable|file|mimes:pdf|max:10240',
@@ -103,6 +107,7 @@ class FolderDocumentController extends Controller
             'destinatario' => $validated['destinatario'] ?? null,
             'referencia' => $validated['referencia'] ?? null,
             'observaciones' => $validated['observaciones'] ?? null,
+            'folios' => (int) ($validated['folios'] ?? 0),
         ]);
 
         // Actualizar nombres de archivos existentes
@@ -185,6 +190,82 @@ class FolderDocumentController extends Controller
         }
         $path = Storage::disk('public')->path($file->path);
         return response()->file($path);
+    }
+
+    /**
+     * Download selected or all document PDFs from the folder as a ZIP.
+     * Files are named with the name from "Archivos PDF (nombre + archivo)" (nombre_archivo).
+     */
+    public function downloadZip(Request $request, Folder $folder)
+    {
+        if ($folder->module !== null) {
+            return redirect()->back()->with('error', 'Esta carpeta no es de gestión documental.');
+        }
+
+        $ids = $request->input('ids', []);
+        $all = $request->boolean('all');
+
+        if ($all) {
+            $documents = $folder->documents()->with('files')->get();
+        } else {
+            if (!is_array($ids) || empty($ids)) {
+                return redirect()->back()->with('error', 'Seleccione al menos un documento.');
+            }
+            $documents = Document::where('folder_id', $folder->id)
+                ->whereIn('id', $ids)
+                ->with('files')
+                ->get();
+        }
+
+        $filesToZip = [];
+        foreach ($documents as $doc) {
+            foreach ($doc->files as $file) {
+                if (Storage::disk('public')->exists($file->path)) {
+                    $filesToZip[] = [
+                        'path' => Storage::disk('public')->path($file->path),
+                        'nombre_archivo' => $file->nombre_archivo,
+                    ];
+                }
+            }
+        }
+
+        if (empty($filesToZip)) {
+            return redirect()->back()->with('error', 'No hay archivos PDF para descargar.');
+        }
+
+        $usedBaseNames = [];
+        $zip = new ZipArchive();
+        $zipPath = storage_path('app/public/documentos_temp_' . uniqid() . '.zip');
+
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return redirect()->back()->with('error', 'No se pudo crear el archivo ZIP.');
+        }
+
+        foreach ($filesToZip as $item) {
+            $baseName = \Str::slug($item['nombre_archivo']);
+            if (empty($baseName)) {
+                $baseName = 'documento';
+            }
+            $ext = pathinfo($item['path'], PATHINFO_EXTENSION) ?: 'pdf';
+            if (!isset($usedBaseNames[$baseName])) {
+                $usedBaseNames[$baseName] = 0;
+            }
+            $usedBaseNames[$baseName]++;
+            $fileName = $usedBaseNames[$baseName] === 1
+                ? $baseName . '.' . $ext
+                : $baseName . '-' . $usedBaseNames[$baseName] . '.' . $ext;
+            $zip->addFile($item['path'], $fileName);
+        }
+
+        $zip->close();
+
+        $downloadName = \Str::slug($folder->name) . '-documentos-' . now()->format('Y-m-d-His') . '.zip';
+
+        $response = response()->download($zipPath, $downloadName, [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+
+        return $response;
     }
 
     /**

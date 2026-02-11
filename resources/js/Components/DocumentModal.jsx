@@ -1,5 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
+import Swal from 'sweetalert2';
+
+const showValidationErrors = (errors) => {
+    if (!errors || typeof errors !== 'object') return;
+    const entries = Object.entries(errors);
+    if (entries.length === 0) return;
+    const html = entries.map(([k, v]) => `<strong>${k.replace(/_/g, ' ')}</strong>: ${v}`).join('<br>');
+    Swal.fire({
+        icon: 'error',
+        title: 'Errores de validación',
+        html,
+        confirmButtonText: 'Entendido',
+    });
+};
 
 const INIT_ARCHIVO = { nombre_archivo: '', file: null };
 
@@ -18,6 +32,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
         destinatario: '',
         referencia: '',
         observaciones: '',
+        folios: '',
     });
 
     const fechaStr = (d) => {
@@ -36,6 +51,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                 destinatario: doc.destinatario || '',
                 referencia: doc.referencia || '',
                 observaciones: doc.observaciones || '',
+                folios: doc.folios != null ? String(doc.folios) : '',
             });
             setArchivosExistentes((doc.files || []).map((f) => ({ id: f.id, nombre_archivo: f.nombre_archivo || '' })));
             setArchivos([{ ...INIT_ARCHIVO }]);
@@ -81,6 +97,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
         formData.append('destinatario', data.destinatario);
         formData.append('referencia', data.referencia);
         formData.append('observaciones', data.observaciones);
+        formData.append('folios', data.folios);
 
         if (isEditing) {
             archivosExistentes.forEach((a, i) => {
@@ -101,6 +118,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                     onClose();
                     reset();
                 },
+                onError: (errors) => showValidationErrors(errors),
             });
         } else {
             const conArchivo = archivos.filter((a) => a.nombre_archivo && a.file);
@@ -118,6 +136,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                     onClose();
                     reset();
                 },
+                onError: (errors) => showValidationErrors(errors),
             });
         }
     };
@@ -138,9 +157,9 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                         <button type="button" className="btn-close" onClick={onClose}></button>
                     </div>
                     <form onSubmit={handleSubmit}>
-                        <div className="modal-body">
+                        <div className="modal-body overflow-y-auto" style={{ maxHeight: '65vh' }}>
                             <div className="row g-3">
-                                <div className="col-md-6">
+                                <div className="col-md-8">
                                     <label className="form-label fw-semibold">Número</label>
                                     <input
                                         type="text"
@@ -151,7 +170,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                     />
                                     {errors.numero && <div className="invalid-feedback">{errors.numero}</div>}
                                 </div>
-                                <div className="col-md-6">
+                                <div className="col-md-2">
                                     <label className="form-label fw-semibold">Fecha del documento</label>
                                     <input
                                         type="date"
@@ -161,11 +180,24 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                     />
                                     {errors.fecha_documento && <div className="invalid-feedback">{errors.fecha_documento}</div>}
                                 </div>
+                                <div className="col-md-2">
+                                    <label className="form-label fw-semibold">Folios <span className="text-danger">*</span></label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        className={`form-control ${errors.folios ? 'is-invalid' : ''}`}
+                                        value={data.folios}
+                                        onChange={(e) => setData('folios', e.target.value)}
+                                        placeholder="Cantidad de folios"
+                                    />
+                                    {errors.folios && <div className="invalid-feedback">{errors.folios}</div>}
+                                </div>
                                 <div className="col-12">
                                     <label className="form-label fw-semibold">Asunto</label>
-                                    <input
-                                        type="text"
+                                    <textarea
                                         className={`form-control ${errors.asunto ? 'is-invalid' : ''}`}
+                                        rows={3}
                                         value={data.asunto}
                                         onChange={(e) => setData('asunto', e.target.value)}
                                         placeholder="Asunto o resumen"
@@ -194,9 +226,9 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                 </div>
                                 <div className="col-12">
                                     <label className="form-label fw-semibold">Referencia</label>
-                                    <input
-                                        type="text"
+                                    <textarea
                                         className={`form-control ${errors.referencia ? 'is-invalid' : ''}`}
+                                        rows={2}
                                         value={data.referencia}
                                         onChange={(e) => setData('referencia', e.target.value)}
                                     />

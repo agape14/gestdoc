@@ -40,6 +40,7 @@ class FolderController extends Controller
 
         return Inertia::render('Folders/Index', [
             'folders' => $folders,
+            'subfolders' => [],
             'currentFolder' => null,
             'breadcrumb' => [],
             'documents' => [],
@@ -91,12 +92,21 @@ class FolderController extends Controller
         }
         $foldersList = $foldersQuery->withCount('documents')->orderBy('name')->get();
 
+        $subfoldersQuery = $folder->children()->whereNull('module');
+        if ($user->role === 'Administrador' && $request->filled('user_id')) {
+            $subfoldersQuery->where('user_id', $request->user_id);
+        } else {
+            $subfoldersQuery->visibleForGestionDocumental($user);
+        }
+        $subfolders = $subfoldersQuery->withCount('documents')->orderBy('name')->get();
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
         return Inertia::render('Folders/Index', [
             'folders' => $foldersList,
+            'subfolders' => $subfolders,
             'currentFolder' => $folder,
             'breadcrumb' => $folder->path,
             'documents' => $documents,
@@ -118,7 +128,7 @@ class FolderController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
         $validated['module'] = null;
-        $validated['parent_id'] = $validated['parent_id'] ?? null; // Solo carpetas raíz como tipos de documento
+        $validated['parent_id'] = $validated['parent_id'] ?? null; // null = raíz; si se crea dentro de una carpeta, parent_id viene en la petición
         $validated['user_id'] = $request->user()->id;
 
         Folder::create($validated);
@@ -135,8 +145,10 @@ class FolderController extends Controller
         $user = $request->user();
         if ($user->role === 'Administrador') {
             // ok
-        } elseif ($user->role === 'Operador' && $folder->user_id !== $user->id) {
-            abort(403, 'Solo puedes editar tus propias carpetas.');
+        } elseif ($user->role === 'Operador') {
+            if ($folder->user_id !== $user->id) {
+                abort(403, 'Solo puedes editar tus propias carpetas.');
+            }
         } else {
             abort(403, 'No tienes permiso para editar esta carpeta.');
         }
@@ -162,8 +174,14 @@ class FolderController extends Controller
             return redirect()->back()->with('error', 'No se pueden eliminar carpetas del sistema.');
         }
         $user = request()->user();
-        if ($user->role === 'Operador' && $folder->user_id !== $user->id) {
-            return redirect()->back()->with('error', 'Solo puedes eliminar tus propias carpetas.');
+        if ($user->role === 'Administrador') {
+            // ok
+        } elseif ($user->role === 'Operador') {
+            if ($folder->user_id !== $user->id) {
+                return redirect()->back()->with('error', 'Solo puedes eliminar tus propias carpetas.');
+            }
+        } else {
+            return redirect()->back()->with('error', 'No tienes permiso para eliminar carpetas.');
         }
 
         $folder->delete();

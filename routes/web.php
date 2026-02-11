@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/folders/documents/{document}', [FolderDocumentController::class, 'destroy'])->name('folders.documents.destroy');
         Route::get('/folders/documents/{document}/files/{file}/download', [FolderDocumentController::class, 'download'])->name('folders.documents.files.download');
         Route::get('/folders/documents/{document}/files/{file}/view', [FolderDocumentController::class, 'view'])->name('folders.documents.files.view');
+        Route::get('/folders/{folder}/documents/download-zip', [FolderDocumentController::class, 'downloadZip'])->name('folders.documents.download-zip');
         Route::resource('contracts', ContractController::class);
         Route::get('/contracts/{contract}/download', [ContractController::class, 'download'])->name('contracts.download');
         Route::get('/contracts/{contract}/view', [ContractController::class, 'viewPdf'])->name('contracts.view');
@@ -42,6 +43,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/licitaciones/export', [LicitacionController::class, 'export'])->name('licitaciones.export');
         Route::get('/licitaciones/{licitacion}/export', [LicitacionController::class, 'exportProject'])->name('licitaciones.export-project');
         Route::resource('licitaciones', LicitacionController::class)->parameters(['licitaciones' => 'licitacion']);
+        Route::post('/cvs/folders', [CurriculumController::class, 'storeFolder'])->name('cvs.folders.store');
         Route::resource('cvs', CurriculumController::class);
         Route::post('/consultor-obras/folders', [\App\Http\Controllers\ConsultorObraController::class, 'storeFolder'])->name('consultor-obras.folders.store');
         Route::get('/consultor-obras/export', [\App\Http\Controllers\ConsultorObraController::class, 'export'])->name('consultor-obras.export');
@@ -61,9 +63,13 @@ Route::middleware('auth')->group(function () {
         Route::resource('especialistas-ejecucion', \App\Http\Controllers\EspecialistaEjecucionController::class)->parameters(['especialistas-ejecucion' => 'especialistaEjecucion']);
         Route::post('/especialistas-consultoria/folders', [\App\Http\Controllers\EspecialistaConsultoriaController::class, 'storeFolder'])->name('especialistas-consultoria.folders.store');
         Route::resource('especialistas-consultoria', \App\Http\Controllers\EspecialistaConsultoriaController::class)->parameters(['especialistas-consultoria' => 'especialistaConsultoria']);
+        Route::post('/inmobiliaria/folders', [\App\Http\Controllers\InmobiliariaController::class, 'storeFolder'])->name('inmobiliaria.folders.store');
         Route::resource('inmobiliaria', \App\Http\Controllers\InmobiliariaController::class);
+        Route::post('/topografia/folders', [\App\Http\Controllers\TopografiaController::class, 'storeFolder'])->name('topografia.folders.store');
         Route::resource('topografia', \App\Http\Controllers\TopografiaController::class);
+        Route::post('/tecnologia/folders', [\App\Http\Controllers\TecnologiaController::class, 'storeFolder'])->name('tecnologia.folders.store');
         Route::resource('tecnologia', \App\Http\Controllers\TecnologiaController::class);
+        Route::post('/plantillas-ing/folders', [\App\Http\Controllers\PlantillaIngController::class, 'storeFolder'])->name('plantillas-ing.folders.store');
         Route::resource('plantillas-ing', \App\Http\Controllers\PlantillaIngController::class);
         Route::post('/record-share', [\App\Http\Controllers\RecordShareController::class, 'store'])->name('record-share.store');
     });

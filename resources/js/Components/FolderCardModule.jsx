@@ -12,14 +12,15 @@ const ICON_MAP = {
 };
 
 /**
- * Tarjeta de carpeta para módulos con icono de editar (solo admin).
- * @param {Object} folder - Carpeta
+ * Tarjeta de carpeta para módulos. Editar/eliminar: Administrador (todas), Operador (solo las propias). Visualizador solo ve.
+ * @param {Object} folder - Carpeta (debe incluir user_id para permisos de operador)
  * @param {string} indexRoute - Ruta del index (ej: 'licitaciones.index')
  * @param {Object} indexParams - Parámetros para la ruta
- * @param {boolean} isAdmin - Si el usuario es administrador
+ * @param {boolean} canEditFolder - Si el usuario puede editar/eliminar esta carpeta (admin o operador dueño)
  * @param {Function} onEdit - Callback al hacer clic en editar
+ * @param {Function} onDelete - Callback al hacer clic en eliminar (opcional)
  */
-export default function FolderCardModule({ folder, indexRoute, indexParams = {}, isAdmin, onEdit }) {
+export default function FolderCardModule({ folder, indexRoute, indexParams = {}, canEditFolder, onEdit, onDelete }) {
     const getIconClass = (iconName) => ICON_MAP[iconName] || 'bi-folder-fill';
 
     return (
@@ -37,20 +38,35 @@ export default function FolderCardModule({ folder, indexRoute, indexParams = {},
                     </div>
                 </div>
             </Link>
-            {isAdmin && (
-                <button
-                    type="button"
-                    className="btn btn-sm btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm folder-edit-btn"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onEdit?.(folder);
-                    }}
-                    title="Editar carpeta"
-                    style={{ zIndex: 5 }}
-                >
-                    <i className="bi bi-pencil-fill text-primary"></i>
-                </button>
+            {canEditFolder && (
+                <div className="position-absolute top-0 end-0 m-2 d-flex gap-1" style={{ zIndex: 5 }}>
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-light rounded-circle shadow-sm"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onEdit?.(folder);
+                        }}
+                        title="Editar carpeta"
+                    >
+                        <i className="bi bi-pencil-fill text-primary"></i>
+                    </button>
+                    {!folder.is_system && onDelete && (
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-light rounded-circle shadow-sm"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDelete(folder);
+                            }}
+                            title="Eliminar carpeta"
+                        >
+                            <i className="bi bi-trash-fill text-danger"></i>
+                        </button>
+                    )}
+                </div>
             )}
         </div>
     );

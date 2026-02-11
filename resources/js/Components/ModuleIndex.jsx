@@ -12,14 +12,15 @@ const getIconClass = (iconName) => {
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null }) {
-    const { auth } = usePage().props;
+export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [] }) {
+    const { auth, flash } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
     const [search, setSearch] = useState(routeParams.search || '');
     const [operatorId, setOperatorId] = useState(routeParams.user_id || '');
     const [currentFilters, setCurrentFilters] = useState(routeParams);
     const [expandedRow, setExpandedRow] = useState(null);
+    const [tabActivo, setTabActivo] = useState('activos');
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [editingFolder, setEditingFolder] = useState(null);
     const [showDocumentsModal, setShowDocumentsModal] = useState(false);
@@ -67,7 +68,7 @@ export default function ModuleIndex({ title, description, items, columns, create
     const canEdit = (item) => {
         if (currentUserRole === 'Administrador') return true;
         if (currentUserRole === 'Operador') {
-            return item.user_id === auth?.user?.id;
+            return item.user_id == null || item.user_id === auth?.user?.id;
         }
         return false;
     };
@@ -75,9 +76,37 @@ export default function ModuleIndex({ title, description, items, columns, create
     const canDelete = (item) => {
         if (currentUserRole === 'Administrador') return true;
         if (currentUserRole === 'Operador') {
-            return item.user_id === auth?.user?.id;
+            return item.user_id == null || item.user_id === auth?.user?.id;
         }
         return false;
+    };
+
+    /** Administrador: todas las carpetas. Operador: solo las propias. Visualizador: ninguna. */
+    const canEditOrDeleteFolder = (folder) => {
+        if (currentUserRole === 'Administrador') return true;
+        if (currentUserRole === 'Operador') return folder.user_id === auth?.user?.id;
+        return false;
+    };
+
+    const handleDeleteFolder = (folder) => {
+        if (folder?.is_system) {
+            Swal.fire({ icon: 'error', title: 'No permitido', text: 'No se pueden eliminar carpetas del sistema' });
+            return;
+        }
+        Swal.fire({
+            title: '¿Eliminar carpeta?',
+            text: 'Se eliminará la carpeta y su contenido. Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('folders.destroy', folder.id), { preserveScroll: true });
+            }
+        });
     };
 
     const handleDelete = (item, routeName) => {
@@ -114,6 +143,19 @@ export default function ModuleIndex({ title, description, items, columns, create
         <MainLayout>
             <Head title={title} />
 
+            {flash?.success && (
+                <div className="alert alert-success alert-dismissible fade show rounded-3 mb-3" role="alert">
+                    {flash.success}
+                    <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            )}
+            {flash?.error && (
+                <div className="alert alert-danger alert-dismissible fade show rounded-3 mb-3" role="alert">
+                    {flash.error}
+                    <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            )}
+
             {hasFolders && breadcrumb && breadcrumb.length > 0 && (
                 <nav aria-label="breadcrumb" className="mb-3">
                     <ol className="breadcrumb bg-body-tertiary rounded-3 p-3">
@@ -147,8 +189,9 @@ export default function ModuleIndex({ title, description, items, columns, create
                                     folder={folder}
                                     indexRoute={indexRoute}
                                     indexParams={buildIndexParams()}
-                                    isAdmin={isAdmin}
+                                    canEditFolder={canEditOrDeleteFolder(folder)}
                                     onEdit={(f) => setEditingFolder(f)}
+                                    onDelete={handleDeleteFolder}
                                 />
                             ))}
                         </div>
@@ -231,7 +274,47 @@ export default function ModuleIndex({ title, description, items, columns, create
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
+                {isAdmin && Array.isArray(anulados) && (
+                    <ul className="nav nav-tabs card-header-tabs border-0 px-4 pt-3">
+                        <li className="nav-item">
+                            <button type="button" className={`nav-link rounded-top-pill ${tabActivo === 'activos' ? 'active bg-white border-bottom-0 fw-semibold' : 'border-0 bg-transparent text-secondary'}`} onClick={() => setTabActivo('activos')}>
+                                Activos {items.data?.length != null && <span className="badge bg-primary-subtle text-primary ms-1">{items.data.length}</span>}
+                            </button>
+                        </li>
+                        <li className="nav-item">
+                            <button type="button" className={`nav-link rounded-top-pill ${tabActivo === 'anulados' ? 'active bg-white border-bottom-0 fw-semibold' : 'border-0 bg-transparent text-secondary'}`} onClick={() => setTabActivo('anulados')}>
+                                Anulados {anulados.length > 0 && <span className="badge bg-secondary-subtle text-secondary ms-1">{anulados.length}</span>}
+                            </button>
+                        </li>
+                    </ul>
+                )}
                 <div className="table-responsive">
+                    {tabActivo === 'anulados' && isAdmin ? (
+                        <table className="table table-hover align-middle mb-0">
+                            <thead className="border-bottom text-secondary small text-uppercase">
+                                <tr>
+                                    {columns.map((col, i) => (
+                                        <th key={i} scope="col" className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''}`}>
+                                            {col.header === 'ACCIONES' ? 'ESTADO' : col.header}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {anulados.length > 0 ? anulados.map((item, idx) => (
+                                    <tr key={item.id || idx} className="table-secondary">
+                                        {columns.map((col, i) => (
+                                            <td key={i} className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''}`}>
+                                                {col.header === 'ACCIONES' ? <span className="badge bg-secondary">Anulado</span> : (col.render ? col.render(item) : (item[col.accessor] ?? '-'))}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                )) : (
+                                    <tr><td colSpan={columns.length} className="text-center py-4 text-muted">No hay registros anulados.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
                     <table className="table table-hover align-middle mb-0">
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
@@ -326,8 +409,9 @@ export default function ModuleIndex({ title, description, items, columns, create
                             )}
                         </tbody>
                     </table>
+                    )}
                 </div>
-                {items.links && items.links.length > 3 && (
+                {tabActivo === 'activos' && items.links && items.links.length > 3 && (
                     <div className="card-footer bg-body border-top-0 py-3">
                         <nav aria-label="Page navigation">
                             <ul className="pagination justify-content-center mb-0">

@@ -7,12 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 class PlantillaIng extends Model
 {
     protected $fillable = [
-        'titulo', 'especialidad', 'archivo', 'user_id', 'folder_id'
+        'titulo', 'especialidad', 'archivo', 'user_id', 'anulado', 'folder_id'
     ];
+
+    protected function casts(): array
+    {
+        return ['anulado' => 'boolean'];
+    }
 
     public function folder()
     {
         return $this->belongsTo(Folder::class);
+    }
+
+    /** Solo registros no anulados. */
+    public function scopeActivo($query)
+    {
+        return $query->whereRaw('COALESCE(anulado, 0) = 0');
     }
 
     public function scopeForUser($query, $user)

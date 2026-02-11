@@ -1,7 +1,7 @@
 import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 
-export default function Index({ items, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [] }) {
+export default function Index({ items, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [], anulados = [] }) {
     const columns = [
         { header: 'PROYECTO', accessor: 'titulo' },
         { header: 'UBICACION', accessor: 'ubicacion' },
@@ -25,9 +25,11 @@ export default function Index({ items, filters, userRole, folders = [], currentF
             folders={folders}
             currentFolder={currentFolder}
             breadcrumb={breadcrumb}
+            storeFolderRoute="inmobiliaria.folders.store"
             indexRoute="inmobiliaria.index"
             indexTitle="Inmobiliaria"
             operadores={operadores}
+            anulados={anulados}
         />
     );
 }

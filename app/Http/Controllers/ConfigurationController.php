@@ -154,40 +154,36 @@ class ConfigurationController extends Controller
             RecordShare::query()->delete();
             Folder::query()->delete();
 
-            // Recrear carpetas fijas para módulos: Públicas/Privadas (inmobiliaria, topografia, tecnologia, plantillas-ing) y Profesionales/Empresas (cvs)
-            $modulesPublicasPrivadas = ['inmobiliaria', 'topografia', 'tecnologia', 'plantillas-ing'];
-            foreach ($modulesPublicasPrivadas as $module) {
-                foreach (['Públicas', 'Privadas'] as $name) {
-                    DB::table('folders')->insert([
-                        'parent_id' => null,
-                        'name' => $name,
-                        'slug' => Str::slug($name . '-' . $module),
-                        'color' => $name === 'Públicas' ? '#E3F2FD' : '#FCE4EC',
-                        'icon' => $name === 'Públicas' ? 'Globe' : 'Lock',
-                        'description' => null,
-                        'is_system' => true,
-                        'module' => $module,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+            DB::commit();
+
+            // Reiniciar AUTO_INCREMENT a 1 (fuera de la transacción: ALTER TABLE hace COMMIT implícito en MySQL)
+            $tables = [
+                'document_files',
+                (new Document)->getTable(),
+                (new Contrato)->getTable(),
+                (new Licitacion)->getTable(),
+                (new ConsultorObra)->getTable(),
+                (new EjecutorObra)->getTable(),
+                (new ProveedorServicio)->getTable(),
+                (new ProveedorBien)->getTable(),
+                (new EspecialistaEjecucion)->getTable(),
+                (new EspecialistaConsultoria)->getTable(),
+                (new Inmobiliaria)->getTable(),
+                (new Topografia)->getTable(),
+                (new Tecnologia)->getTable(),
+                (new PlantillaIng)->getTable(),
+                (new Curriculum)->getTable(),
+                (new RecordShare)->getTable(),
+                (new Folder)->getTable(),
+            ];
+            foreach ($tables as $table) {
+                try {
+                    DB::statement("ALTER TABLE `{$table}` AUTO_INCREMENT = 1");
+                } catch (\Exception $e) {
+                    Log::warning("Reset AUTO_INCREMENT en tabla {$table}: " . $e->getMessage());
                 }
             }
-            foreach (['Profesionales', 'Empresas'] as $name) {
-                DB::table('folders')->insert([
-                    'parent_id' => null,
-                    'name' => $name,
-                    'slug' => Str::slug($name . '-cvs'),
-                    'color' => $name === 'Profesionales' ? '#E8F5E9' : '#FFF3E0',
-                    'icon' => 'Building',
-                    'description' => null,
-                    'is_system' => true,
-                    'module' => 'cvs',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
 
-            DB::commit();
             Log::info('Reset de datos ejecutado por usuario id=' . $user->id);
             return redirect()->route('config.resetData')->with('success', 'Datos eliminados correctamente. Los contadores del dashboard están en 0.');
         } catch (\Exception $e) {

@@ -5,21 +5,25 @@ import Swal from 'sweetalert2';
 import PdfModal from '@/Components/PdfModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
+import ModuleFolderModal from '@/Components/ModuleFolderModal';
 
 const getIconClass = (iconName) => {
     const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function Index({ cvs, filters, flash, folders = [], currentFolder = null, breadcrumb = [], userRole, operadores = [] }) {
+export default function Index({ cvs, filters, flash, folders = [], currentFolder = null, breadcrumb = [], userRole, operadores = [], anulados = [] }) {
     const { auth } = usePage().props;
-    const isAdmin = (userRole || auth?.user?.role) === 'Administrador';
+    const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
+    const isAdmin = currentUserRole === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
     const [especialidad, setEspecialidad] = useState(filters.especialidad || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [editingFolder, setEditingFolder] = useState(null);
+    const [showFolderModal, setShowFolderModal] = useState(false);
+    const [tabActivo, setTabActivo] = useState('activos');
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
     const [selectedPdfTitle, setSelectedPdfTitle] = useState('');
@@ -55,6 +59,33 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
         }).then((result) => {
             if (result.isConfirmed) {
                 router.delete(route('cvs.destroy', id));
+            }
+        });
+    };
+
+    const canEditOrDeleteFolder = (folder) => {
+        if (currentUserRole === 'Administrador') return true;
+        if (currentUserRole === 'Operador') return folder.user_id === auth?.user?.id;
+        return false;
+    };
+
+    const handleDeleteFolder = (folder) => {
+        if (folder?.is_system) {
+            Swal.fire({ icon: 'error', title: 'No permitido', text: 'No se pueden eliminar carpetas del sistema' });
+            return;
+        }
+        Swal.fire({
+            title: '¿Eliminar carpeta?',
+            text: 'Se eliminará la carpeta y su contenido. Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('folders.destroy', folder.id), { preserveScroll: true });
             }
         });
     };
@@ -97,9 +128,17 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                 </nav>
             )}
 
-            {folders && folders.length > 0 && (
+            {(folders?.length > 0 || currentUserRole !== 'Visualizador') && (
                 <div className="mb-4">
-                    <h5 className="fw-bold text-body mb-3"><i className="bi bi-folder me-2"></i>Carpetas</h5>
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h5 className="fw-bold text-body mb-0"><i className="bi bi-folder me-2"></i>Carpetas</h5>
+                        {currentUserRole !== 'Visualizador' && (
+                            <button type="button" className="btn btn-primary rounded-pill px-3" onClick={() => setShowFolderModal(true)}>
+                                <i className="bi bi-folder-plus me-2"></i> Nueva carpeta
+                            </button>
+                        )}
+                    </div>
+                    {folders && folders.length > 0 && (
                     <div className="row g-3">
                         {folders.map((folder) => (
                             <FolderCardModule
@@ -107,13 +146,22 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                 folder={folder}
                                 indexRoute="cvs.index"
                                 indexParams={buildParams()}
-                                isAdmin={isAdmin}
+                                canEditFolder={canEditOrDeleteFolder(folder)}
                                 onEdit={(f) => setEditingFolder(f)}
+                                onDelete={handleDeleteFolder}
                             />
                         ))}
                     </div>
+                    )}
                 </div>
             )}
+
+            <ModuleFolderModal
+                show={showFolderModal}
+                onClose={() => setShowFolderModal(false)}
+                storeFolderRoute="cvs.folders.store"
+                parentId={currentFolder?.id ?? null}
+            />
 
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
@@ -188,7 +236,51 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
+                {isAdmin && Array.isArray(anulados) && (
+                    <ul className="nav nav-tabs card-header-tabs border-0 px-4 pt-3">
+                        <li className="nav-item">
+                            <button type="button" className={`nav-link rounded-top-pill ${tabActivo === 'activos' ? 'active bg-white border-bottom-0 fw-semibold' : 'border-0 bg-transparent text-secondary'}`} onClick={() => setTabActivo('activos')}>
+                                Activos {cvs.data?.length != null && <span className="badge bg-primary-subtle text-primary ms-1">{cvs.data.length}</span>}
+                            </button>
+                        </li>
+                        <li className="nav-item">
+                            <button type="button" className={`nav-link rounded-top-pill ${tabActivo === 'anulados' ? 'active bg-white border-bottom-0 fw-semibold' : 'border-0 bg-transparent text-secondary'}`} onClick={() => setTabActivo('anulados')}>
+                                Anulados {anulados.length > 0 && <span className="badge bg-secondary-subtle text-secondary ms-1">{anulados.length}</span>}
+                            </button>
+                        </li>
+                    </ul>
+                )}
                 <div className="table-responsive">
+                    {tabActivo === 'anulados' && isAdmin ? (
+                        <table className="table table-hover align-middle mb-0">
+                            <thead className="border-bottom text-secondary small text-uppercase">
+                                <tr>
+                                    <th scope="col" className="ps-4 py-3">Candidato</th>
+                                    <th scope="col" className="py-3">Especialidad</th>
+                                    <th scope="col" className="py-3">Fecha Registro</th>
+                                    <th scope="col" className="text-center py-3">CV</th>
+                                    <th scope="col" className="text-end pe-4 py-3">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {anulados.length > 0 ? anulados.map(cv => (
+                                    <tr key={cv.id} className="table-secondary">
+                                        <td className="ps-4 py-3">{cv.nombre_candidato}</td>
+                                        <td className="text-secondary">{cv.especialidad}</td>
+                                        <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
+                                        <td className="text-center">
+                                            {cv.archivo_cv ? (
+                                                <button type="button" onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`)} className="btn btn-sm btn-outline-primary"><i className="bi bi-file-earmark-pdf"></i></button>
+                                            ) : <span className="text-muted">-</span>}
+                                        </td>
+                                        <td className="text-end pe-4"><span className="badge bg-secondary">Anulado</span></td>
+                                    </tr>
+                                )) : (
+                                    <tr><td colSpan="5" className="text-center py-4 text-muted">No hay CVs anulados.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
                     <table className="table table-hover align-middle mb-0">
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
@@ -236,8 +328,9 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                             )}
                         </tbody>
                     </table>
+                    )}
                 </div>
-                {cvs.links.length > 3 && (
+                {tabActivo === 'activos' && cvs.links && cvs.links.length > 3 && (
                     <div className="card-footer bg-body border-top-0 py-3">
                         <nav aria-label="Page navigation">
                             <ul className="pagination justify-content-center mb-0">

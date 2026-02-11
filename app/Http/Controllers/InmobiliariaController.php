@@ -7,6 +7,7 @@ use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
 
 class InmobiliariaController extends Controller
@@ -39,7 +40,7 @@ class InmobiliariaController extends Controller
             $breadcrumb = [];
         }
 
-        $query = Inmobiliaria::query();
+        $query = Inmobiliaria::query()->activo();
         $query = $this->applyRoleBasedFilter($query, $user);
         if ($request->filled('user_id') && $user->role === 'Administrador') {
             $query->where('user_id', $request->user_id);
@@ -61,6 +62,13 @@ class InmobiliariaController extends Controller
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
+        $anulados = $user->role === 'Administrador'
+            ? Inmobiliaria::where('anulado', true)
+                ->when($folderId, fn ($q) => $q->where('folder_id', $folderId))
+                ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
+                ->latest()->get()
+            : collect();
+
         return Inertia::render('Inmobiliaria/Index', [
             'items' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
             'filters' => $request->only(['search', 'folder_id', 'user_id']),
@@ -69,7 +77,27 @@ class InmobiliariaController extends Controller
             'currentFolder' => $currentFolder,
             'breadcrumb' => $breadcrumb,
             'operadores' => $operadores,
+            'anulados' => $anulados,
         ]);
+    }
+
+    public function storeFolder(Request $request)
+    {
+        $user = $request->user();
+        if ($user->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para crear carpetas.');
+        }
+        $validated = $request->validate([
+            'parent_id' => 'nullable|exists:folders,id',
+            'name' => 'required|string|max:255',
+            'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:50',
+            'description' => 'nullable|string|max:500',
+        ]);
+        $validated['module'] = self::MODULE;
+        $validated['user_id'] = $user->id;
+        Folder::create($validated);
+        return redirect()->back()->with('success', 'Carpeta creada.');
     }
 
     public function create(Request $request)
@@ -160,18 +188,21 @@ class InmobiliariaController extends Controller
         return redirect()->route('inmobiliaria.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro actualizado.');
     }
 
-    public function destroy(Inmobiliaria $inmobiliaria)
+    public function destroy(Request $request)
     {
+        $id = (int) ($request->route('inmobiliarium') ?? $request->segment(2));
+        if ($id < 1) {
+            return redirect()->back()->with('error', 'Registro no válido.');
+        }
+        $registro = Inmobiliaria::find($id);
+        if (!$registro) {
+            return redirect()->back()->with('error', 'Registro no encontrado.');
+        }
         $user = auth()->user();
-        if (!$this->canDelete($inmobiliaria, $user)) {
-            return redirect()->back()->with('error', 'No tienes permiso para eliminar este registro.');
+        if (!$this->canDelete($registro, $user)) {
+            return redirect()->back()->with('error', 'No tienes permiso para anular este registro.');
         }
-
-        if ($inmobiliaria->imagen) {
-            Storage::disk('public')->delete($inmobiliaria->imagen);
-        }
-        $folderId = $inmobiliaria->folder_id;
-        $inmobiliaria->delete();
-        return redirect()->route('inmobiliaria.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
+        DB::table('inmobiliarias')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
+        return redirect()->back()->with('success', 'Registro anulado.');
     }
 }

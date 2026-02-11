@@ -7,6 +7,7 @@ use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
 
 class PlantillaIngController extends Controller
@@ -39,7 +40,7 @@ class PlantillaIngController extends Controller
             $breadcrumb = [];
         }
 
-        $query = PlantillaIng::query();
+        $query = PlantillaIng::query()->activo();
         $query = $this->applyRoleBasedFilter($query, $user);
         if ($request->filled('user_id') && $user->role === 'Administrador') {
             $query->where('user_id', $request->user_id);
@@ -61,6 +62,13 @@ class PlantillaIngController extends Controller
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
+        $anulados = $user->role === 'Administrador'
+            ? PlantillaIng::where('anulado', true)
+                ->when($folderId, fn ($q) => $q->where('folder_id', $folderId))
+                ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
+                ->latest()->get()
+            : collect();
+
         return Inertia::render('PlantillaIng/Index', [
             'items' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
             'filters' => $request->only(['search', 'folder_id', 'user_id']),
@@ -69,7 +77,27 @@ class PlantillaIngController extends Controller
             'currentFolder' => $currentFolder,
             'breadcrumb' => $breadcrumb,
             'operadores' => $operadores,
+            'anulados' => $anulados,
         ]);
+    }
+
+    public function storeFolder(Request $request)
+    {
+        $user = $request->user();
+        if ($user->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para crear carpetas.');
+        }
+        $validated = $request->validate([
+            'parent_id' => 'nullable|exists:folders,id',
+            'name' => 'required|string|max:255',
+            'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:50',
+            'description' => 'nullable|string|max:500',
+        ]);
+        $validated['module'] = self::MODULE;
+        $validated['user_id'] = $user->id;
+        Folder::create($validated);
+        return redirect()->back()->with('success', 'Carpeta creada.');
     }
 
     public function create(Request $request)
@@ -156,18 +184,21 @@ class PlantillaIngController extends Controller
         return redirect()->route('plantillas-ing.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro actualizado.');
     }
 
-    public function destroy(PlantillaIng $plantilla_ing)
+    public function destroy(Request $request)
     {
+        $id = (int) ($request->route('plantilla_ing') ?? $request->segment(2));
+        if ($id < 1) {
+            return redirect()->back()->with('error', 'Registro no válido.');
+        }
+        $registro = PlantillaIng::find($id);
+        if (!$registro) {
+            return redirect()->back()->with('error', 'Registro no encontrado.');
+        }
         $user = auth()->user();
-        if (!$this->canDelete($plantilla_ing, $user)) {
-            return redirect()->back()->with('error', 'No tienes permiso para eliminar este registro.');
+        if (!$this->canDelete($registro, $user)) {
+            return redirect()->back()->with('error', 'No tienes permiso para anular este registro.');
         }
-
-        if ($plantilla_ing->archivo) {
-            Storage::disk('public')->delete($plantilla_ing->archivo);
-        }
-        $folderId = $plantilla_ing->folder_id;
-        $plantilla_ing->delete();
-        return redirect()->route('plantillas-ing.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
+        DB::table('plantilla_ings')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
+        return redirect()->back()->with('success', 'Registro anulado.');
     }
 }

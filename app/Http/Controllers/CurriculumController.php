@@ -7,9 +7,13 @@ use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use App\Traits\HasRoleBasedAccess;
 
 class CurriculumController extends Controller
 {
+    use HasRoleBasedAccess;
+
     const MODULE = 'cvs';
 
     public function index(Request $request)
@@ -36,7 +40,11 @@ class CurriculumController extends Controller
             $breadcrumb = [];
         }
 
-        $query = Curriculum::query();
+        $query = Curriculum::query()->activo();
+        $query = $this->applyRoleBasedFilter($query, $user);
+        if ($request->filled('user_id') && $user->role === 'Administrador') {
+            $query->where('user_id', $request->user_id);
+        }
         if ($folderId) {
             $query->where('folder_id', $folderId);
         } else {
@@ -66,6 +74,13 @@ class CurriculumController extends Controller
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
+        $anulados = $user->role === 'Administrador'
+            ? Curriculum::where('anulado', true)
+                ->when($folderId, fn ($q) => $q->where('folder_id', $folderId))
+                ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
+                ->latest()->get()
+            : collect();
+
         return Inertia::render('Cvs/Index', [
             'cvs' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
             'filters' => $request->only(['search', 'especialidad', 'date_start', 'date_end', 'folder_id', 'user_id']),
@@ -74,7 +89,27 @@ class CurriculumController extends Controller
             'breadcrumb' => $breadcrumb,
             'userRole' => $user->role,
             'operadores' => $operadores,
+            'anulados' => $anulados,
         ]);
+    }
+
+    public function storeFolder(Request $request)
+    {
+        $user = $request->user();
+        if ($user->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para crear carpetas.');
+        }
+        $validated = $request->validate([
+            'parent_id' => 'nullable|exists:folders,id',
+            'name' => 'required|string|max:255',
+            'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:50',
+            'description' => 'nullable|string|max:500',
+        ]);
+        $validated['module'] = self::MODULE;
+        $validated['user_id'] = $user->id;
+        Folder::create($validated);
+        return redirect()->back()->with('success', 'Carpeta creada.');
     }
 
     public function create(Request $request)
@@ -109,6 +144,7 @@ class CurriculumController extends Controller
         }
 
         $data = [
+            'user_id' => auth()->id(),
             'nombre_candidato' => $validated['nombre_candidato'],
             'especialidad' => $validated['especialidad'],
             'archivo_cv' => $path,
@@ -156,13 +192,21 @@ class CurriculumController extends Controller
         return redirect()->route('cvs.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'CV actualizado.');
     }
 
-    public function destroy(Curriculum $cv)
+    public function destroy(Request $request)
     {
-        $folderId = $cv->folder_id;
-        if ($cv->archivo_cv) {
-             Storage::disk('public')->delete($cv->archivo_cv);
+        $id = (int) ($request->route('cv') ?? $request->segment(2));
+        if ($id < 1) {
+            return redirect()->back()->with('error', 'Registro no válido.');
         }
-        $cv->delete();
-        return redirect()->route('cvs.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'CV eliminado.');
+        $registro = Curriculum::find($id);
+        if (!$registro) {
+            return redirect()->back()->with('error', 'Registro no encontrado.');
+        }
+        $user = auth()->user();
+        if (!$this->canDelete($registro, $user)) {
+            return redirect()->back()->with('error', 'No tienes permiso para anular este registro.');
+        }
+        DB::table('curricula')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
+        return redirect()->back()->with('success', 'CV anulado.');
     }
 }

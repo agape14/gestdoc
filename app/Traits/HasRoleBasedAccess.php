@@ -7,14 +7,17 @@ use App\Models\RecordShare;
 trait HasRoleBasedAccess
 {
     /**
-     * Aplicar filtros según el rol del usuario
+     * Aplicar filtros según el rol del usuario.
+     * Operador: solo sus registros (user_id = su id) o legacy (user_id null).
      */
     protected function applyRoleBasedFilter($query, $user)
     {
         if ($user->role === 'Administrador') {
             return $query;
         } elseif ($user->role === 'Operador') {
-            return $query->where('user_id', $user->id);
+            return $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)->orWhereNull('user_id');
+            });
         } else {
             return $query;
         }
@@ -61,14 +64,15 @@ trait HasRoleBasedAccess
     }
 
     /**
-     * Verificar si el usuario puede editar un registro (incluye compartidos: si es solo lectura, no puede editar).
+     * Verificar si el usuario puede editar un registro.
+     * Administrador: todos. Operador: solo los suyos (user_id = su id) o legacy (user_id null). Incluye compartidos con can_edit.
      */
     protected function canEdit($record, $user)
     {
         if ($user->role === 'Administrador') {
             return true;
         } elseif ($user->role === 'Operador') {
-            if ($record->user_id === $user->id) {
+            if ($record->user_id === null || (int) $record->user_id === (int) $user->id) {
                 return true;
             }
             $share = RecordShare::valid()
@@ -82,14 +86,18 @@ trait HasRoleBasedAccess
     }
 
     /**
-     * Verificar si el usuario puede eliminar un registro
+     * Verificar si el usuario puede eliminar/anular un registro.
+     * Administrador: todos. Operador: solo los suyos (user_id = su id) o legacy (user_id null).
      */
     protected function canDelete($record, $user)
     {
         if ($user->role === 'Administrador') {
             return true;
-        } elseif ($user->role === 'Operador') {
-            return $record->user_id === $user->id;
+        }
+        if ($user->role === 'Operador') {
+            $recordUserId = $record->user_id ?? null;
+            $userId = (int) $user->id;
+            return $recordUserId === null || (int) $recordUserId === $userId;
         }
         return false; // Visualizador no puede eliminar
     }

@@ -267,6 +267,33 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
         return false;
     };
 
+    const canEditOrDeleteFolder = (folder) => {
+        if (currentUserRole === 'Administrador') return true;
+        if (currentUserRole === 'Operador') return folder.user_id === auth?.user?.id;
+        return false;
+    };
+
+    const handleDeleteFolder = (folder) => {
+        if (folder?.is_system) {
+            Swal.fire({ icon: 'error', title: 'No permitido', text: 'No se pueden eliminar carpetas del sistema' });
+            return;
+        }
+        Swal.fire({
+            title: '¿Eliminar carpeta?',
+            text: 'Se eliminará la carpeta y su contenido. Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('folders.destroy', folder.id), { preserveScroll: true });
+            }
+        });
+    };
+
     useEffect(() => {
         const timer = setTimeout(() => {
             const params = { ...filters, search, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
@@ -379,8 +406,9 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 folder={folder}
                                 indexRoute="licitaciones.index"
                                 indexParams={buildIndexParams()}
-                                isAdmin={isAdmin}
+                                canEditFolder={canEditOrDeleteFolder(folder)}
                                 onEdit={(f) => setEditingFolder(f)}
+                                onDelete={handleDeleteFolder}
                             />
                         ))}
                     </div>

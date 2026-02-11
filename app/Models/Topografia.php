@@ -7,12 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 class Topografia extends Model
 {
     protected $fillable = [
-        'titulo', 'descripcion', 'archivo', 'user_id', 'folder_id'
+        'titulo', 'descripcion', 'archivo', 'user_id', 'anulado', 'folder_id'
     ];
+
+    protected function casts(): array
+    {
+        return ['anulado' => 'boolean'];
+    }
 
     public function folder()
     {
         return $this->belongsTo(Folder::class);
+    }
+
+    /** Solo registros no anulados. */
+    public function scopeActivo($query)
+    {
+        return $query->whereRaw('COALESCE(anulado, 0) = 0');
     }
 
     public function scopeForUser($query, $user)

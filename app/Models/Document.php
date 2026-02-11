@@ -16,10 +16,12 @@ class Document extends Model
         'destinatario',
         'referencia',
         'observaciones',
+        'folios',
     ];
 
     protected $casts = [
         'fecha_documento' => 'date',
+        'folios' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
