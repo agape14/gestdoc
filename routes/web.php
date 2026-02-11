@@ -44,6 +44,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/licitaciones/{licitacion}/export', [LicitacionController::class, 'exportProject'])->name('licitaciones.export-project');
         Route::resource('licitaciones', LicitacionController::class)->parameters(['licitaciones' => 'licitacion']);
         Route::post('/cvs/folders', [CurriculumController::class, 'storeFolder'])->name('cvs.folders.store');
+        Route::get('/cvs/download-zip', [CurriculumController::class, 'downloadZip'])->name('cvs.download-zip');
+        Route::get('/cvs/{cv}/download', [CurriculumController::class, 'download'])->name('cvs.download');
         Route::resource('cvs', CurriculumController::class);
         Route::post('/consultor-obras/folders', [\App\Http\Controllers\ConsultorObraController::class, 'storeFolder'])->name('consultor-obras.folders.store');
         Route::get('/consultor-obras/export', [\App\Http\Controllers\ConsultorObraController::class, 'export'])->name('consultor-obras.export');
@@ -77,6 +79,8 @@ Route::middleware('auth')->group(function () {
     // Configuración y usuarios: solo Administrador
     Route::middleware('admin')->group(function () {
         Route::resource('users', UserController::class);
+        Route::get('/users/{user}/folder-permissions', [UserController::class, 'folderPermissions'])->name('users.folder-permissions');
+        Route::put('/users/{user}/folder-permissions', [UserController::class, 'updateFolderPermissions'])->name('users.folder-permissions.update');
         Route::get('/config', [UserController::class, 'index'])->name('config');
         Route::get('/panel-control', [UserController::class, 'index'])->name('panel-control');
         Route::get('/config/image360', [ConfigurationController::class, 'image360'])->name('config.image360');

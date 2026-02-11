@@ -9,6 +9,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
+use ZipArchive;
 
 class CurriculumController extends Controller
 {
@@ -25,16 +26,14 @@ class CurriculumController extends Controller
             : $user->id;
 
         if ($folderId) {
-            $currentFolder = Folder::where('module', self::MODULE)
-                ->forEffectiveUser($effectiveUserId)
-                ->findOrFail($folderId);
+            $currentFolder = Folder::visibleForModuleUser(self::MODULE, $user)->findOrFail($folderId);
             $currentFolder->load(['parent']);
-            $folders = $currentFolder->children()->forEffectiveUser($effectiveUserId)->orderBy('name')->get();
+            $folders = $currentFolder->children()->visibleForModuleUser(self::MODULE, $user)->orderBy('name')->get();
             $breadcrumb = $currentFolder->path;
         } else {
             $currentFolder = null;
             $folders = Folder::whereNull('parent_id')
-                ->visibleForUser(self::MODULE, $effectiveUserId)
+                ->visibleForModuleUser(self::MODULE, $user)
                 ->orderBy('name')
                 ->get();
             $breadcrumb = [];
@@ -42,6 +41,16 @@ class CurriculumController extends Controller
 
         $query = Curriculum::query()->activo();
         $query = $this->applyRoleBasedFilter($query, $user);
+        if ($user->role === 'Visualizador') {
+            $allowedIds = $user->allowed_folders['cvs'] ?? [];
+            if (empty($allowedIds)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where(function ($q) use ($allowedIds) {
+                    $q->whereIn('folder_id', $allowedIds)->orWhereNull('folder_id');
+                });
+            }
+        }
         if ($request->filled('user_id') && $user->role === 'Administrador') {
             $query->where('user_id', $request->user_id);
         }
@@ -208,5 +217,103 @@ class CurriculumController extends Controller
         }
         DB::table('curricula')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
         return redirect()->back()->with('success', 'CV anulado.');
+    }
+
+    /**
+     * Descarga el PDF de un CV (individual).
+     */
+    public function download(Curriculum $cv)
+    {
+        $user = auth()->user();
+        if (!$cv->archivo_cv || !Storage::disk('public')->exists($cv->archivo_cv)) {
+            return redirect()->back()->with('error', 'El archivo no existe.');
+        }
+        if ($user->role === 'Visualizador') {
+            $allowedIds = $user->allowed_folders['cvs'] ?? [];
+            if (!in_array($cv->folder_id, $allowedIds) && $cv->folder_id !== null) {
+                abort(403, 'No tienes permiso para descargar este CV.');
+            }
+        } else {
+            $query = Curriculum::query()->activo()->where('id', $cv->id);
+            $query = $this->applyRoleBasedFilter($query, $user);
+            if ($query->doesntExist()) {
+                abort(403, 'No tienes permiso para descargar este CV.');
+            }
+        }
+        $name = \Str::slug($cv->nombre_candidato) . '-cv.pdf';
+        return Storage::disk('public')->download($cv->archivo_cv, $name);
+    }
+
+    /**
+     * Descarga uno o más CV en ZIP (seleccionados o todos en la carpeta/lista).
+     */
+    public function downloadZip(Request $request)
+    {
+        $user = auth()->user();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        $ids = $request->input('ids', []);
+        $all = $request->boolean('all');
+
+        $query = Curriculum::query()->activo()->whereNotNull('archivo_cv');
+        $query = $this->applyRoleBasedFilter($query, $user);
+        if ($user->role === 'Visualizador') {
+            $allowedIds = $user->allowed_folders['cvs'] ?? [];
+            if (empty($allowedIds)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where(function ($q) use ($allowedIds) {
+                    $q->whereIn('folder_id', $allowedIds)->orWhereNull('folder_id');
+                });
+            }
+        }
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+
+        if ($all) {
+            $cvs = $query->get();
+        } else {
+            if (!is_array($ids) || empty($ids)) {
+                return redirect()->back()->with('error', 'Seleccione al menos un CV.');
+            }
+            $cvs = $query->whereIn('id', $ids)->get();
+        }
+
+        $filesToZip = [];
+        foreach ($cvs as $cv) {
+            if (Storage::disk('public')->exists($cv->archivo_cv)) {
+                $filesToZip[] = [
+                    'path' => Storage::disk('public')->path($cv->archivo_cv),
+                    'name' => \Str::slug($cv->nombre_candidato) . '-cv.pdf',
+                ];
+            }
+        }
+
+        if (empty($filesToZip)) {
+            return redirect()->back()->with('error', 'No hay archivos PDF para descargar.');
+        }
+
+        $usedNames = [];
+        $zip = new ZipArchive();
+        $zipPath = storage_path('app/public/cvs_temp_' . uniqid() . '.zip');
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return redirect()->back()->with('error', 'No se pudo crear el archivo ZIP.');
+        }
+        foreach ($filesToZip as $item) {
+            $base = pathinfo($item['name'], PATHINFO_FILENAME);
+            $ext = pathinfo($item['name'], PATHINFO_EXTENSION) ?: 'pdf';
+            if (!isset($usedNames[$base])) {
+                $usedNames[$base] = 0;
+            }
+            $usedNames[$base]++;
+            $fileName = $usedNames[$base] === 1 ? $item['name'] : $base . '-' . $usedNames[$base] . '.' . $ext;
+            $zip->addFile($item['path'], $fileName);
+        }
+        $zip->close();
+
+        $downloadName = 'cvs-' . ($folderId ? 'carpeta-' . $folderId . '-' : '') . now()->format('Y-m-d-His') . '.zip';
+        return response()->download($zipPath, $downloadName, ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);
     }
 }

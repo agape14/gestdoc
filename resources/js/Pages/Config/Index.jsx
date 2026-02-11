@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import UserFolderPermissionsModal from '@/Components/UserFolderPermissionsModal';
 
 export default function Index({ users, filters, flash }) {
     const [search, setSearch] = useState(filters.search || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
+    const [folderModalUser, setFolderModalUser] = useState(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -122,10 +124,18 @@ export default function Index({ users, filters, flash }) {
                                     <td><span className="badge bg-secondary-subtle text-secondary border rounded-pill px-3">{user.role}</span></td>
                                     <td className="text-secondary">{new Date(user.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
                                     <td className="text-end pe-4">
-                                        <Link href={route('users.edit', user.id)} className="btn btn-sm btn-outline-secondary me-1">
+                                        <Link href={route('users.edit', user.id)} className="btn btn-sm btn-outline-secondary me-1" title="Editar">
                                             <i className="bi bi-pencil"></i>
                                         </Link>
-                                        <button onClick={() => handleDelete(user.id)} className="btn btn-sm btn-outline-danger">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFolderModalUser({ id: user.id, name: user.name })}
+                                            className="btn btn-sm btn-outline-primary me-1"
+                                            title="Carpetas visibles (por menú)"
+                                        >
+                                            <i className="bi bi-folder2"></i>
+                                        </button>
+                                        <button onClick={() => handleDelete(user.id)} className="btn btn-sm btn-outline-danger" title="Eliminar">
                                             <i className="bi bi-trash"></i>
                                         </button>
                                     </td>
@@ -158,6 +168,13 @@ export default function Index({ users, filters, flash }) {
                     </div>
                 )}
             </div>
+
+            <UserFolderPermissionsModal
+                show={!!folderModalUser}
+                onClose={() => setFolderModalUser(null)}
+                userId={folderModalUser?.id}
+                userName={folderModalUser?.name}
+            />
         </MainLayout>
     );
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +30,77 @@ class UserController extends Controller
             ['key' => 'cvs', 'label' => 'Banco de CVs'],
             ['key' => 'folders', 'label' => 'Gestión Documental'],
         ];
+    }
+
+    /** Menús que tienen carpetas (para el modal de permisos por carpeta del visualizador). */
+    public static function menuKeysWithFolders(): array
+    {
+        return [
+            'folders' => 'Gestión Documental',
+            'cvs' => 'Banco de CVs',
+            'licitaciones' => 'Licitaciones',
+            'consultor-obras' => 'Consultor de Obras',
+            'ejecutor-obra' => 'Ejecutor de Obra',
+            'proveedor-servicios' => 'Proveedor de Servicios',
+            'proveedor-bienes' => 'Proveedor de Bienes',
+            'especialistas-ejecucion' => 'Especialistas en Ejecución',
+            'especialistas-consultoria' => 'Especialistas en Consultoría',
+            'inmobiliaria' => 'Inmobiliaria',
+            'topografia' => 'Topografía',
+            'tecnologia' => 'Tecnología',
+            'plantillas-ing' => 'Plantillas de Ing.',
+        ];
+    }
+
+    /**
+     * Datos para el modal de carpetas visibles (visualizador): usuario y carpetas por módulo.
+     */
+    public function folderPermissions(User $user)
+    {
+        $allowedFolders = $user->allowed_folders ?? [];
+        $menuWithFolders = self::menuKeysWithFolders();
+        $foldersByModule = [];
+
+        foreach ($menuWithFolders as $menuKey => $label) {
+            $query = Folder::query();
+            if ($menuKey === 'folders') {
+                $query->whereNull('module');
+            } else {
+                $query->where('module', $menuKey);
+            }
+            $foldersByModule[$menuKey] = $query->orderBy('name')->get(['id', 'name', 'parent_id']);
+        }
+
+        return response()->json([
+            'user' => ['id' => $user->id, 'name' => $user->name, 'role' => $user->role, 'allowed_folders' => $allowedFolders],
+            'foldersByModule' => $foldersByModule,
+            'menuLabels' => $menuWithFolders,
+        ]);
+    }
+
+    /**
+     * Actualizar carpetas permitidas para el usuario (visualizador).
+     */
+    public function updateFolderPermissions(Request $request, User $user)
+    {
+        $menuKeys = array_keys(self::menuKeysWithFolders());
+        $raw = $request->input('allowed_folders', []);
+        $allowedFolders = [];
+        foreach ($menuKeys as $key) {
+            $ids = $raw[$key] ?? [];
+            if (!is_array($ids)) {
+                continue;
+            }
+            $ids = array_map('intval', array_filter($ids));
+            $ids = array_values(array_unique($ids));
+            if (!empty($ids)) {
+                $allowedFolders[$key] = $ids;
+            }
+        }
+        $user->allowed_folders = $allowedFolders;
+        $user->save();
+
+        return response()->json(['success' => true, 'message' => 'Carpetas actualizadas.']);
     }
 
     public function index(Request $request)

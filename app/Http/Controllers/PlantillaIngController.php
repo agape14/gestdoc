@@ -25,16 +25,14 @@ class PlantillaIngController extends Controller
             : $user->id;
 
         if ($folderId) {
-            $currentFolder = Folder::where('module', self::MODULE)
-                ->forEffectiveUser($effectiveUserId)
-                ->findOrFail($folderId);
+            $currentFolder = Folder::visibleForModuleUser(self::MODULE, $user)->findOrFail($folderId);
             $currentFolder->load(['parent']);
-            $folders = $currentFolder->children()->forEffectiveUser($effectiveUserId)->orderBy('name')->get();
+            $folders = $currentFolder->children()->visibleForModuleUser(self::MODULE, $user)->orderBy('name')->get();
             $breadcrumb = $currentFolder->path;
         } else {
             $currentFolder = null;
             $folders = Folder::whereNull('parent_id')
-                ->visibleForUser(self::MODULE, $effectiveUserId)
+                ->visibleForModuleUser(self::MODULE, $user)
                 ->orderBy('name')
                 ->get();
             $breadcrumb = [];

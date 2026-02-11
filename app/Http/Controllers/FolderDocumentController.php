@@ -16,6 +16,9 @@ class FolderDocumentController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->user()->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para crear documentos. Solo puedes ver.');
+        }
         $validated = $request->validate([
             'folder_id' => 'required|exists:folders,id',
             'numero' => 'nullable|string|max:100',
@@ -74,6 +77,9 @@ class FolderDocumentController extends Controller
      */
     public function update(Request $request, Document $document)
     {
+        if ($request->user()->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para editar documentos. Solo puedes ver.');
+        }
         $document->load('folder');
         if ($document->folder->module !== null) {
             return redirect()->back()->with('error', 'Este documento no pertenece a gestión documental.');
@@ -147,6 +153,9 @@ class FolderDocumentController extends Controller
      */
     public function destroy(Document $document)
     {
+        if (request()->user()->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para eliminar documentos. Solo puedes ver.');
+        }
         $document->load('folder');
         $folderId = $document->folder_id;
         if ($document->folder->module !== null) {

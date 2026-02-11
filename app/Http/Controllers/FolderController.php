@@ -120,6 +120,9 @@ class FolderController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->user()->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para crear carpetas. Solo puedes ver.');
+        }
         $validated = $request->validate([
             'parent_id' => 'nullable|exists:folders,id',
             'name' => 'required|string|max:255',
@@ -143,6 +146,9 @@ class FolderController extends Controller
     public function update(Request $request, Folder $folder)
     {
         $user = $request->user();
+        if ($user->role === 'Visualizador') {
+            abort(403, 'No tienes permiso para editar carpetas. Solo puedes ver.');
+        }
         if ($user->role === 'Administrador') {
             // ok
         } elseif ($user->role === 'Operador') {
@@ -174,6 +180,9 @@ class FolderController extends Controller
             return redirect()->back()->with('error', 'No se pueden eliminar carpetas del sistema.');
         }
         $user = request()->user();
+        if ($user->role === 'Visualizador') {
+            return redirect()->back()->with('error', 'No tienes permiso para eliminar carpetas. Solo puedes ver.');
+        }
         if ($user->role === 'Administrador') {
             // ok
         } elseif ($user->role === 'Operador') {

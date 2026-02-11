@@ -143,13 +143,42 @@ class Folder extends Model
     }
 
     /**
+     * Carpetas visibles por módulo según el usuario (Administrador, Operador o Visualizador).
+     * Visualizador: solo las carpetas en allowed_folders[$module].
+     */
+    public function scopeVisibleForModuleUser($query, $module, $user)
+    {
+        $query->where('module', $module);
+        if ($user->role === 'Administrador') {
+            return $query;
+        }
+        if ($user->role === 'Visualizador') {
+            $ids = $user->allowed_folders[$module] ?? [];
+            if (empty($ids)) {
+                return $query->whereRaw('1 = 0');
+            }
+            return $query->whereIn('id', $ids);
+        }
+        return $query->where(function ($q) use ($user) {
+            $q->whereNull('user_id')->orWhere('user_id', $user->id);
+        });
+    }
+
+    /**
      * Para gestión documental (module null): carpetas visibles para el usuario.
-     * Operador: solo propias (user_id = id). Administrador: todas.
+     * Administrador: todas. Operador: solo propias (user_id = id). Visualizador: solo las de allowed_folders['folders'].
      */
     public function scopeVisibleForGestionDocumental($query, $user)
     {
         if ($user->role === 'Administrador') {
             return $query;
+        }
+        if ($user->role === 'Visualizador') {
+            $ids = $user->allowed_folders['folders'] ?? [];
+            if (empty($ids)) {
+                return $query->whereRaw('1 = 0');
+            }
+            return $query->whereIn('id', $ids);
         }
         return $query->where('user_id', $user->id);
     }

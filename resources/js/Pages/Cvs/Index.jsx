@@ -27,6 +27,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
     const [selectedPdfTitle, setSelectedPdfTitle] = useState('');
+    const [selectedCvIds, setSelectedCvIds] = useState([]);
 
     const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (currentFolder?.name || 'Banco de CVs');
     const buildParams = (extra = {}) => ({ ...filters, ...extra });
@@ -102,6 +103,31 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
         setSelectedPdfTitle('');
     };
 
+    const toggleCvSelection = (id) => {
+        setSelectedCvIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    };
+    const cvsWithPdf = (cvs.data || []).filter((c) => c.archivo_cv);
+    const toggleSelectAllCvs = () => {
+        if (!cvsWithPdf.length) return;
+        if (selectedCvIds.length === cvsWithPdf.length) {
+            setSelectedCvIds([]);
+        } else {
+            setSelectedCvIds(cvsWithPdf.map((c) => c.id));
+        }
+    };
+
+    const getDownloadZipUrl = (all = false) => {
+        const params = new URLSearchParams();
+        if (filters.folder_id) params.set('folder_id', filters.folder_id);
+        if (all) params.set('all', '1');
+        else selectedCvIds.forEach((id) => params.append('ids[]', id));
+        return `${route('cvs.download-zip')}?${params.toString()}`;
+    };
+    const handleDownloadZip = (all) => {
+        if (!all && selectedCvIds.length === 0) return;
+        window.location.href = getDownloadZipUrl(all);
+    };
+
     return (
         <MainLayout>
             <Head title="Banco de CVs" />
@@ -168,10 +194,37 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                     <h2 className="fw-bold text-body mb-0">Banco de CVs</h2>
                     <p className="text-secondary mb-0">Registro y búsqueda de talento</p>
                 </div>
-                <Link href={currentFolder?.id ? route('cvs.create', { folder_id: currentFolder.id }) : route('cvs.create')} className="btn btn-primary shadow-sm rounded-pill px-4">
-                    <i className="bi bi-upload me-2"></i>
-                    Subir CV
-                </Link>
+                <div className="d-flex gap-2 align-items-center">
+                    {cvs.data?.length > 0 && (
+                        <>
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => handleDownloadZip(false)}
+                                disabled={selectedCvIds.length === 0}
+                                title={selectedCvIds.length === 0 ? 'Seleccione al menos un CV' : `Descargar ${selectedCvIds.length} CV(s) en ZIP`}
+                            >
+                                <i className="bi bi-file-zip me-1"></i>
+                                Descargar seleccionados ({selectedCvIds.length})
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleDownloadZip(true)}
+                                title="Descargar todos los PDF en ZIP"
+                            >
+                                <i className="bi bi-download me-1"></i>
+                                Descargar todos (ZIP)
+                            </button>
+                        </>
+                    )}
+                    {currentUserRole !== 'Visualizador' && (
+                        <Link href={currentFolder?.id ? route('cvs.create', { folder_id: currentFolder.id }) : route('cvs.create')} className="btn btn-success shadow-sm rounded-pill px-4">
+                            <i className="bi bi-upload me-2"></i>
+                            Subir CV
+                        </Link>
+                    )}
+                </div>
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
@@ -284,7 +337,18 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                     <table className="table table-hover align-middle mb-0">
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
-                                <th scope="col" className="ps-4 py-3">Candidato</th>
+                                <th className="ps-4 py-3" style={{ width: '40px' }}>
+                                    {cvs.data?.length > 0 && (
+                                        <input
+                                            type="checkbox"
+                                            className="form-check-input"
+                                            checked={cvsWithPdf.length > 0 && selectedCvIds.length === cvsWithPdf.length}
+                                            onChange={toggleSelectAllCvs}
+                                            title="Seleccionar todos (con PDF)"
+                                        />
+                                    )}
+                                </th>
+                                <th scope="col" className="py-3">Candidato</th>
                                 <th scope="col" className="py-3">Especialidad</th>
                                 <th scope="col" className="py-3">Fecha Registro</th>
                                 <th scope="col" className="text-center py-3">CV</th>
@@ -294,29 +358,55 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                         <tbody>
                             {cvs.data.length > 0 ? cvs.data.map(cv => (
                                 <tr key={cv.id}>
+                                    <td className="ps-4 py-3">
+                                        {cv.archivo_cv ? (
+                                            <input
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                checked={selectedCvIds.includes(cv.id)}
+                                                onChange={() => toggleCvSelection(cv.id)}
+                                                title="Seleccionar para ZIP"
+                                            />
+                                        ) : (
+                                            <span className="text-muted">—</span>
+                                        )}
+                                    </td>
                                     <td className="ps-4 py-3 fw-medium text-body">{cv.nombre_candidato}</td>
                                     <td className="text-secondary">{cv.especialidad}</td>
                                     <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
                                     <td className="text-center">
                                         {cv.archivo_cv ? (
-                                            <button
-                                                onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`)}
-                                                className="btn btn-sm btn-outline-primary"
-                                                title="Ver PDF"
-                                            >
-                                                <i className="bi bi-file-earmark-pdf"></i>
-                                            </button>
+                                            <span className="d-inline-flex gap-1">
+                                                <button
+                                                    onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`)}
+                                                    className="btn btn-sm btn-outline-primary"
+                                                    title="Ver PDF"
+                                                >
+                                                    <i className="bi bi-file-earmark-pdf"></i>
+                                                </button>
+                                                <a
+                                                    href={route('cvs.download', cv.id)}
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    title="Descargar PDF"
+                                                >
+                                                    <i className="bi bi-download"></i>
+                                                </a>
+                                            </span>
                                         ) : (
                                             <span className="text-muted">-</span>
                                         )}
                                     </td>
                                     <td className="text-end pe-4">
-                                        <Link href={route('cvs.edit', cv.id)} className="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                                            <i className="bi bi-pencil"></i>
-                                        </Link>
-                                        <button onClick={() => handleDelete(cv.id)} className="btn btn-sm btn-outline-danger" title="Eliminar">
-                                            <i className="bi bi-trash"></i>
-                                        </button>
+                                        {currentUserRole !== 'Visualizador' && (
+                                            <>
+                                                <Link href={route('cvs.edit', cv.id)} className="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                                                    <i className="bi bi-pencil"></i>
+                                                </Link>
+                                                <button onClick={() => handleDelete(cv.id)} className="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             )) : (

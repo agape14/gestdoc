@@ -23,6 +23,7 @@ class User extends Authenticatable
         'password',
         'role',
         'allowed_menus',
+        'allowed_folders',
     ];
 
     /**
@@ -46,6 +47,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'allowed_menus' => 'array',
+            'allowed_folders' => 'array',
         ];
     }
 

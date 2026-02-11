@@ -18,6 +18,7 @@ export default function Index({
 }) {
     const { auth } = usePage().props;
     const isAdmin = auth?.user?.role === 'Administrador';
+    const isViewer = auth?.user?.role === 'Visualizador';
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [showDocumentModal, setShowDocumentModal] = useState(false);
     const [showPdfModal, setShowPdfModal] = useState(false);
@@ -165,6 +166,7 @@ export default function Index({
     };
 
     const canEditOrDeleteFolder = (folder) => {
+        if (isViewer) return false;
         if (isAdmin) return true;
         if (auth?.user?.role === 'Operador' && folder.user_id === auth?.user?.id) return true;
         return false;
@@ -250,6 +252,7 @@ export default function Index({
                     <h2 className="fw-bold text-body mb-0">Gestión Documental</h2>
                     <p className="text-secondary mb-0">Carpetas por tipo de documento (Cartas, Oficios, Memos) y registro con múltiples PDF</p>
                 </div>
+                {!isViewer && (
                 <div className="d-flex gap-2">
                     {currentFolder && (
                         <button onClick={handleCreateDocument} className="btn btn-success shadow-sm rounded-pill px-4">
@@ -262,6 +265,7 @@ export default function Index({
                         Nueva Carpeta (tipo)
                     </button>
                 </div>
+                )}
             </div>
 
             {breadcrumb && breadcrumb.length > 0 && (
@@ -496,20 +500,24 @@ export default function Index({
                                                         )}
                                                     </td>
                                                     <td className="text-end pe-4">
-                                                        <button
-                                                            onClick={() => handleEditDocument(doc)}
-                                                            className="btn btn-sm btn-outline-secondary me-1"
-                                                            title="Editar"
-                                                        >
-                                                            <i className="bi bi-pencil"></i>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteDocument(doc)}
-                                                            className="btn btn-sm btn-outline-danger"
-                                                            title="Eliminar"
-                                                        >
-                                                            <i className="bi bi-trash"></i>
-                                                        </button>
+                                                        {!isViewer && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleEditDocument(doc)}
+                                                                className="btn btn-sm btn-outline-secondary me-1"
+                                                                title="Editar"
+                                                            >
+                                                                <i className="bi bi-pencil"></i>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteDocument(doc)}
+                                                                className="btn btn-sm btn-outline-danger"
+                                                                title="Eliminar"
+                                                            >
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
+                                                        </>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -524,12 +532,14 @@ export default function Index({
                                 <i className="bi bi-file-earmark-plus fs-1 text-secondary mb-3 d-block"></i>
                                 <h5 className="text-body fw-bold mb-2">No hay documentos en {currentFolder.name}</h5>
                                 <p className="text-secondary mb-4">
-                                    Registra el primer documento (con uno o más PDF) para esta carpeta.
+                                    {isViewer ? 'No hay documentos en esta carpeta.' : 'Registra el primer documento (con uno o más PDF) para esta carpeta.'}
                                 </p>
+                                {!isViewer && (
                                 <button onClick={handleCreateDocument} className="btn btn-primary rounded-pill px-4">
                                     <i className="bi bi-file-earmark-plus me-2"></i>
                                     Nuevo Documento
                                 </button>
+                                )}
                             </div>
                         </div>
                     )}
@@ -669,9 +679,10 @@ export default function Index({
                         <h5 className="text-body fw-bold mb-2">No hay contenido</h5>
                         <p className="text-secondary mb-4">
                             {currentFolder
-                                ? 'Esta carpeta está vacía. Crea un documento (cartas, oficios, memos) con uno o más PDF.'
-                                : 'Crea una carpeta por tipo de documento (ej. Cartas, Oficios, Memos) y luego registra documentos con sus archivos PDF.'}
+                                ? (isViewer ? 'Esta carpeta está vacía.' : 'Esta carpeta está vacía. Crea un documento (cartas, oficios, memos) con uno o más PDF.')
+                                : (isViewer ? 'No hay carpetas asignadas para ver.' : 'Crea una carpeta por tipo de documento (ej. Cartas, Oficios, Memos) y luego registra documentos con sus archivos PDF.')}
                         </p>
+                        {!isViewer && (
                         <button
                             onClick={currentFolder ? handleCreateDocument : handleCreateFolder}
                             className="btn btn-primary rounded-pill px-4"
@@ -679,6 +690,7 @@ export default function Index({
                             <i className={`bi ${currentFolder ? 'bi-file-earmark-plus' : 'bi-folder-plus'} me-2`}></i>
                             {currentFolder ? 'Nuevo Documento' : 'Nueva Carpeta'}
                         </button>
+                        )}
                     </div>
                 </div>
             )}
