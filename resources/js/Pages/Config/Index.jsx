@@ -8,12 +8,20 @@ export default function Index({ users, filters, flash }) {
     const [search, setSearch] = useState(filters.search || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
+    const [roleFilter, setRoleFilter] = useState(filters.role || '');
     const [folderModalUser, setFolderModalUser] = useState(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (search !== (filters.search || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '')) {
-                router.get(route('users.index'), { search, date_start: dateStart, date_end: dateEnd }, {
+            const params = { search, date_start: dateStart, date_end: dateEnd };
+            if (roleFilter) params.role = roleFilter;
+            const hasChanges =
+                search !== (filters.search || '') ||
+                dateStart !== (filters.date_start || '') ||
+                dateEnd !== (filters.date_end || '') ||
+                roleFilter !== (filters.role || '');
+            if (hasChanges) {
+                router.get(route('config'), params, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -21,7 +29,7 @@ export default function Index({ users, filters, flash }) {
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search, dateStart, dateEnd]);
+    }, [search, dateStart, dateEnd, roleFilter]);
 
     const handleDelete = (id) => {
         Swal.fire({
@@ -71,17 +79,30 @@ export default function Index({ users, filters, flash }) {
 
             <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
                 <div className="row g-3 items-center">
-                    <div className="col-lg-6">
+                    <div className="col-lg-4">
                         <div className="input-group">
                             <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
                             <input
                                 type="text"
                                 className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
-                                placeholder="Buscar por nombre o email..."
+                                placeholder="Buscar por nombre, email o rol..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
+                    </div>
+                    <div className="col-lg-2">
+                        <select
+                            className="form-select rounded-pill bg-body-tertiary border-0 px-3"
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            title="Filtrar por rol"
+                        >
+                            <option value="">Todos los roles</option>
+                            <option value="Administrador">Administrador</option>
+                            <option value="Operador">Operador</option>
+                            <option value="Visualizador">Visualizador</option>
+                        </select>
                     </div>
                     <div className="col-lg-3">
                         <input
@@ -127,14 +148,16 @@ export default function Index({ users, filters, flash }) {
                                         <Link href={route('users.edit', user.id)} className="btn btn-sm btn-outline-secondary me-1" title="Editar">
                                             <i className="bi bi-pencil"></i>
                                         </Link>
-                                        <button
-                                            type="button"
-                                            onClick={() => setFolderModalUser({ id: user.id, name: user.name })}
-                                            className="btn btn-sm btn-outline-primary me-1"
-                                            title="Carpetas visibles (por menú)"
-                                        >
-                                            <i className="bi bi-folder2"></i>
-                                        </button>
+                                        {user.role === 'Visualizador' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFolderModalUser({ id: user.id, name: user.name })}
+                                                className="btn btn-sm btn-outline-primary me-1"
+                                                title="Carpetas visibles (por menú)"
+                                            >
+                                                <i className="bi bi-folder2"></i>
+                                            </button>
+                                        )}
                                         <button onClick={() => handleDelete(user.id)} className="btn btn-sm btn-outline-danger" title="Eliminar">
                                             <i className="bi bi-trash"></i>
                                         </button>
@@ -142,7 +165,7 @@ export default function Index({ users, filters, flash }) {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="4" className="text-center py-5 text-muted">
+                                    <td colSpan="5" className="text-center py-5 text-muted">
                                         No se encontraron usuarios
                                     </td>
                                 </tr>

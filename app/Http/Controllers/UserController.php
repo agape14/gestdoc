@@ -108,9 +108,11 @@ class UserController extends Controller
          $query = User::query();
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
+            $term = '%' . $request->search . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', $term)
+                    ->orWhere('email', 'like', $term)
+                    ->orWhere('role', 'like', $term);
             });
         }
 
@@ -122,9 +124,13 @@ class UserController extends Controller
             $query->whereDate('created_at', '<=', $request->date_end);
         }
 
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
         return Inertia::render('Config/Index', [
             'users' => $query->latest()->paginate(10),
-            'filters' => $request->only(['search', 'date_start', 'date_end']),
+            'filters' => $request->only(['search', 'date_start', 'date_end', 'role']),
         ]);
     }
 
