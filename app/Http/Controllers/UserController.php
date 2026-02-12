@@ -68,7 +68,17 @@ class UserController extends Controller
             } else {
                 $query->where('module', $menuKey);
             }
-            $foldersByModule[$menuKey] = $query->orderBy('name')->get(['id', 'name', 'parent_id']);
+            $foldersByModule[$menuKey] = $query->with('user:id,name')
+                ->orderBy('name')
+                ->get(['id', 'name', 'parent_id', 'user_id'])
+                ->map(fn ($folder) => [
+                    'id' => $folder->id,
+                    'name' => $folder->name,
+                    'parent_id' => $folder->parent_id,
+                    'creator_name' => $folder->user?->name ?? '—',
+                ])
+                ->values()
+                ->all();
         }
 
         return response()->json([

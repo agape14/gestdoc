@@ -127,7 +127,7 @@ export default function UserFolderPermissionsModal({ show, onClose, userId, user
                                                             checked={(selected[activeTab] || []).includes(folder.id)}
                                                             onChange={() => toggleFolder(activeTab, folder.id)}
                                                         />
-                                                        <span className="text-body">{folder.name}</span>
+                                                        <span className="text-body">{folder.name}{folder.creator_name ? ` — ${folder.creator_name}` : ''}</span>
                                                     </label>
                                                 ))}
                                             </div>

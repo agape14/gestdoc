@@ -296,7 +296,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                 <tr>
                                     <th scope="col" className="ps-4 py-3">Candidato</th>
                                     <th scope="col" className="py-3">Fecha Registro</th>
-                                    <th scope="col" className="text-center py-3">Archivos</th>
+                                    <th scope="col" className="text-center py-3" style={{ minWidth: '260px' }}>Archivos</th>
                                     <th scope="col" className="text-end pe-4 py-3">Estado</th>
                                 </tr>
                             </thead>
@@ -305,11 +305,11 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                     <tr key={cv.id} className="table-secondary">
                                         <td className="ps-4 py-3">{cv.nombre_candidato}</td>
                                         <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
-                                        <td className="text-center">
+                                        <td className="text-center" style={{ minWidth: '260px' }}>
                                             {(cv.files && cv.files.length > 0) ? (
-                                                <span className="d-inline-flex flex-wrap gap-1">
+                                                <span className="d-flex flex-column gap-1 align-items-stretch w-100">
                                                     {cv.files.map((f) => (
-                                                        <button key={f.id} type="button" onClick={() => handleViewPdf(f.path, f.nombre_archivo)} className="btn btn-sm btn-outline-primary" title={f.nombre_archivo}><i className="bi bi-file-earmark-pdf"></i> {f.nombre_archivo}</button>
+                                                        <button key={f.id} type="button" onClick={() => handleViewPdf(f.path, f.nombre_archivo)} className="btn btn-sm btn-outline-primary d-flex align-items-center flex-grow-1 text-start overflow-hidden" style={{ minWidth: 0 }} title={f.nombre_archivo}><i className="bi bi-file-earmark-pdf me-1 flex-shrink-0"></i><span className="text-truncate" style={{ minWidth: 0 }}>{f.nombre_archivo}</span></button>
                                                     ))}
                                                 </span>
                                             ) : cv.archivo_cv ? (
@@ -340,7 +340,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                 </th>
                                 <th scope="col" className="py-3">Candidato</th>
                                 <th scope="col" className="py-3">Fecha Registro</th>
-                                <th scope="col" className="text-center py-3">Archivos</th>
+                                <th scope="col" className="text-center py-3" style={{ minWidth: '260px' }}>Archivos</th>
                                 <th scope="col" className="text-end pe-4 py-3">Acciones</th>
                             </tr>
                         </thead>
@@ -362,23 +362,24 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                     </td>
                                     <td className="ps-4 py-3 fw-medium text-body">{cv.nombre_candidato}</td>
                                     <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
-                                    <td className="text-center">
+                                    <td className="text-center" style={{ minWidth: '260px' }}>
                                         {(cv.files && cv.files.length > 0) ? (
-                                            <span className="d-inline-flex flex-wrap gap-1 justify-content-center">
+                                            <span className="d-flex flex-column gap-1 align-items-stretch w-100">
                                                 {cv.files.map((f) => (
-                                                    <span key={f.id} className="d-inline-flex gap-1">
+                                                    <span key={f.id} className="d-flex gap-1 flex-nowrap align-items-center" style={{ minWidth: 0 }}>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleViewPdf(f.path, f.nombre_archivo)}
-                                                            className="btn btn-sm btn-outline-primary"
+                                                            className="btn btn-sm btn-outline-primary d-flex align-items-center flex-grow-1 text-start overflow-hidden"
+                                                            style={{ minWidth: 0 }}
                                                             title={f.nombre_archivo}
                                                         >
-                                                            <i className="bi bi-file-earmark-pdf me-1"></i>
-                                                            {f.nombre_archivo}
+                                                            <i className="bi bi-file-earmark-pdf me-1 flex-shrink-0"></i>
+                                                            <span className="text-truncate" style={{ minWidth: 0 }}>{f.nombre_archivo}</span>
                                                         </button>
                                                         <a
                                                             href={route('cvs.files.download', { cv: cv.id, file: f.id })}
-                                                            className="btn btn-sm btn-outline-secondary"
+                                                            className="btn btn-sm btn-outline-secondary flex-shrink-0"
                                                             title={`Descargar ${f.nombre_archivo}`}
                                                         >
                                                             <i className="bi bi-download"></i>
