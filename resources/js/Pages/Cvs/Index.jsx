@@ -17,7 +17,6 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
-    const [especialidad, setEspecialidad] = useState(filters.especialidad || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
@@ -34,9 +33,9 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            const params = { search, especialidad, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
+            const params = { search, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
             if (isAdmin) params.user_id = operatorId || undefined;
-            if (search !== (filters.search || '') || especialidad !== (filters.especialidad || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '') || operatorId !== (filters.user_id || '')) {
+            if (search !== (filters.search || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '') || operatorId !== (filters.user_id || '')) {
                 router.get(route('cvs.index'), params, {
                     preserveState: true,
                     preserveScroll: true,
@@ -45,7 +44,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search, especialidad, dateStart, dateEnd, operatorId]);
+    }, [search, dateStart, dateEnd, operatorId]);
 
     const handleDelete = (id) => {
         Swal.fire({
@@ -106,7 +105,8 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     const toggleCvSelection = (id) => {
         setSelectedCvIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     };
-    const cvsWithPdf = (cvs.data || []).filter((c) => c.archivo_cv);
+    const hasFiles = (c) => (c.files && c.files.length > 0) || c.archivo_cv;
+    const cvsWithPdf = (cvs.data || []).filter(hasFiles);
     const toggleSelectAllCvs = () => {
         if (!cvsWithPdf.length) return;
         if (selectedCvIds.length === cvsWithPdf.length) {
@@ -131,7 +131,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     return (
         <MainLayout>
             <Head title="Banco de CVs" />
-
+            <div className="min-w-0 w-100">
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
                     {flash.success}
@@ -227,10 +227,10 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                 </div>
             </div>
 
-            <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
+            <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body min-w-0 w-100">
                 <div className="row g-3 items-center">
-                    <div className="col-lg-4">
-                        <div className="input-group">
+                    <div className="col-12 col-lg-4">
+                        <div className="input-group min-w-0">
                             <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
                             <input
                                 type="text"
@@ -240,20 +240,6 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
-                    </div>
-                    <div className="col-lg-4">
-                        <select
-                            className="form-select rounded-pill bg-body-tertiary border-0 px-3 text-secondary"
-                            value={especialidad}
-                            onChange={(e) => setEspecialidad(e.target.value)}
-                        >
-                            <option value="">Todas las especialidades</option>
-                            <option value="Arquitecto">Arquitecto</option>
-                            <option value="Ingeniero Civil">Ingeniero Civil</option>
-                            <option value="Ingeniero Eléctrico">Ingeniero Eléctrico</option>
-                            <option value="Seguridad">Seguridad</option>
-                            <option value="Maestro de Obra">Maestro de Obra</option>
-                        </select>
                     </div>
                     <div className="col-lg-2">
                         <input
@@ -288,7 +274,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                 </div>
             </div>
 
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body min-w-0 w-100">
                 {isAdmin && Array.isArray(anulados) && (
                     <ul className="nav nav-tabs card-header-tabs border-0 px-4 pt-3">
                         <li className="nav-item">
@@ -303,15 +289,14 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                         </li>
                     </ul>
                 )}
-                <div className="table-responsive">
+                <div className="table-responsive overflow-x-auto min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
                     {tabActivo === 'anulados' && isAdmin ? (
-                        <table className="table table-hover align-middle mb-0">
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '560px' }}>
                             <thead className="border-bottom text-secondary small text-uppercase">
                                 <tr>
                                     <th scope="col" className="ps-4 py-3">Candidato</th>
-                                    <th scope="col" className="py-3">Especialidad</th>
                                     <th scope="col" className="py-3">Fecha Registro</th>
-                                    <th scope="col" className="text-center py-3">CV</th>
+                                    <th scope="col" className="text-center py-3">Archivos</th>
                                     <th scope="col" className="text-end pe-4 py-3">Estado</th>
                                 </tr>
                             </thead>
@@ -319,22 +304,27 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                 {anulados.length > 0 ? anulados.map(cv => (
                                     <tr key={cv.id} className="table-secondary">
                                         <td className="ps-4 py-3">{cv.nombre_candidato}</td>
-                                        <td className="text-secondary">{cv.especialidad}</td>
                                         <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
                                         <td className="text-center">
-                                            {cv.archivo_cv ? (
+                                            {(cv.files && cv.files.length > 0) ? (
+                                                <span className="d-inline-flex flex-wrap gap-1">
+                                                    {cv.files.map((f) => (
+                                                        <button key={f.id} type="button" onClick={() => handleViewPdf(f.path, f.nombre_archivo)} className="btn btn-sm btn-outline-primary" title={f.nombre_archivo}><i className="bi bi-file-earmark-pdf"></i> {f.nombre_archivo}</button>
+                                                    ))}
+                                                </span>
+                                            ) : cv.archivo_cv ? (
                                                 <button type="button" onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`)} className="btn btn-sm btn-outline-primary"><i className="bi bi-file-earmark-pdf"></i></button>
                                             ) : <span className="text-muted">-</span>}
                                         </td>
                                         <td className="text-end pe-4"><span className="badge bg-secondary">Anulado</span></td>
                                     </tr>
                                 )) : (
-                                    <tr><td colSpan="5" className="text-center py-4 text-muted">No hay CVs anulados.</td></tr>
+                                    <tr><td colSpan="4" className="text-center py-4 text-muted">No hay CVs anulados.</td></tr>
                                 )}
                             </tbody>
                         </table>
                     ) : (
-                    <table className="table table-hover align-middle mb-0">
+                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '560px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
                                 <th className="ps-4 py-3" style={{ width: '40px' }}>
@@ -349,9 +339,8 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                     )}
                                 </th>
                                 <th scope="col" className="py-3">Candidato</th>
-                                <th scope="col" className="py-3">Especialidad</th>
                                 <th scope="col" className="py-3">Fecha Registro</th>
-                                <th scope="col" className="text-center py-3">CV</th>
+                                <th scope="col" className="text-center py-3">Archivos</th>
                                 <th scope="col" className="text-end pe-4 py-3">Acciones</th>
                             </tr>
                         </thead>
@@ -359,7 +348,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                             {cvs.data.length > 0 ? cvs.data.map(cv => (
                                 <tr key={cv.id}>
                                     <td className="ps-4 py-3">
-                                        {cv.archivo_cv ? (
+                                        {hasFiles(cv) ? (
                                             <input
                                                 type="checkbox"
                                                 className="form-check-input"
@@ -372,10 +361,32 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                         )}
                                     </td>
                                     <td className="ps-4 py-3 fw-medium text-body">{cv.nombre_candidato}</td>
-                                    <td className="text-secondary">{cv.especialidad}</td>
                                     <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
                                     <td className="text-center">
-                                        {cv.archivo_cv ? (
+                                        {(cv.files && cv.files.length > 0) ? (
+                                            <span className="d-inline-flex flex-wrap gap-1 justify-content-center">
+                                                {cv.files.map((f) => (
+                                                    <span key={f.id} className="d-inline-flex gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleViewPdf(f.path, f.nombre_archivo)}
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            title={f.nombre_archivo}
+                                                        >
+                                                            <i className="bi bi-file-earmark-pdf me-1"></i>
+                                                            {f.nombre_archivo}
+                                                        </button>
+                                                        <a
+                                                            href={route('cvs.files.download', { cv: cv.id, file: f.id })}
+                                                            className="btn btn-sm btn-outline-secondary"
+                                                            title={`Descargar ${f.nombre_archivo}`}
+                                                        >
+                                                            <i className="bi bi-download"></i>
+                                                        </a>
+                                                    </span>
+                                                ))}
+                                            </span>
+                                        ) : cv.archivo_cv ? (
                                             <span className="d-inline-flex gap-1">
                                                 <button
                                                     onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`)}
@@ -449,6 +460,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                 pdfUrl={selectedPdfUrl}
                 title={selectedPdfTitle}
             />
+            </div>
         </MainLayout>
     );
 }

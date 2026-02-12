@@ -142,7 +142,7 @@ export default function ModuleIndex({ title, description, items, columns, create
     return (
         <MainLayout>
             <Head title={title} />
-
+            <div className="min-w-0 w-100">
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show rounded-3 mb-3" role="alert">
                     {flash.success}
@@ -273,7 +273,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                 </div>
             </div>
 
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body min-w-0 w-100">
                 {isAdmin && Array.isArray(anulados) && (
                     <ul className="nav nav-tabs card-header-tabs border-0 px-4 pt-3">
                         <li className="nav-item">
@@ -288,9 +288,9 @@ export default function ModuleIndex({ title, description, items, columns, create
                         </li>
                     </ul>
                 )}
-                <div className="table-responsive">
+                <div className="table-responsive overflow-x-auto min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
                     {tabActivo === 'anulados' && isAdmin ? (
-                        <table className="table table-hover align-middle mb-0">
+                        <table className="table table-hover align-middle mb-0 table-responsive-grid" style={{ minWidth: '560px' }}>
                             <thead className="border-bottom text-secondary small text-uppercase">
                                 <tr>
                                     {columns.map((col, i) => (
@@ -304,7 +304,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                 {anulados.length > 0 ? anulados.map((item, idx) => (
                                     <tr key={item.id || idx} className="table-secondary">
                                         {columns.map((col, i) => (
-                                            <td key={i} className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''}`}>
+                                            <td key={i} className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''} text-break`} style={{ maxWidth: i === columns.length - 1 ? '1%' : undefined }}>
                                                 {col.header === 'ACCIONES' ? <span className="badge bg-secondary">Anulado</span> : (col.render ? col.render(item) : (item[col.accessor] ?? '-'))}
                                             </td>
                                         ))}
@@ -315,7 +315,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                             </tbody>
                         </table>
                     ) : (
-                    <table className="table table-hover align-middle mb-0">
+                    <table className="table table-hover align-middle mb-0 table-responsive-grid" style={{ minWidth: '560px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
                                 {columns.map((col, i) => (
@@ -386,7 +386,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                                 );
                                             }
                                             return (
-                                                <td key={i} className={`${i === 0 ? 'ps-4 fw-medium text-body' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''}`}>
+                                                <td key={i} className={`${i === 0 ? 'ps-4 fw-medium text-body' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''} text-break`} style={{ maxWidth: i === columns.length - 1 ? '1%' : undefined }}>
                                                     {col.render ? col.render(item) : (item[col.accessor] || '-')}
                                                 </td>
                                             );
@@ -472,6 +472,7 @@ export default function ModuleIndex({ title, description, items, columns, create
             )}
 
             <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} />
+            </div>
         </MainLayout >
     );
 }

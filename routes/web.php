@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/cvs/folders', [CurriculumController::class, 'storeFolder'])->name('cvs.folders.store');
         Route::get('/cvs/download-zip', [CurriculumController::class, 'downloadZip'])->name('cvs.download-zip');
         Route::get('/cvs/{cv}/download', [CurriculumController::class, 'download'])->name('cvs.download');
+        Route::get('/cvs/{cv}/files/{file}/download', [CurriculumController::class, 'downloadFile'])->name('cvs.files.download');
         Route::resource('cvs', CurriculumController::class);
         Route::post('/consultor-obras/folders', [\App\Http\Controllers\ConsultorObraController::class, 'storeFolder'])->name('consultor-obras.folders.store');
         Route::get('/consultor-obras/export', [\App\Http\Controllers\ConsultorObraController::class, 'export'])->name('consultor-obras.export');

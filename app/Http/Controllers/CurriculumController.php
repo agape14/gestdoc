@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Curriculum;
+use App\Models\CurriculumFile;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -61,10 +62,7 @@ class CurriculumController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('nombre_candidato', 'like', '%' . $request->search . '%')
-                  ->orWhere('especialidad', 'like', '%' . $request->search . '%');
-            });
+            $query->where('nombre_candidato', 'like', '%' . $request->search . '%');
         }
 
         if ($request->filled('especialidad')) {
@@ -84,14 +82,14 @@ class CurriculumController extends Controller
             : collect();
 
         $anulados = $user->role === 'Administrador'
-            ? Curriculum::where('anulado', true)
+            ? Curriculum::with('files')->where('anulado', true)
                 ->when($folderId, fn ($q) => $q->where('folder_id', $folderId))
                 ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
                 ->latest()->get()
             : collect();
 
         return Inertia::render('Cvs/Index', [
-            'cvs' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
+            'cvs' => $query->with('files')->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
             'filters' => $request->only(['search', 'especialidad', 'date_start', 'date_end', 'folder_id', 'user_id']),
             'folders' => $folders,
             'currentFolder' => $currentFolder,
@@ -133,9 +131,14 @@ class CurriculumController extends Controller
                 $breadcrumbLabel = is_array($path) ? implode(' / ', array_column($path, 'name')) : $folder->name;
             }
         }
+        $operadores = auth()->user()->role === 'Administrador'
+            ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name'])
+            : [];
+
         return Inertia::render('Cvs/Create', [
             'folderId' => $folderId,
             'breadcrumbLabel' => $breadcrumbLabel,
+            'operadores' => $operadores,
         ]);
     }
 
@@ -143,20 +146,18 @@ class CurriculumController extends Controller
     {
         $validated = $request->validate([
             'nombre_candidato' => 'required|string|max:255',
-            'especialidad' => 'required|string|max:255',
-            'archivo_cv' => 'nullable|file|mimes:pdf|max:10240',
+            'folder_id' => 'nullable|exists:folders,id',
         ]);
 
-        $path = null;
-        if ($request->hasFile('archivo_cv')) {
-            $path = $request->file('archivo_cv')->store('cvs', 'public');
+        $archivos = $this->parseArchivosFromRequest($request);
+        if (empty($archivos)) {
+            return redirect()->back()->withErrors(['archivos' => 'Debe adjuntar al menos un archivo PDF con su nombre.'])->withInput();
         }
 
         $data = [
             'user_id' => auth()->id(),
             'nombre_candidato' => $validated['nombre_candidato'],
-            'especialidad' => $validated['especialidad'],
-            'archivo_cv' => $path,
+            'especialidad' => null,
         ];
         if ($request->filled('folder_id')) {
             $folder = Folder::where('module', self::MODULE)->find($request->folder_id);
@@ -166,36 +167,80 @@ class CurriculumController extends Controller
         }
 
         $cv = Curriculum::create($data);
+
+        foreach ($archivos as $index => $item) {
+            $request->validate([
+                "archivos.{$index}.file" => 'required|file|mimes:pdf|max:10240',
+            ], [], ["archivos.{$index}.file" => 'archivo PDF']);
+            $nombre = \Str::limit($item['nombre_archivo'], 255);
+            $path = $item['file']->store('cvs', 'public');
+            CurriculumFile::create([
+                'curriculum_id' => $cv->id,
+                'nombre_archivo' => $nombre,
+                'path' => $path,
+                'orden' => $index,
+            ]);
+        }
+
         $folderId = $cv->folder_id;
         return redirect()->route('cvs.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'CV registrado.');
     }
 
     public function edit(Curriculum $cv)
     {
+        $cv->load('files');
+        $operadores = auth()->user()->role === 'Administrador'
+            ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name'])
+            : [];
+
         return Inertia::render('Cvs/Edit', [
-            'cv' => $cv
+            'cv' => $cv,
+            'operadores' => $operadores,
         ]);
     }
 
     public function update(Request $request, Curriculum $cv)
     {
-         $validated = $request->validate([
+        $validated = $request->validate([
             'nombre_candidato' => 'required|string|max:255',
-            'especialidad' => 'required|string|max:255',
-            'archivo_cv' => 'nullable|file|mimes:pdf|max:10240',
+            'archivos_existentes' => 'nullable|array',
+            'archivos_existentes.*.id' => 'required|exists:curriculum_files,id',
+            'archivos_existentes.*.nombre_archivo' => 'required|string|max:255',
+            'archivos' => 'nullable|array',
+            'archivos.*.nombre_archivo' => 'required_with:archivos.*.file|string|max:255',
+            'archivos.*.file' => 'nullable|file|mimes:pdf|max:10240',
+        ], [], [
+            'archivos.*.nombre_archivo' => 'nombre del archivo',
+            'archivos.*.file' => 'archivo PDF',
         ]);
 
-        if ($request->hasFile('archivo_cv')) {
-            if ($cv->archivo_cv) {
-                Storage::disk('public')->delete($cv->archivo_cv);
+        $cv->update(['nombre_candidato' => $validated['nombre_candidato']]);
+
+        if (!empty($validated['archivos_existentes'])) {
+            foreach ($validated['archivos_existentes'] as $item) {
+                $f = CurriculumFile::where('curriculum_id', $cv->id)->find($item['id']);
+                if ($f) {
+                    $f->update(['nombre_archivo' => $item['nombre_archivo']]);
+                }
             }
-            $cv->archivo_cv = $request->file('archivo_cv')->store('cvs', 'public');
         }
 
-        $cv->update([
-            'nombre_candidato' => $validated['nombre_candidato'],
-            'especialidad' => $validated['especialidad'],
-        ]);
+        $archivos = $request->input('archivos', []);
+        $orden = $cv->files()->max('orden') ?? -1;
+        foreach ($archivos as $index => $item) {
+            $file = $request->file("archivos.{$index}.file");
+            if (!$file) {
+                continue;
+            }
+            $orden++;
+            $path = $file->store('cvs', 'public');
+            CurriculumFile::create([
+                'curriculum_id' => $cv->id,
+                'nombre_archivo' => $item['nombre_archivo'] ?? $file->getClientOriginalName(),
+                'path' => $path,
+                'orden' => $orden,
+            ]);
+        }
 
         $folderId = $cv->folder_id;
         return redirect()->route('cvs.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'CV actualizado.');
@@ -220,32 +265,57 @@ class CurriculumController extends Controller
     }
 
     /**
-     * Descarga el PDF de un CV (individual).
+     * Descarga el primer PDF del CV (compatibilidad con enlace antiguo).
      */
     public function download(Curriculum $cv)
     {
-        $user = auth()->user();
-        if (!$cv->archivo_cv || !Storage::disk('public')->exists($cv->archivo_cv)) {
+        $cv->load('files');
+        $file = $cv->files->first();
+        if ($file) {
+            return $this->downloadFile($cv, $file);
+        }
+        if ($cv->archivo_cv && Storage::disk('public')->exists($cv->archivo_cv)) {
+            $this->authorizeDownload($cv);
+            return Storage::disk('public')->download($cv->archivo_cv, \Str::slug($cv->nombre_candidato) . '-cv.pdf');
+        }
+        return redirect()->back()->with('error', 'El archivo no existe.');
+    }
+
+    /**
+     * Descarga un archivo PDF específico del CV (por nombre indicado).
+     */
+    public function downloadFile(Curriculum $cv, CurriculumFile $file)
+    {
+        if ($file->curriculum_id !== $cv->id) {
+            abort(404);
+        }
+        if (!Storage::disk('public')->exists($file->path)) {
             return redirect()->back()->with('error', 'El archivo no existe.');
         }
+        $this->authorizeDownload($cv);
+        $name = \Str::slug($file->nombre_archivo) . '.pdf';
+        return Storage::disk('public')->download($file->path, $name);
+    }
+
+    private function authorizeDownload(Curriculum $cv): void
+    {
+        $user = auth()->user();
         if ($user->role === 'Visualizador') {
             $allowedIds = $user->allowed_folders['cvs'] ?? [];
             if (!in_array($cv->folder_id, $allowedIds) && $cv->folder_id !== null) {
                 abort(403, 'No tienes permiso para descargar este CV.');
             }
-        } else {
-            $query = Curriculum::query()->activo()->where('id', $cv->id);
-            $query = $this->applyRoleBasedFilter($query, $user);
-            if ($query->doesntExist()) {
-                abort(403, 'No tienes permiso para descargar este CV.');
-            }
+            return;
         }
-        $name = \Str::slug($cv->nombre_candidato) . '-cv.pdf';
-        return Storage::disk('public')->download($cv->archivo_cv, $name);
+        $query = Curriculum::query()->activo()->where('id', $cv->id);
+        $query = $this->applyRoleBasedFilter($query, $user);
+        if ($query->doesntExist()) {
+            abort(403, 'No tienes permiso para descargar este CV.');
+        }
     }
 
     /**
-     * Descarga uno o más CV en ZIP (seleccionados o todos en la carpeta/lista).
+     * Descarga uno o más CV en ZIP (seleccionados o todos). Los archivos se nombran con el nombre indicado en el formulario.
      */
     public function downloadZip(Request $request)
     {
@@ -254,7 +324,7 @@ class CurriculumController extends Controller
         $ids = $request->input('ids', []);
         $all = $request->boolean('all');
 
-        $query = Curriculum::query()->activo()->whereNotNull('archivo_cv');
+        $query = Curriculum::query()->activo();
         $query = $this->applyRoleBasedFilter($query, $user);
         if ($user->role === 'Visualizador') {
             $allowedIds = $user->allowed_folders['cvs'] ?? [];
@@ -273,20 +343,28 @@ class CurriculumController extends Controller
         }
 
         if ($all) {
-            $cvs = $query->get();
+            $cvs = $query->with('files')->get();
         } else {
             if (!is_array($ids) || empty($ids)) {
                 return redirect()->back()->with('error', 'Seleccione al menos un CV.');
             }
-            $cvs = $query->whereIn('id', $ids)->get();
+            $cvs = $query->with('files')->whereIn('id', $ids)->get();
         }
 
         $filesToZip = [];
         foreach ($cvs as $cv) {
-            if (Storage::disk('public')->exists($cv->archivo_cv)) {
+            foreach ($cv->files as $file) {
+                if (Storage::disk('public')->exists($file->path)) {
+                    $filesToZip[] = [
+                        'path' => Storage::disk('public')->path($file->path),
+                        'nombre_archivo' => $file->nombre_archivo,
+                    ];
+                }
+            }
+            if ($cv->files->isEmpty() && $cv->archivo_cv && Storage::disk('public')->exists($cv->archivo_cv)) {
                 $filesToZip[] = [
                     'path' => Storage::disk('public')->path($cv->archivo_cv),
-                    'name' => \Str::slug($cv->nombre_candidato) . '-cv.pdf',
+                    'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
                 ];
             }
         }
@@ -295,25 +373,53 @@ class CurriculumController extends Controller
             return redirect()->back()->with('error', 'No hay archivos PDF para descargar.');
         }
 
-        $usedNames = [];
+        $usedBaseNames = [];
         $zip = new ZipArchive();
         $zipPath = storage_path('app/public/cvs_temp_' . uniqid() . '.zip');
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return redirect()->back()->with('error', 'No se pudo crear el archivo ZIP.');
         }
         foreach ($filesToZip as $item) {
-            $base = pathinfo($item['name'], PATHINFO_FILENAME);
-            $ext = pathinfo($item['name'], PATHINFO_EXTENSION) ?: 'pdf';
-            if (!isset($usedNames[$base])) {
-                $usedNames[$base] = 0;
+            $baseName = \Str::slug($item['nombre_archivo']);
+            if (empty($baseName)) {
+                $baseName = 'documento';
             }
-            $usedNames[$base]++;
-            $fileName = $usedNames[$base] === 1 ? $item['name'] : $base . '-' . $usedNames[$base] . '.' . $ext;
+            $ext = 'pdf';
+            if (!isset($usedBaseNames[$baseName])) {
+                $usedBaseNames[$baseName] = 0;
+            }
+            $usedBaseNames[$baseName]++;
+            $fileName = $usedBaseNames[$baseName] === 1 ? $baseName . '.' . $ext : $baseName . '-' . $usedBaseNames[$baseName] . '.' . $ext;
             $zip->addFile($item['path'], $fileName);
         }
         $zip->close();
 
         $downloadName = 'cvs-' . ($folderId ? 'carpeta-' . $folderId . '-' : '') . now()->format('Y-m-d-His') . '.zip';
         return response()->download($zipPath, $downloadName, ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);
+    }
+
+    private function parseArchivosFromRequest(Request $request): array
+    {
+        $out = [];
+        $input = $request->input('archivos');
+        if (is_array($input)) {
+            foreach ($input as $index => $item) {
+                $nombre = is_array($item) ? ($item['nombre_archivo'] ?? '') : '';
+                $file = $request->file("archivos.{$index}.file") ?? $request->file("archivos.{$index}");
+                if ($nombre !== '' && $file) {
+                    $out[$index] = ['nombre_archivo' => $nombre, 'file' => $file];
+                }
+            }
+        }
+        if (empty($out)) {
+            for ($i = 0; $i < 20; $i++) {
+                $nombre = $request->input("archivos.{$i}.nombre_archivo");
+                $file = $request->file("archivos.{$i}.file") ?? $request->file("archivos.{$i}");
+                if ($nombre !== null && $nombre !== '' && $file) {
+                    $out[$i] = ['nombre_archivo' => $nombre, 'file' => $file];
+                }
+            }
+        }
+        return $out;
     }
 }

@@ -207,6 +207,8 @@ export default function MainLayout({ children }) {
                     @media (min-width: 992px) {
                         .main-content-wrapper { margin-left: 280px !important; }
                     }
+                    /* Evitar que el contenido desborde en móvil: el contenido principal puede reducirse */
+                    .main-content-wrapper main > * { min-width: 0; max-width: 100%; }
                  `}</style>
 
                 <div className="main-content-wrapper flex-grow-1 d-flex flex-column min-vh-100">

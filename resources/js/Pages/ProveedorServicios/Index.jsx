@@ -397,7 +397,7 @@ export default function Index({ servicios, groupedByEspecialidad, filters, flash
     return (
         <MainLayout>
             <Head title="Proveedor de Servicios" />
-
+            <div className="min-w-0 w-100">
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
                     {flash.success}
@@ -465,10 +465,10 @@ export default function Index({ servicios, groupedByEspecialidad, filters, flash
                 </div>
             </div>
 
-            <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
+            <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body min-w-0 w-100">
                 <div className="row g-3 align-items-end">
                     {isAdmin && operadores.length > 0 && (
-                        <div className="col-md-6 col-lg-3">
+                        <div className="col-12 col-md-6 col-lg-3">
                             <label className="form-label small text-secondary mb-1">Operador</label>
                             <select className="form-select rounded-pill bg-body-tertiary border-0" value={operatorId} onChange={(e) => setOperatorId(e.target.value)}>
                                 <option value="">Todos los operadores</option>
@@ -476,9 +476,9 @@ export default function Index({ servicios, groupedByEspecialidad, filters, flash
                             </select>
                         </div>
                     )}
-                    <div className="col-md-6 col-lg-4">
+                    <div className="col-12 col-md-6 col-lg-4">
                         <label className="form-label small text-secondary mb-1 d-none d-lg-block">Buscar</label>
-                        <div className="input-group">
+                        <div className="input-group min-w-0">
                             <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3"><i className="bi bi-search text-secondary"></i></span>
                             <input
                                 type="text"
@@ -492,16 +492,16 @@ export default function Index({ servicios, groupedByEspecialidad, filters, flash
                 </div>
             </div>
 
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
-                <div className="card-header bg-body border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h6 className="mb-0 fw-bold">Listado {showGrouped ? 'Agrupado por Especialidad' : 'General'}</h6>
-                    <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowGrouped(!showGrouped)}>
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body min-w-0 w-100">
+                <div className="card-header bg-body border-0 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h6 className="mb-0 fw-bold text-truncate min-w-0">Listado {showGrouped ? 'Agrupado por Especialidad' : 'General'}</h6>
+                    <button className="btn btn-sm btn-outline-secondary flex-shrink-0" onClick={() => setShowGrouped(!showGrouped)}>
                         <i className={`bi bi-${showGrouped ? 'list' : 'grid'} me-1`}></i>
                         {showGrouped ? 'Vista General' : 'Vista Agrupada'}
                     </button>
                 </div>
-                <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0">
+                <div className="table-responsive overflow-x-auto min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '720px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
                                 <th scope="col" className="ps-4 py-3">SERVICIO</th>
@@ -820,6 +820,7 @@ export default function Index({ servicios, groupedByEspecialidad, filters, flash
             )}
 
             <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} />
+            </div>
         </MainLayout>
     );
 }

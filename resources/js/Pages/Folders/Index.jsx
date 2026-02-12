@@ -213,7 +213,7 @@ export default function Index({
     return (
         <MainLayout>
             <Head title="Gestión Documental" />
-
+            <div className="min-w-0 w-100">
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
                     {flash.success}
@@ -228,7 +228,7 @@ export default function Index({
             )}
 
             {isAdmin && operadores.length > 0 && (
-                <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
+                <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body min-w-0 w-100">
                     <label className="form-label fw-semibold text-body mb-2">
                         <i className="bi bi-person-fill me-2 text-primary"></i>
                         Filtrar por operador
@@ -360,10 +360,10 @@ export default function Index({
             )}
 
             {currentFolder && (
-                <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
+                <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body min-w-0 w-100">
                     <div className="row g-3">
-                        <div className="col-lg-4">
-                            <div className="input-group">
+                        <div className="col-12 col-lg-4">
+                            <div className="input-group min-w-0">
                                 <span className="input-group-text bg-body-tertiary border-end-0 rounded-start-pill ps-3">
                                     <i className="bi bi-search text-secondary"></i>
                                 </span>
@@ -376,7 +376,7 @@ export default function Index({
                                 />
                             </div>
                         </div>
-                        <div className="col-lg-3">
+                        <div className="col-12 col-lg-3">
                             <input
                                 type="date"
                                 className="form-control rounded-pill bg-body-tertiary border-0 px-3"
@@ -385,7 +385,7 @@ export default function Index({
                                 onChange={(e) => setDateStart(e.target.value)}
                             />
                         </div>
-                        <div className="col-lg-3">
+                        <div className="col-12 col-lg-3">
                             <input
                                 type="date"
                                 className="form-control rounded-pill bg-body-tertiary border-0 px-3"
@@ -394,7 +394,7 @@ export default function Index({
                                 onChange={(e) => setDateEnd(e.target.value)}
                             />
                         </div>
-                        <div className="col-lg-2">
+                        <div className="col-12 col-lg-2">
                             <button
                                 onClick={clearFilters}
                                 className="btn btn-outline-secondary rounded-pill w-100"
@@ -439,9 +439,9 @@ export default function Index({
                                     </button>
                                 </div>
                             </div>
-                            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body">
-                                <div className="table-responsive">
-                                    <table className="table table-hover align-middle mb-0">
+                            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body min-w-0 w-100">
+                                <div className="table-responsive overflow-x-auto min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '640px' }}>
                                         <thead className="border-bottom text-secondary small text-uppercase">
                                             <tr>
                                                 <th className="ps-4 py-3" style={{ width: '40px' }}>
@@ -715,6 +715,7 @@ export default function Index({
                 document={viewingDocument}
                 file={viewingFile}
             />
+            </div>
         </MainLayout>
     );
 }

@@ -14,6 +14,11 @@ class Curriculum extends Model
         return ['anulado' => 'boolean'];
     }
 
+    public function files()
+    {
+        return $this->hasMany(CurriculumFile::class, 'curriculum_id')->orderBy('orden');
+    }
+
     /** Solo registros no anulados. */
     public function scopeActivo($query)
     {
