@@ -61,6 +61,7 @@ class UserController extends Controller
         $menuWithFolders = self::menuKeysWithFolders();
         $foldersByModule = [];
 
+        $operadores = collect();
         foreach ($menuWithFolders as $menuKey => $label) {
             $query = Folder::query();
             if ($menuKey === 'folders') {
@@ -68,23 +69,29 @@ class UserController extends Controller
             } else {
                 $query->where('module', $menuKey);
             }
-            $foldersByModule[$menuKey] = $query->with('user:id,name')
+            $folders = $query->with('user:id,name')
                 ->orderBy('name')
-                ->get(['id', 'name', 'parent_id', 'user_id'])
-                ->map(fn ($folder) => [
-                    'id' => $folder->id,
-                    'name' => $folder->name,
-                    'parent_id' => $folder->parent_id,
-                    'creator_name' => $folder->user?->name ?? '—',
-                ])
-                ->values()
-                ->all();
+                ->get(['id', 'name', 'parent_id', 'user_id']);
+            $foldersByModule[$menuKey] = $folders->map(fn ($folder) => [
+                'id' => $folder->id,
+                'name' => $folder->name,
+                'parent_id' => $folder->parent_id,
+                'user_id' => $folder->user_id,
+                'creator_name' => $folder->user?->name ?? '—',
+            ])->values()->all();
+            foreach ($folders as $f) {
+                if ($f->user_id && $f->user) {
+                    $operadores->put($f->user_id, ['id' => $f->user_id, 'name' => $f->user->name]);
+                }
+            }
         }
+        $operadores = $operadores->values()->sortBy('name')->values()->all();
 
         return response()->json([
             'user' => ['id' => $user->id, 'name' => $user->name, 'role' => $user->role, 'allowed_folders' => $allowedFolders],
             'foldersByModule' => $foldersByModule,
             'menuLabels' => $menuWithFolders,
+            'operadores' => $operadores,
         ]);
     }
 

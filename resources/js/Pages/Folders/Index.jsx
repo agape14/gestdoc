@@ -153,6 +153,18 @@ export default function Index({
         return `${base}?${params.toString()}`;
     };
 
+    const getExportExcelUrl = () => {
+        if (!currentFolder) return '#';
+        const base = route('folders.documents.export-excel', currentFolder.id);
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (dateStart) params.set('date_start', dateStart);
+        if (dateEnd) params.set('date_end', dateEnd);
+        if (isAdmin && operatorId) params.set('user_id', operatorId);
+        const qs = params.toString();
+        return qs ? `${base}?${qs}` : base;
+    };
+
     const handleDownloadZip = (all) => {
         if (!currentFolder) return;
         if (!all && selectedDocIds.length === 0) return;
@@ -417,7 +429,15 @@ export default function Index({
                                     <i className="bi bi-file-earmark-text me-2"></i>
                                     Documentos en {currentFolder.name} ({documents.length})
                                 </h5>
-                                <div className="d-flex gap-2 align-items-center">
+                                <div className="d-flex gap-2 align-items-center flex-wrap">
+                                    <a
+                                        href={getExportExcelUrl()}
+                                        className="btn btn-success btn-sm"
+                                        title="Exportar registros visibles a Excel"
+                                    >
+                                        <i className="bi bi-file-earmark-excel me-1"></i>
+                                        Exportar Excel
+                                    </a>
                                     <button
                                         type="button"
                                         className="btn btn-outline-primary btn-sm"

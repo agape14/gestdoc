@@ -4,6 +4,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
+import ModuleFolderModal from '@/Components/ModuleFolderModal';
 
 const DetailForm = ({ item, onClose }) => {
     const existingDocs = item.documentos || [];
@@ -248,7 +249,6 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
     const [showGrouped, setShowGrouped] = useState(true);
     const [tab, setTab] = useState('activos');
     const [showFolderModal, setShowFolderModal] = useState(false);
-    const [newFolderName, setNewFolderName] = useState('');
     const [editingFolder, setEditingFolder] = useState(null);
 
     const canEdit = (item) => {
@@ -313,17 +313,6 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
         const params = { ...filters, ...extra };
         if (filters.folder_id) params.folder_id = filters.folder_id;
         return params;
-    };
-
-    const handleCreateFolder = (e) => {
-        e.preventDefault();
-        if (!newFolderName.trim()) return;
-        router.post(route('licitaciones.folders.store'), {
-            parent_id: currentFolder?.id || null,
-            name: newFolderName.trim(),
-            color: '#EAEAEA',
-            description: '',
-        }, { preserveScroll: true, onSuccess: () => { setShowFolderModal(false); setNewFolderName(''); } });
     };
 
     const handleAnular = (id) => {
@@ -740,37 +729,12 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                 )}
             </div>
 
-            {/* Modal Nueva Carpeta */}
-            {showFolderModal && (
-                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content border-0 shadow-lg rounded-4">
-                            <div className="modal-header border-0">
-                                <h5 className="modal-title fw-bold">Nueva Carpeta</h5>
-                                <button type="button" className="btn-close" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}></button>
-                            </div>
-                            <form onSubmit={handleCreateFolder}>
-                                <div className="modal-body">
-                                    <label className="form-label fw-semibold">Nombre de la carpeta</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={newFolderName}
-                                        onChange={(e) => setNewFolderName(e.target.value)}
-                                        placeholder="Ej: Proyectos 2025"
-                                        required
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="modal-footer border-0">
-                                    <button type="button" className="btn btn-secondary" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}>Cancelar</button>
-                                    <button type="submit" className="btn btn-primary">Crear Carpeta</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ModuleFolderModal
+                show={showFolderModal}
+                onClose={() => setShowFolderModal(false)}
+                storeFolderRoute="licitaciones.folders.store"
+                parentId={currentFolder?.id ?? null}
+            />
 
             {editingFolder && (
                 <ModuleFolderEditModal

@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '@/Components/Modal';
 
 export default function UserFolderPermissionsModal({ show, onClose, userId, userName }) {
     const [user, setUser] = useState(null);
     const [foldersByModule, setFoldersByModule] = useState({});
     const [menuLabels, setMenuLabels] = useState({});
+    const [operadores, setOperadores] = useState([]);
+    const [operadorFilter, setOperadorFilter] = useState('');
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('');
@@ -15,12 +17,14 @@ export default function UserFolderPermissionsModal({ show, onClose, userId, user
         if (show && userId) {
             setLoading(true);
             setMessage(null);
+            setOperadorFilter('');
             window.axios
                 .get(route('users.folder-permissions', userId))
                 .then(({ data }) => {
                     setUser(data.user);
                     setFoldersByModule(data.foldersByModule || {});
                     setMenuLabels(data.menuLabels || {});
+                    setOperadores(data.operadores || []);
                     const keys = Object.keys(data.foldersByModule || {}).filter((k) => (data.foldersByModule[k] || []).length > 0);
                     if (keys.length) setActiveTab(keys[0]);
                     const allowed = data.user?.allowed_folders || {};
@@ -30,6 +34,17 @@ export default function UserFolderPermissionsModal({ show, onClose, userId, user
                 .finally(() => setLoading(false));
         }
     }, [show, userId]);
+
+    const filteredFoldersByModule = useMemo(() => {
+        if (!operadorFilter) return foldersByModule;
+        const operatorId = parseInt(operadorFilter, 10);
+        const filtered = {};
+        for (const [menuKey, folders] of Object.entries(foldersByModule)) {
+            const list = (folders || []).filter((f) => (f.user_id || null) === operatorId);
+            if (list.length > 0) filtered[menuKey] = list;
+        }
+        return filtered;
+    }, [foldersByModule, operadorFilter]);
 
     const toggleFolder = (menuKey, folderId) => {
         setSelected((prev) => {
@@ -41,12 +56,21 @@ export default function UserFolderPermissionsModal({ show, onClose, userId, user
         });
     };
 
-    const toggleAllInTab = (menuKey, checked) => {
-        const folders = foldersByModule[menuKey] || [];
+    const toggleAllInTab = (menuKey, checked, foldersList = null) => {
+        const folders = foldersList ?? (foldersByModule[menuKey] || []);
         const ids = folders.map((f) => f.id);
         setSelected((prev) => {
             const next = { ...prev };
-            next[menuKey] = checked ? ids : [];
+            const current = prev[menuKey] || [];
+            if (foldersList) {
+                if (checked) {
+                    next[menuKey] = [...new Set([...current, ...ids])];
+                } else {
+                    next[menuKey] = current.filter((id) => !ids.includes(id));
+                }
+            } else {
+                next[menuKey] = checked ? ids : [];
+            }
             return next;
         });
     };
@@ -63,14 +87,20 @@ export default function UserFolderPermissionsModal({ show, onClose, userId, user
             .finally(() => setSaving(false));
     };
 
+    useEffect(() => {
+        const keys = Object.keys(filteredFoldersByModule).filter((k) => (filteredFoldersByModule[k] || []).length > 0);
+        if (keys.length && !keys.includes(activeTab)) setActiveTab(keys[0]);
+    }, [operadorFilter, filteredFoldersByModule]);
+
     if (!show) return null;
 
-    const tabKeys = Object.keys(foldersByModule).filter((k) => (foldersByModule[k] || []).length > 0);
+    const tabKeys = Object.keys(filteredFoldersByModule).filter((k) => (filteredFoldersByModule[k] || []).length > 0);
+    const currentFolders = activeTab ? (filteredFoldersByModule[activeTab] || []) : [];
 
     return (
-        <Modal show={show} onClose={onClose} maxWidth="2xl">
-            <div className="p-4">
-                <h5 className="fw-bold mb-2">
+        <Modal show={show} onClose={onClose} maxWidth="5xl">
+            <div className="p-4" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+                <h5 className="fw-bold mb-3">
                     <i className="bi bi-folder2 me-2"></i>
                     Carpetas visibles para el visualizador
                     {userName && <span className="text-secondary ms-2">({userName})</span>}
@@ -84,11 +114,27 @@ export default function UserFolderPermissionsModal({ show, onClose, userId, user
                     <p className="text-secondary">Cargando...</p>
                 ) : (
                     <>
+                        {operadores.length > 0 && (
+                            <div className="mb-3">
+                                <label className="form-label small text-secondary mb-1">Buscar por Operador</label>
+                                <select
+                                    className="form-select form-select-sm rounded-pill"
+                                    value={operadorFilter}
+                                    onChange={(e) => setOperadorFilter(e.target.value)}
+                                    style={{ maxWidth: '280px' }}
+                                >
+                                    <option value="">Todos los operadores</option>
+                                    {operadores.map((op) => (
+                                        <option key={op.id} value={op.id}>{op.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         {tabKeys.length === 0 ? (
-                            <p className="text-secondary">No hay carpetas en ningún módulo.</p>
+                            <p className="text-secondary">No hay carpetas{operadorFilter ? ' para el operador seleccionado' : ''} en ningún módulo.</p>
                         ) : (
-                            <>
-                                <ul className="nav nav-tabs border-0 mb-3">
+                            <div className="flex-grow-1 d-flex flex-column min-h-0">
+                                <ul className="nav nav-tabs border-0 mb-0 flex-shrink-0">
                                     {tabKeys.map((key) => (
                                         <li key={key} className="nav-item">
                                             <button
@@ -101,40 +147,43 @@ export default function UserFolderPermissionsModal({ show, onClose, userId, user
                                         </li>
                                     ))}
                                 </ul>
-                                <div className="border rounded-bottom p-3 bg-light" style={{ minHeight: '200px' }}>
-                                    {activeTab && foldersByModule[activeTab] && (
+                                <div className="border rounded-bottom p-2 bg-light flex-grow-1 d-flex flex-column min-h-0" style={{ minHeight: '280px' }}>
+                                    {activeTab && currentFolders.length > 0 && (
                                         <>
-                                            <div className="mb-2">
-                                                <label className="form-check small">
+                                            <div className="mb-1 flex-shrink-0">
+                                                <label className="form-check small py-1">
                                                     <input
                                                         type="checkbox"
                                                         className="form-check-input me-2"
                                                         checked={
-                                                            (foldersByModule[activeTab] || []).length > 0 &&
-                                                            (selected[activeTab] || []).length === (foldersByModule[activeTab] || []).length
+                                                            currentFolders.length > 0 &&
+                                                            currentFolders.every((f) => (selected[activeTab] || []).includes(f.id))
                                                         }
-                                                        onChange={(e) => toggleAllInTab(activeTab, e.target.checked)}
+                                                        onChange={(e) => toggleAllInTab(activeTab, e.target.checked, currentFolders)}
                                                     />
                                                     Seleccionar todas
                                                 </label>
                                             </div>
-                                            <div className="d-flex flex-column gap-1" style={{ maxHeight: '280px', overflowY: 'auto' }}>
-                                                {(foldersByModule[activeTab] || []).map((folder) => (
-                                                    <label key={folder.id} className="form-check d-flex align-items-center">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="form-check-input me-2"
-                                                            checked={(selected[activeTab] || []).includes(folder.id)}
-                                                            onChange={() => toggleFolder(activeTab, folder.id)}
-                                                        />
-                                                        <span className="text-body">{folder.name}{folder.creator_name ? ` — ${folder.creator_name}` : ''}</span>
-                                                    </label>
-                                                ))}
+                                            <div className="d-flex flex-column flex-grow-1 overflow-auto" style={{ minHeight: 0, gap: '2px' }}>
+                                                {currentFolders.map((folder) => {
+                                                    const fullName = `${folder.name}${folder.creator_name && folder.creator_name !== '—' ? ` — ${folder.creator_name}` : ''}`;
+                                                    return (
+                                                        <label key={folder.id} className="form-check d-flex align-items-center gap-2 min-w-0 py-1 px-2 rounded-1 ml-4" style={{ cursor: 'pointer' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-check-input flex-shrink-0"
+                                                                checked={(selected[activeTab] || []).includes(folder.id)}
+                                                                onChange={() => toggleFolder(activeTab, folder.id)}
+                                                            />
+                                                            <span className="text-body text-truncate flex-grow-1 min-w-0" title={fullName}>{fullName}</span>
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
                                         </>
                                     )}
                                 </div>
-                            </>
+                            </div>
                         )}
                         <div className="d-flex justify-content-end gap-2 mt-4">
                             <button type="button" className="btn btn-outline-secondary" onClick={onClose}>

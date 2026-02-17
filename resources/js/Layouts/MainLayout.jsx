@@ -99,7 +99,7 @@ export default function MainLayout({ children }) {
         { key: 'ejecutor-obra', href: '/ejecutor-obra', icon: 'bi-hammer', label: 'EJECUTOR DE OBRA', activePattern: '/ejecutor-obra' },
         { key: 'proveedor-servicios', href: '/proveedor-servicios', icon: 'bi-tools', label: 'PROVEEDOR DE SERVICIOS', activePattern: '/proveedor-servicios' },
         { key: 'proveedor-bienes', href: '/proveedor-bienes', icon: 'bi-box-seam', label: 'PROVEEDOR DE BIENES', activePattern: '/proveedor-bienes' },
-        { key: 'especialistas-ejecucion', href: '/especialistas-ejecucion', icon: 'bi-people-hard-hat', label: 'ESPECIALISTAS EN EJECUCION DE OBRA', activePattern: '/especialistas-ejecucion' },
+        { key: 'especialistas-ejecucion', href: '/especialistas-ejecucion', icon: 'bi-truck', label: 'ESPECIALISTAS EN EJECUCION DE OBRA', activePattern: '/especialistas-ejecucion' },
         { key: 'especialistas-consultoria', href: '/especialistas-consultoria', icon: 'bi-people', label: 'ESPECIALISTAS EN CONSULTORIA DE OBRA', activePattern: '/especialistas-consultoria' },
         { key: 'inmobiliaria', href: '/inmobiliaria', icon: 'bi-buildings', label: 'INMOBILIARIA', activePattern: '/inmobiliaria' },
         { key: 'topografia', href: '/topografia', icon: 'bi-map', label: 'TOPOGRAFIA', activePattern: '/topografia' },

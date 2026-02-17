@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Folder;
+use App\Exports\FolderDocumentsExport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class FolderController extends Controller
 {
@@ -113,6 +115,46 @@ class FolderController extends Controller
             'operadores' => $operadores,
             'filters' => $request->only(['search', 'date_start', 'date_end', 'user_id']),
         ]);
+    }
+
+    /**
+     * Exportar documentos de la carpeta a Excel.
+     */
+    public function exportDocuments(Request $request, $id)
+    {
+        $user = Auth::user();
+        $folder = Folder::with(['parent'])
+            ->whereNull('module')
+            ->visibleForGestionDocumental($user)
+            ->findOrFail($id);
+
+        $query = $folder->documents()->with('files');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('numero', 'like', '%' . $search . '%')
+                    ->orWhere('asunto', 'like', '%' . $search . '%')
+                    ->orWhere('remitente', 'like', '%' . $search . '%')
+                    ->orWhere('destinatario', 'like', '%' . $search . '%')
+                    ->orWhere('referencia', 'like', '%' . $search . '%');
+            });
+        }
+        if ($request->filled('date_start')) {
+            $query->whereDate('fecha_documento', '>=', $request->date_start);
+        }
+        if ($request->filled('date_end')) {
+            $query->whereDate('fecha_documento', '<=', $request->date_end);
+        }
+
+        $documents = $query->latest('fecha_documento')->latest()->get();
+        if ($documents->isEmpty()) {
+            return redirect()->route('folders.show', $id)
+                ->with('error', 'No hay datos para exportar. Aplique filtros que incluyan registros.');
+        }
+
+        $filename = \Str::slug($folder->name) . '-documentos-' . now()->format('Y-m-d-His') . '.xlsx';
+        return Excel::download(new FolderDocumentsExport($documents), $filename);
     }
 
     /**

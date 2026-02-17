@@ -22,21 +22,32 @@ class ConsultorObraController extends Controller
     {
         $user = auth()->user();
         $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        // Admin con filtro: carpetas e ítems del operador seleccionado. Sin filtro: todo.
         $effectiveUserId = $user->role === 'Administrador'
             ? ($request->filled('user_id') ? (int) $request->user_id : null)
             : $user->id;
 
+        $applyFolderVisibility = function ($query) use ($user, $effectiveUserId) {
+            if ($user->role === 'Administrador') {
+                return $query->visibleForUser(self::MODULE, $effectiveUserId);
+            }
+            return $query->visibleForModuleUser(self::MODULE, $user);
+        };
+
         if ($folderId) {
-            $currentFolder = Folder::visibleForModuleUser(self::MODULE, $user)->findOrFail($folderId);
+            $folderQuery = Folder::where('module', self::MODULE)->where('id', $folderId);
+            $applyFolderVisibility($folderQuery);
+            $currentFolder = $folderQuery->firstOrFail();
             $currentFolder->load(['parent']);
-            $folders = $currentFolder->children()->visibleForModuleUser(self::MODULE, $user)->orderBy('name')->get();
+            $childrenQuery = $currentFolder->children()->where('module', self::MODULE);
+            $applyFolderVisibility($childrenQuery);
+            $folders = $childrenQuery->orderBy('name')->get();
             $breadcrumb = $currentFolder->path;
         } else {
             $currentFolder = null;
-            $folders = Folder::whereNull('parent_id')
-                ->visibleForModuleUser(self::MODULE, $user)
-                ->orderBy('name')
-                ->get();
+            $rootQuery = Folder::whereNull('parent_id')->where('module', self::MODULE);
+            $applyFolderVisibility($rootQuery);
+            $folders = $rootQuery->orderBy('name')->get();
             $breadcrumb = [];
         }
 

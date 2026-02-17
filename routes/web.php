@@ -36,6 +36,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/folders/documents/{document}/files/{file}/download', [FolderDocumentController::class, 'download'])->name('folders.documents.files.download');
         Route::get('/folders/documents/{document}/files/{file}/view', [FolderDocumentController::class, 'view'])->name('folders.documents.files.view');
         Route::get('/folders/{folder}/documents/download-zip', [FolderDocumentController::class, 'downloadZip'])->name('folders.documents.download-zip');
+        Route::get('/folders/{folder}/documents/export-excel', [FolderController::class, 'exportDocuments'])->name('folders.documents.export-excel');
         Route::resource('contracts', ContractController::class);
         Route::get('/contracts/{contract}/download', [ContractController::class, 'download'])->name('contracts.download');
         Route::get('/contracts/{contract}/view', [ContractController::class, 'viewPdf'])->name('contracts.view');

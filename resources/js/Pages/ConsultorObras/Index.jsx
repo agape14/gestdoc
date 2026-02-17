@@ -4,6 +4,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
+import ModuleFolderModal from '@/Components/ModuleFolderModal';
 
 const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
 
@@ -278,7 +279,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [showGrouped, setShowGrouped] = useState(true);
     const [showFolderModal, setShowFolderModal] = useState(false);
-    const [newFolderName, setNewFolderName] = useState('');
     const [editingFolder, setEditingFolder] = useState(null);
 
     const canEdit = (item) => {
@@ -327,7 +327,11 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     useEffect(() => {
         const timer = setTimeout(() => {
             const params = { ...filters, search, folder_id: filters.folder_id };
-            if (isAdmin) params.user_id = operatorId || undefined;
+            if (isAdmin) {
+                params.user_id = operatorId || undefined;
+                // Al cambiar de operador, volver a raíz para mostrar solo carpetas de ese operador
+                if (operatorId !== (filters.user_id || '')) params.folder_id = undefined;
+            }
             if (search !== (filters.search || '') || operatorId !== (filters.user_id || '')) {
                 router.get(route('consultor-obras.index'), params, { preserveState: true, preserveScroll: true, replace: true });
             }
@@ -336,12 +340,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     }, [search, operatorId]);
 
     const buildIndexParams = (extra = {}) => ({ ...filters, ...extra, folder_id: filters.folder_id });
-
-    const handleCreateFolder = (e) => {
-        e.preventDefault();
-        if (!newFolderName.trim()) return;
-        router.post(route('consultor-obras.folders.store'), { parent_id: currentFolder?.id || null, name: newFolderName.trim(), color: '#EAEAEA', description: '' }, { preserveScroll: true, onSuccess: () => { setShowFolderModal(false); setNewFolderName(''); } });
-    };
 
     const handleDelete = (id) => {
         Swal.fire({
@@ -663,28 +661,12 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                 )}
             </div>
 
-            {showFolderModal && (
-                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content border-0 shadow-lg rounded-4">
-                            <div className="modal-header border-0">
-                                <h5 className="modal-title fw-bold">Nueva Carpeta</h5>
-                                <button type="button" className="btn-close" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}></button>
-                            </div>
-                            <form onSubmit={handleCreateFolder}>
-                                <div className="modal-body">
-                                    <label className="form-label fw-semibold">Nombre de la carpeta</label>
-                                    <input type="text" className="form-control" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Ej: Proyectos 2025" required autoFocus />
-                                </div>
-                                <div className="modal-footer border-0">
-                                    <button type="button" className="btn btn-secondary" onClick={() => { setShowFolderModal(false); setNewFolderName(''); }}>Cancelar</button>
-                                    <button type="submit" className="btn btn-primary">Crear Carpeta</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ModuleFolderModal
+                show={showFolderModal}
+                onClose={() => setShowFolderModal(false)}
+                storeFolderRoute="consultor-obras.folders.store"
+                parentId={currentFolder?.id ?? null}
+            />
 
             {editingFolder && (
                 <ModuleFolderEditModal show={!!editingFolder} onClose={() => setEditingFolder(null)} folder={editingFolder} />
