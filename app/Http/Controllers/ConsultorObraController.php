@@ -56,7 +56,10 @@ class ConsultorObraController extends Controller
             $query->where(function($q) use ($request) {
                 $q->where('titulo', 'like', '%' . $request->search . '%')
                   ->orWhere('entidad', 'like', '%' . $request->search . '%')
-                  ->orWhere('especialidad', 'like', '%' . $request->search . '%');
+                  ->orWhere('especialidad', 'like', '%' . $request->search . '%')
+                  ->orWhere('objeto_contrato', 'like', '%' . $request->search . '%')
+                  ->orWhere('cui', 'like', '%' . $request->search . '%')
+                  ->orWhere('numero_resolucion', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -158,6 +161,21 @@ class ConsultorObraController extends Controller
             'duracion' => 'nullable|string|max:255',
             'modalidad' => 'nullable|string|max:255',
             'clasificacion' => 'nullable|string|max:500',
+            'objeto_contrato' => 'nullable|string|max:500',
+            'cui' => 'nullable|string|max:50',
+            'numero_contrato_os_comprobante' => 'nullable|string|max:100',
+            'fecha_contrato_cp' => 'nullable|date',
+            'fecha_conformidad' => 'nullable|date',
+            'experiencia_proveniente_de' => 'nullable|string|max:255',
+            'moneda' => 'nullable|string|max:20',
+            'monto_contratado' => 'nullable|numeric',
+            'consorciado' => 'nullable|boolean',
+            'porcentaje_participacion' => 'nullable|numeric|min:0|max:100',
+            'importe' => 'nullable|numeric',
+            'tipo_cambio_venta' => 'nullable|numeric',
+            'monto_facturado_acumulado' => 'nullable|numeric',
+            'numero_resolucion' => 'nullable|string|max:50',
+            'fecha_aprobacion' => 'nullable|date',
         ]);
 
         $data = $request->except(['contrato_archivo', 'tdr_archivo', 'personal_clave', 'producto_tecnico', 'actas_resoluciones', 'conformidad_tecnica', 'documentos']);
@@ -220,11 +238,61 @@ class ConsultorObraController extends Controller
             return redirect()->back()->with('error', 'No tienes permiso para editar este registro.');
         }
 
-        $validated = $request->validate([
+        $request->validate([
+            'titulo' => 'nullable|string|max:255',
+            'entidad' => 'nullable|string|max:255',
             'documento_delete_ids' => 'nullable|array',
             'documento_delete_ids.*' => 'integer|exists:consultor_obra_documentos,id',
+            'objeto_contrato' => 'nullable|string|max:500',
+            'cui' => 'nullable|string|max:50',
+            'numero_contrato_os_comprobante' => 'nullable|string|max:100',
+            'fecha_contrato_cp' => 'nullable|date',
+            'fecha_conformidad' => 'nullable|date',
+            'experiencia_proveniente_de' => 'nullable|string|max:255',
+            'moneda' => 'nullable|string|max:20',
+            'monto_contratado' => 'nullable|numeric',
+            'consorciado' => 'nullable|boolean',
+            'porcentaje_participacion' => 'nullable|numeric|min:0|max:100',
+            'importe' => 'nullable|numeric',
+            'tipo_cambio_venta' => 'nullable|numeric',
+            'monto_facturado_acumulado' => 'nullable|numeric',
+            'numero_resolucion' => 'nullable|string|max:50',
+            'fecha_aprobacion' => 'nullable|date',
         ]);
-        $data = $request->except(['contrato_archivo', 'tdr_archivo', 'personal_clave', 'producto_tecnico', 'actas_resoluciones', 'conformidad_tecnica', 'documentos', 'documento_delete_ids']);
+
+        $fillable = [
+            'titulo', 'entidad', 'categoria', 'especialidad', 'tipo_servicio', 'presupuesto',
+            'estado', 'duracion', 'modalidad', 'clasificacion',
+            'objeto_contrato', 'cui', 'numero_contrato_os_comprobante', 'fecha_contrato_cp',
+            'fecha_conformidad', 'experiencia_proveniente_de', 'moneda', 'monto_contratado',
+            'consorciado', 'porcentaje_participacion', 'importe', 'tipo_cambio_venta',
+            'monto_facturado_acumulado', 'numero_resolucion', 'fecha_aprobacion',
+        ];
+
+        // Tomar solo las claves fillable del request (FormData en POST)
+        $all = $request->all();
+        $data = array_intersect_key($all, array_flip($fillable));
+        if (empty($data)) {
+            foreach ($fillable as $key) {
+                $data[$key] = $request->input($key);
+            }
+        }
+        // Valores vacíos a null para numéricos y fechas
+        foreach (['presupuesto', 'monto_contratado', 'porcentaje_participacion', 'importe', 'tipo_cambio_venta', 'monto_facturado_acumulado'] as $key) {
+            if (isset($data[$key]) && $data[$key] === '') {
+                $data[$key] = null;
+            }
+        }
+        foreach (['fecha_contrato_cp', 'fecha_conformidad', 'fecha_aprobacion', 'clasificacion'] as $key) {
+            if (isset($data[$key]) && $data[$key] === '') {
+                $data[$key] = null;
+            }
+        }
+
+        // FormData envía consorciado como "true"/"false" o "1"/"0"
+        if (array_key_exists('consorciado', $data)) {
+            $data['consorciado'] = filter_var($data['consorciado'], FILTER_VALIDATE_BOOLEAN);
+        }
 
         // Helper to store file
         $handleFile = function($field, $path) use ($request, &$data, $consultor_obra) {
@@ -252,10 +320,11 @@ class ConsultorObraController extends Controller
             $data['producto_tecnico'] = array_merge($existing, $paths);
         }
 
-        $consultor_obra->update($data);
+        $consultor_obra->fill($data);
+        $consultor_obra->save();
         $this->syncDocumentosUpdate($request, $consultor_obra);
 
-        return redirect()->back()->with('success', 'Registro actualizado.');
+        return redirect()->route('consultor-obras.index')->with('success', 'Registro actualizado.');
     }
 
     private function syncDocumentosUpdate(Request $request, ConsultorObra $consultorObra): void

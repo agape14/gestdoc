@@ -5,6 +5,8 @@ import Swal from 'sweetalert2';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 
+const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
+
 const DetailForm = ({ item, onClose }) => {
     const { data, setData, post, processing, errors } = useForm({
         _method: 'PUT',
@@ -16,6 +18,21 @@ const DetailForm = ({ item, onClose }) => {
         tipo_servicio: item.tipo_servicio || '',
         presupuesto: item.presupuesto || '',
         estado: item.estado || 'En Curso',
+        objeto_contrato: item.objeto_contrato || '',
+        cui: item.cui || '',
+        numero_contrato_os_comprobante: item.numero_contrato_os_comprobante || '',
+        fecha_contrato_cp: fmtDate(item.fecha_contrato_cp),
+        fecha_conformidad: fmtDate(item.fecha_conformidad),
+        experiencia_proveniente_de: item.experiencia_proveniente_de || '',
+        moneda: item.moneda || 'Soles',
+        monto_contratado: item.monto_contratado ?? '',
+        consorciado: !!item.consorciado,
+        porcentaje_participacion: item.porcentaje_participacion ?? '',
+        importe: item.importe ?? '',
+        tipo_cambio_venta: item.tipo_cambio_venta ?? '',
+        monto_facturado_acumulado: item.monto_facturado_acumulado ?? '',
+        numero_resolucion: item.numero_resolucion || '',
+        fecha_aprobacion: fmtDate(item.fecha_aprobacion),
         contrato_archivo: null,
         tdr_archivo: null,
         personal_clave: null,
@@ -39,17 +56,104 @@ const DetailForm = ({ item, onClose }) => {
         <form onSubmit={submit} className="p-4 bg-white rounded-4 shadow-sm">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h5 className="fw-bold mb-0">Detalle de Consultoría</h5>
-                <button type="button" className="btn-close" onClick={onClose}></button>
+                <div className="d-flex gap-2 align-items-center">
+                    <Link href={route('consultor-obras.edit', item.id)} className="btn btn-sm btn-outline-primary">
+                        <i className="bi bi-pencil-square me-1"></i>
+                    </Link>
+                    <button type="button" className="btn-close" onClick={onClose}></button>
+                </div>
             </div>
 
             <div className="row g-3 mb-3">
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Proyecto</label>
+                <div className="col-md-12">
+                    <label className="form-label fw-bold small text-secondary">Proyecto / Título</label>
                     <input type="text" className="form-control" value={data.titulo} onChange={e => setData('titulo', e.target.value)} />
                 </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Entidad</label>
+                <div className="col-md-12">
+                    <label className="form-label fw-bold small text-secondary">CLIENTE</label>
                     <input type="text" className="form-control" value={data.entidad} onChange={e => setData('entidad', e.target.value)} />
+                </div>
+                <div className="col-md-12">
+                    <label className="form-label fw-bold small text-secondary">OBJETO DE CONTRATO</label>
+                    <textarea className="form-control" rows={2} value={data.objeto_contrato || ''} onChange={e => setData('objeto_contrato', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">CUI</label>
+                    <input type="text" className="form-control" value={data.cui || ''} onChange={e => setData('cui', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">N° CONTRATO / O/S / COMPROBANTE DE PAGO</label>
+                    <input type="text" className="form-control" value={data.numero_contrato_os_comprobante || ''} onChange={e => setData('numero_contrato_os_comprobante', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">FECHA DE CONTRATO O CP</label>
+                    <input type="date" className="form-control" value={data.fecha_contrato_cp || ''} onChange={e => setData('fecha_contrato_cp', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">FECHA DE LA CONFORMIDAD DE SER EL CASO</label>
+                    <input type="date" className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
+                </div>
+                <div className="col-md-12">
+                    <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
+                    <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">MONEDA</label>
+                    <select className="form-select" value={data.moneda || 'Soles'} onChange={e => setData('moneda', e.target.value)}>
+                        <option value="Soles">Soles</option>
+                        <option value="Dólares">Dólares</option>
+                    </select>
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">CONSORCIADO</label>
+                    <select className="form-select" value={data.consorciado ? '1' : '0'} onChange={e => setData('consorciado', e.target.value === '1')}>
+                        <option value="0">No</option>
+                        <option value="1">Sí</option>
+                    </select>
+                </div>
+                {data.consorciado && (
+                    <>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
+                            <div className="input-group">
+                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                <input type="number" step="0.01" className="form-control" value={data.monto_contratado ?? ''} onChange={e => setData('monto_contratado', e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">% DE PARTICIPACIÓN</label>
+                            <div className="input-group">
+                                <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion ?? ''} onChange={e => setData('porcentaje_participacion', e.target.value)} />
+                                <span className="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </>
+                )}
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">IMPORTE</label>
+                    <div className="input-group">
+                        <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                        <input type="number" step="0.01" className="form-control" value={data.importe ?? ''} onChange={e => setData('importe', e.target.value)} />
+                    </div>
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">TIPO DE CAMBIO VENTA</label>
+                    <input type="number" step="0.0001" className="form-control" value={data.tipo_cambio_venta ?? ''} onChange={e => setData('tipo_cambio_venta', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">MONTO FACTURADO ACUMULADO</label>
+                    <div className="input-group">
+                        <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                        <input type="number" step="0.01" className="form-control" value={data.monto_facturado_acumulado ?? ''} onChange={e => setData('monto_facturado_acumulado', e.target.value)} />
+                    </div>
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">N° DE RESOLUCIÓN</label>
+                    <input type="text" className="form-control" value={data.numero_resolucion || ''} onChange={e => setData('numero_resolucion', e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">FECHA DE APROBACIÓN</label>
+                    <input type="date" className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Modalidad</label>
@@ -64,8 +168,8 @@ const DetailForm = ({ item, onClose }) => {
                     <input type="text" className="form-control" value={data.especialidad} onChange={e => setData('especialidad', e.target.value)} />
                 </div>
                 <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Tipo</label>
-                    <input type="text" className="form-control" placeholder="Elaboración de expediente técnico, evaluación, liquidación, etc" value={data.tipo_servicio} onChange={e => setData('tipo_servicio', e.target.value)} />
+                    <label className="form-label fw-bold small text-secondary">Tipo de servicio</label>
+                    <input type="text" className="form-control" value={data.tipo_servicio} onChange={e => setData('tipo_servicio', e.target.value)} />
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Presupuesto</label>
@@ -73,6 +177,13 @@ const DetailForm = ({ item, onClose }) => {
                         <span className="input-group-text">S/</span>
                         <input type="number" step="0.01" className="form-control" value={data.presupuesto} onChange={e => setData('presupuesto', e.target.value)} />
                     </div>
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-bold small text-secondary">Estado</label>
+                    <select className="form-select" value={data.estado} onChange={e => setData('estado', e.target.value)}>
+                        <option value="En Curso">En Curso</option>
+                        <option value="Finalizado">Finalizado</option>
+                    </select>
                 </div>
             </div>
 
@@ -140,9 +251,9 @@ const DetailForm = ({ item, onClose }) => {
             </div>
 
             <div className="d-flex justify-content-between align-items-center mt-3">
-                <a href={route('licitaciones.index')} className="btn btn-link text-decoration-none btn-sm">
-                    <i className="bi bi-box-arrow-up-right me-1"></i> Ver Proceso (Licitación)
-                </a>
+                <Link href={route('consultor-obras.edit', item.id)} className="btn btn-link text-decoration-none btn-sm">
+                    <i className="bi bi-pencil-square me-1"></i> Editar formulario completo
+                </Link>
                 <div className="d-flex gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
                     <button type="submit" disabled={processing} className="btn btn-primary">
@@ -165,7 +276,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     const isAdmin = currentUserRole === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
-    const [expandedRow, setExpandedRow] = useState(null);
     const [showGrouped, setShowGrouped] = useState(true);
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
@@ -370,16 +480,20 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                     </button>
                 </div>
                 <div className="table-responsive overflow-x-auto min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '720px' }}>
+                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '1100px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
                                 <th scope="col" className="ps-4 py-3">PROYECTO</th>
-                                <th scope="col" className="py-3">ENTIDAD</th>
+                                <th scope="col" className="py-3">CLIENTE</th>
+                                <th scope="col" className="py-3">CUI</th>
                                 <th scope="col" className="py-3">ESPECIALIDAD</th>
                                 <th scope="col" className="py-3">TIPO</th>
                                 <th scope="col" className="py-3">PRESUPUESTO</th>
+                                <th scope="col" className="py-3">IMPORTE</th>
+                                <th scope="col" className="py-3">N° RESOL.</th>
+                                <th scope="col" className="py-3">F. APROB.</th>
                                 <th scope="col" className="py-3">ESTADO</th>
-                                <th scope="col" className="py-3">DURACION</th>
+                                <th scope="col" className="py-3">DURACIÓN</th>
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>
@@ -388,25 +502,27 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                 Object.entries(grouped).map(([especialidad, items]) => (
                                     <React.Fragment key={especialidad}>
                                         <tr className="bg-light">
-                                            <td colSpan="8" className="ps-4 py-2 fw-bold text-primary">
+                                            <td colSpan="12" className="ps-4 py-2 fw-bold text-primary">
                                                 <i className="bi bi-folder-fill me-2"></i>
                                                 {especialidad || 'Sin Especialidad'} ({items.length} {items.length === 1 ? 'registro' : 'registros'})
                                             </td>
                                         </tr>
                                         {items.map(consultoria => (
                                             <React.Fragment key={consultoria.id}>
-                                                <tr
-                                                    className="cursor-pointer"
-                                                    onClick={() => setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id)}
-                                                    style={{ backgroundColor: expandedRow === consultoria.id ? 'var(--bs-light)' : 'transparent' }}
-                                                >
+                                                <tr>
                                                     <td className="ps-4 py-3 fw-medium text-body">{consultoria.titulo}</td>
                                                     <td className="text-secondary">{consultoria.entidad}</td>
+                                                    <td className="text-secondary">{consultoria.cui || '-'}</td>
                                                     <td className="text-secondary">{consultoria.especialidad || '-'}</td>
                                                     <td className="text-secondary">{consultoria.tipo_servicio || '-'}</td>
                                                     <td className="text-secondary fw-bold text-body">
                                                         S/ {parseFloat(consultoria.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </td>
+                                                    <td className="text-secondary fw-bold text-body">
+                                                        S/ {parseFloat(consultoria.importe || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="text-secondary">{consultoria.numero_resolucion || '-'}</td>
+                                                    <td className="text-secondary">{consultoria.fecha_aprobacion ? (typeof consultoria.fecha_aprobacion === 'string' ? consultoria.fecha_aprobacion.substring(0, 10) : consultoria.fecha_aprobacion) : '-'}</td>
                                                     <td>
                                                         <span className={`badge bg-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${consultoria.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
                                                             {consultoria.estado}
@@ -420,15 +536,13 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                             </button>
                                                         ) : (
                                                             <>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id);
-                                                                    }}
+                                                                <Link
+                                                                    href={route('consultor-obras.edit', consultoria.id)}
                                                                     className="btn btn-sm btn-outline-primary me-1"
+                                                                    onClick={(e) => e.stopPropagation()}
                                                                 >
-                                                                    <i className={`bi bi-chevron-${expandedRow === consultoria.id ? 'up' : 'down'}`}></i>
-                                                                </button>
+                                                                    <i className="bi bi-pencil-square me-1"></i>
+                                                                </Link>
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
@@ -454,15 +568,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                         )}
                                                     </td>
                                                 </tr>
-                                                {expandedRow === consultoria.id && (
-                                                    <tr>
-                                                        <td colSpan="8" className="p-0 border-0">
-                                                            <div className="p-3 bg-light">
-                                                                <DetailForm item={consultoria} onClose={() => setExpandedRow(null)} />
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
                                             </React.Fragment>
                                         ))}
                                     </React.Fragment>
@@ -470,18 +575,20 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                             ) : allConsultorias.length > 0 ? (
                                 allConsultorias.map(consultoria => (
                                     <React.Fragment key={consultoria.id}>
-                                        <tr
-                                            className="cursor-pointer"
-                                            onClick={() => setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id)}
-                                            style={{ backgroundColor: expandedRow === consultoria.id ? 'var(--bs-light)' : 'transparent' }}
-                                        >
+                                        <tr>
                                             <td className="ps-4 py-3 fw-medium text-body">{consultoria.titulo}</td>
                                             <td className="text-secondary">{consultoria.entidad}</td>
+                                            <td className="text-secondary">{consultoria.cui || '-'}</td>
                                             <td className="text-secondary">{consultoria.especialidad || '-'}</td>
                                             <td className="text-secondary">{consultoria.tipo_servicio || '-'}</td>
                                             <td className="text-secondary fw-bold text-body">
                                                 S/ {parseFloat(consultoria.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
+                                            <td className="text-secondary fw-bold text-body">
+                                                S/ {parseFloat(consultoria.importe || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="text-secondary">{consultoria.numero_resolucion || '-'}</td>
+                                            <td className="text-secondary">{consultoria.fecha_aprobacion ? (typeof consultoria.fecha_aprobacion === 'string' ? consultoria.fecha_aprobacion.substring(0, 10) : consultoria.fecha_aprobacion) : '-'}</td>
                                             <td>
                                                 <span className={`badge bg-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${consultoria.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
                                                     {consultoria.estado}
@@ -495,15 +602,13 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                     </button>
                                                 ) : (
                                                     <>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setExpandedRow(expandedRow === consultoria.id ? null : consultoria.id);
-                                                            }}
+                                                        <Link
+                                                            href={route('consultor-obras.edit', consultoria.id)}
                                                             className="btn btn-sm btn-outline-primary me-1"
+                                                            onClick={(e) => e.stopPropagation()}
                                                         >
-                                                            <i className={`bi bi-chevron-${expandedRow === consultoria.id ? 'up' : 'down'}`}></i>
-                                                        </button>
+                                                            <i className="bi bi-pencil-square me-1"></i>
+                                                        </Link>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -529,20 +634,11 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                 )}
                                             </td>
                                         </tr>
-                                        {expandedRow === consultoria.id && (
-                                            <tr>
-                                                <td colSpan="8" className="p-0 border-0">
-                                                    <div className="p-3 bg-light">
-                                                        <DetailForm item={consultoria} onClose={() => setExpandedRow(null)} />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
                                     </React.Fragment>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="8" className="text-center py-5 text-muted">No se encontraron registros.</td>
+                                    <td colSpan="12" className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>

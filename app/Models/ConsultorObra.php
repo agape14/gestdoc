@@ -10,7 +10,11 @@ class ConsultorObra extends Model
         'titulo', 'entidad', 'especialidad', 'tipo_servicio', 'presupuesto',
         'estado', 'duracion', 'modalidad', 'contrato_archivo', 'tdr_archivo',
         'personal_clave', 'producto_tecnico', 'actas_resoluciones',
-        'conformidad_tecnica', 'categoria', 'user_id', 'anulado', 'folder_id', 'clasificacion'
+        'conformidad_tecnica', 'categoria', 'user_id', 'anulado', 'folder_id', 'clasificacion',
+        'objeto_contrato', 'cui', 'numero_contrato_os_comprobante', 'fecha_contrato_cp',
+        'fecha_conformidad', 'experiencia_proveniente_de', 'moneda', 'monto_contratado',
+        'consorciado', 'porcentaje_participacion', 'importe', 'tipo_cambio_venta',
+        'monto_facturado_acumulado', 'numero_resolucion', 'fecha_aprobacion',
     ];
 
     public function documentos()
@@ -26,6 +30,10 @@ class ConsultorObra extends Model
     protected $casts = [
         'producto_tecnico' => 'array',
         'anulado' => 'boolean',
+        'consorciado' => 'boolean',
+        'fecha_contrato_cp' => 'date',
+        'fecha_conformidad' => 'date',
+        'fecha_aprobacion' => 'date',
     ];
 
     public function scopeActive($query)

@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 
 export default function Edit({ consultorObra }) {
     const existingDocs = consultorObra.documentos || [];
-    const { data, setData, put, processing, errors } = useForm({
+    const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
+    const [sending, setSending] = useState(false);
+
+    const { data, setData, errors } = useForm({
         titulo: consultorObra.titulo || '',
         entidad: consultorObra.entidad || '',
         categoria: consultorObra.categoria || 'Privada',
@@ -16,6 +19,21 @@ export default function Edit({ consultorObra }) {
         duracion: consultorObra.duracion || '',
         modalidad: consultorObra.modalidad || '',
         clasificacion: consultorObra.clasificacion || '',
+        objeto_contrato: consultorObra.objeto_contrato || '',
+        cui: consultorObra.cui || '',
+        numero_contrato_os_comprobante: consultorObra.numero_contrato_os_comprobante || '',
+        fecha_contrato_cp: fmtDate(consultorObra.fecha_contrato_cp),
+        fecha_conformidad: fmtDate(consultorObra.fecha_conformidad),
+        experiencia_proveniente_de: consultorObra.experiencia_proveniente_de || '',
+        moneda: consultorObra.moneda || 'Soles',
+        monto_contratado: consultorObra.monto_contratado ?? '',
+        consorciado: !!consultorObra.consorciado,
+        porcentaje_participacion: consultorObra.porcentaje_participacion ?? '',
+        importe: consultorObra.importe ?? '',
+        tipo_cambio_venta: consultorObra.tipo_cambio_venta ?? '',
+        monto_facturado_acumulado: consultorObra.monto_facturado_acumulado ?? '',
+        numero_resolucion: consultorObra.numero_resolucion || '',
+        fecha_aprobacion: fmtDate(consultorObra.fecha_aprobacion),
         documento_delete_ids: [],
         documentos: [],
     });
@@ -40,7 +58,12 @@ export default function Edit({ consultorObra }) {
 
     const submit = (e) => {
         e.preventDefault();
-        put(route('consultor-obras.update', consultorObra.id), { forceFormData: true });
+        setSending(true);
+        // POST a ruta explícita para que Laravel parsee el FormData (PUT + multipart no rellena $request->input)
+        router.post(route('consultor-obras.update.post', consultorObra.id), data, {
+            forceFormData: true,
+            onFinish: () => setSending(false),
+        });
     };
 
     const toDelete = data.documento_delete_ids || [];
@@ -61,10 +84,92 @@ export default function Edit({ consultorObra }) {
                             <input type="text" className={`form-control ${errors.titulo ? 'is-invalid' : ''}`} value={data.titulo} onChange={e => setData('titulo', e.target.value)} />
                             {errors.titulo && <div className="invalid-feedback">{errors.titulo}</div>}
                         </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Entidad</label>
+                        <div className="col-md-12">
+                            <label className="form-label fw-bold small text-secondary">CLIENTE</label>
                             <input type="text" className={`form-control ${errors.entidad ? 'is-invalid' : ''}`} value={data.entidad} onChange={e => setData('entidad', e.target.value)} />
                             {errors.entidad && <div className="invalid-feedback">{errors.entidad}</div>}
+                        </div>
+                        <div className="col-md-12">
+                            <label className="form-label fw-bold small text-secondary">OBJETO DE CONTRATO</label>
+                            <textarea className="form-control" rows={2} value={data.objeto_contrato || ''} onChange={e => setData('objeto_contrato', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">CUI</label>
+                            <input type="text" className="form-control" value={data.cui || ''} onChange={e => setData('cui', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">N° CONTRATO / O/S / COMPROBANTE DE PAGO</label>
+                            <input type="text" className="form-control" value={data.numero_contrato_os_comprobante || ''} onChange={e => setData('numero_contrato_os_comprobante', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">FECHA DE CONTRATO O CP</label>
+                            <input type="date" className="form-control" value={data.fecha_contrato_cp || ''} onChange={e => setData('fecha_contrato_cp', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">FECHA DE LA CONFORMIDAD DE SER EL CASO</label>
+                            <input type="date" className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
+                        </div>
+                        <div className="col-md-12">
+                            <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
+                            <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">MONEDA</label>
+                            <select className="form-select" value={data.moneda || 'Soles'} onChange={e => setData('moneda', e.target.value)}>
+                                <option value="Soles">Soles</option>
+                                <option value="Dólares">Dólares</option>
+                            </select>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">CONSORCIADO</label>
+                            <select className="form-select" value={data.consorciado ? '1' : '0'} onChange={e => setData('consorciado', e.target.value === '1')}>
+                                <option value="0">No</option>
+                                <option value="1">Sí</option>
+                            </select>
+                        </div>
+                        {data.consorciado && (
+                            <>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
+                                    <div className="input-group">
+                                        <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                        <input type="number" step="0.01" className="form-control" value={data.monto_contratado ?? ''} onChange={e => setData('monto_contratado', e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-bold small text-secondary">% DE PARTICIPACIÓN</label>
+                                    <div className="input-group">
+                                        <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion ?? ''} onChange={e => setData('porcentaje_participacion', e.target.value)} />
+                                        <span className="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">IMPORTE</label>
+                            <div className="input-group">
+                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                <input type="number" step="0.01" className="form-control" value={data.importe ?? ''} onChange={e => setData('importe', e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">TIPO DE CAMBIO VENTA</label>
+                            <input type="number" step="0.0001" className="form-control" value={data.tipo_cambio_venta ?? ''} onChange={e => setData('tipo_cambio_venta', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">MONTO FACTURADO ACUMULADO</label>
+                            <div className="input-group">
+                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                <input type="number" step="0.01" className="form-control" value={data.monto_facturado_acumulado ?? ''} onChange={e => setData('monto_facturado_acumulado', e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">N° DE RESOLUCIÓN</label>
+                            <input type="text" className="form-control" value={data.numero_resolucion || ''} onChange={e => setData('numero_resolucion', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">FECHA DE APROBACIÓN</label>
+                            <input type="date" className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">Categoría</label>
@@ -152,7 +257,7 @@ export default function Edit({ consultorObra }) {
 
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">
                         <Link href={route('consultor-obras.index')} className="btn btn-outline-secondary">Cancelar</Link>
-                        <SubmitButton processing={processing} icon="bi-save" className="px-5">Actualizar</SubmitButton>
+                        <SubmitButton processing={sending} icon="bi-save" className="px-5">Actualizar</SubmitButton>
                     </div>
                 </form>
             </div>

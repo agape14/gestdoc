@@ -16,6 +16,21 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
         modalidad: '',
         clasificacion: breadcrumbLabel || '',
         folder_id: folderId || '',
+        objeto_contrato: '',
+        cui: '',
+        numero_contrato_os_comprobante: '',
+        fecha_contrato_cp: '',
+        fecha_conformidad: '',
+        experiencia_proveniente_de: '',
+        moneda: 'Soles',
+        monto_contratado: '',
+        consorciado: false,
+        porcentaje_participacion: '',
+        importe: '',
+        tipo_cambio_venta: '',
+        monto_facturado_acumulado: '',
+        numero_resolucion: '',
+        fecha_aprobacion: '',
         documentos: [
             { nombre: 'Contrato', archivo: null },
             { nombre: 'TDR', archivo: null },
@@ -66,10 +81,93 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                             <input type="text" className={`form-control ${errors.titulo ? 'is-invalid' : ''}`} value={data.titulo} onChange={e => setData('titulo', e.target.value)} />
                             {errors.titulo && <div className="invalid-feedback">{errors.titulo}</div>}
                         </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Entidad</label>
-                            <input type="text" className={`form-control ${errors.entidad ? 'is-invalid' : ''}`} value={data.entidad} onChange={e => setData('entidad', e.target.value)} />
+                        <div className="col-md-12">
+                            <label className="form-label fw-bold small text-secondary">CLIENTE</label>
+                            <input type="text" className={`form-control ${errors.entidad ? 'is-invalid' : ''}`} value={data.entidad} onChange={e => setData('entidad', e.target.value)} placeholder="Entidad cliente" />
                             {errors.entidad && <div className="invalid-feedback">{errors.entidad}</div>}
+                        </div>
+                        <div className="col-md-12">
+                            <label className="form-label fw-bold small text-secondary">OBJETO DE CONTRATO</label>
+                            <textarea className="form-control" rows={2} value={data.objeto_contrato || ''} onChange={e => setData('objeto_contrato', e.target.value)} placeholder="Descripción del objeto del contrato" />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">CUI</label>
+                            <input type="text" className="form-control" value={data.cui || ''} onChange={e => setData('cui', e.target.value)} placeholder="Código único" />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">N° CONTRATO / O/S / COMPROBANTE DE PAGO</label>
+                            <input type="text" className="form-control" value={data.numero_contrato_os_comprobante || ''} onChange={e => setData('numero_contrato_os_comprobante', e.target.value)} placeholder="Ej: 21/2018, S/N" />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">FECHA DE CONTRATO O CP</label>
+                            <input type="date" className="form-control" value={data.fecha_contrato_cp || ''} onChange={e => setData('fecha_contrato_cp', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">FECHA DE LA CONFORMIDAD DE SER EL CASO</label>
+                            <input type="date" className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
+                        </div>
+                        <div className="col-md-12">
+                            <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
+                            <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">MONEDA</label>
+                            <select className="form-select" value={data.moneda || 'Soles'} onChange={e => setData('moneda', e.target.value)}>
+                                <option value="Soles">Soles</option>
+                                <option value="Dólares">Dólares</option>
+                            </select>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">CONSORCIADO</label>
+                            <select className="form-select" value={data.consorciado ? '1' : '0'} onChange={e => setData('consorciado', e.target.value === '1')}>
+                                <option value="0">No</option>
+                                <option value="1">Sí</option>
+                            </select>
+                            <small className="text-muted">Si es consorcio, aplique Monto contratado y % de participación</small>
+                        </div>
+                        {data.consorciado && (
+                            <>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
+                                    <div className="input-group">
+                                        <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                        <input type="number" step="0.01" className="form-control" value={data.monto_contratado || ''} onChange={e => setData('monto_contratado', e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-bold small text-secondary">% DE PARTICIPACIÓN</label>
+                                    <div className="input-group">
+                                        <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion || ''} onChange={e => setData('porcentaje_participacion', e.target.value)} />
+                                        <span className="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">IMPORTE</label>
+                            <div className="input-group">
+                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                <input type="number" step="0.01" className="form-control" value={data.importe || ''} onChange={e => setData('importe', e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">TIPO DE CAMBIO VENTA</label>
+                            <input type="number" step="0.0001" className="form-control" value={data.tipo_cambio_venta || ''} onChange={e => setData('tipo_cambio_venta', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">MONTO FACTURADO ACUMULADO</label>
+                            <div className="input-group">
+                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                <input type="number" step="0.01" className="form-control" value={data.monto_facturado_acumulado || ''} onChange={e => setData('monto_facturado_acumulado', e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">N° DE RESOLUCIÓN</label>
+                            <input type="text" className="form-control" value={data.numero_resolucion || ''} onChange={e => setData('numero_resolucion', e.target.value)} placeholder="Ej: 185-2025" />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">FECHA DE APROBACIÓN</label>
+                            <input type="date" className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">Categoría</label>
@@ -84,7 +182,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">Tipo de servicio</label>
-                            <input type="text" className="form-control" placeholder="Elaboración de expediente técnico, evaluación, etc." value={data.tipo_servicio} onChange={e => setData('tipo_servicio', e.target.value)} />
+                            <input type="text" className="form-control" value={data.tipo_servicio} onChange={e => setData('tipo_servicio', e.target.value)} />
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">Presupuesto (S/)</label>
@@ -110,7 +208,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                         </div>
                         <div className="col-md-12">
                             <label className="form-label fw-bold small text-secondary">Tipo / Clasificación (miga de pan)</label>
-                            <input type="text" className="form-control bg-light" placeholder="Se rellena con la ruta de la carpeta" value={data.clasificacion || ''} readOnly />
+                            <input type="text" className="form-control bg-light" value={data.clasificacion || ''} readOnly />
                         </div>
                     </div>
 

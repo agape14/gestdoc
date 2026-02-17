@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/consultor-obras/folders', [\App\Http\Controllers\ConsultorObraController::class, 'storeFolder'])->name('consultor-obras.folders.store');
         Route::get('/consultor-obras/export', [\App\Http\Controllers\ConsultorObraController::class, 'export'])->name('consultor-obras.export');
         Route::get('/consultor-obras/{consultorObra}/export', [\App\Http\Controllers\ConsultorObraController::class, 'exportProject'])->name('consultor-obras.export-project');
+        Route::post('/consultor-obras/{consultor_obra}/update', [\App\Http\Controllers\ConsultorObraController::class, 'update'])->name('consultor-obras.update.post');
         Route::resource('consultor-obras', \App\Http\Controllers\ConsultorObraController::class)->parameters(['consultor-obras' => 'consultorObra']);
         Route::post('/ejecutor-obra/folders', [\App\Http\Controllers\EjecutorObraController::class, 'storeFolder'])->name('ejecutor-obra.folders.store');
         Route::get('/ejecutor-obra/export', [\App\Http\Controllers\EjecutorObraController::class, 'export'])->name('ejecutor-obra.export');
