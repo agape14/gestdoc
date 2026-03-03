@@ -23,6 +23,6 @@ if (!function_exists('storage_url_for_path')) {
             return null;
         }
 
-        return Storage::disk(storage_disk_for_path($path))->url($path);
+        return Storage::disk(\storage_disk_for_path($path))->url($path);
     }
 }

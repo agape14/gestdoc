@@ -206,10 +206,15 @@ class FolderController extends Controller
             'color' => 'nullable|string|max:9',
             'icon' => 'nullable|string|max:50',
             'description' => 'nullable|string|max:500',
+            'return_url' => 'nullable|string|max:2048',
         ]);
 
-        $folder->update($validated);
+        $folder->update(\Illuminate\Support\Arr::except($validated, ['return_url']));
 
+        $returnUrl = $request->input('return_url');
+        if ($returnUrl && \Illuminate\Support\Str::startsWith($returnUrl, url('/'))) {
+            return redirect($returnUrl)->with('success', 'Carpeta actualizada exitosamente.');
+        }
         return redirect()->back()->with('success', 'Carpeta actualizada exitosamente.');
     }
 

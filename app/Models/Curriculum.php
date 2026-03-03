@@ -13,7 +13,7 @@ class Curriculum extends Model
 
     public function getArchivoCvUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->archivo_cv);
+        return \storage_url_for_path($this->archivo_cv);
     }
 
     protected function casts(): array

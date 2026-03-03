@@ -14,7 +14,7 @@ class PlantillaIng extends Model
 
     public function getArchivoUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->archivo);
+        return \storage_url_for_path($this->archivo);
     }
 
     protected function casts(): array

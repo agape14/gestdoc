@@ -43,33 +43,33 @@ class ConsultorObra extends Model
 
     public function getContratoArchivoUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->contrato_archivo);
+        return \storage_url_for_path($this->contrato_archivo);
     }
 
     public function getTdrArchivoUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->tdr_archivo);
+        return \storage_url_for_path($this->tdr_archivo);
     }
 
     public function getPersonalClaveUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->personal_clave);
+        return \storage_url_for_path($this->personal_clave);
     }
 
     public function getActasResolucionesUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->actas_resoluciones);
+        return \storage_url_for_path($this->actas_resoluciones);
     }
 
     public function getConformidadTecnicaUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->conformidad_tecnica);
+        return \storage_url_for_path($this->conformidad_tecnica);
     }
 
     public function getProductoTecnicoUrlsAttribute(): array
     {
         $paths = is_array($this->producto_tecnico) ? $this->producto_tecnico : [];
-        return array_map(fn ($p) => storage_url_for_path($p), $paths);
+        return array_map(fn ($p) => \storage_url_for_path($p), $paths);
     }
 
     public function scopeActive($query)

@@ -15,7 +15,7 @@ class EspecialistaConsultoria extends Model
 
     public function getDocumentoUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->documento);
+        return \storage_url_for_path($this->documento);
     }
 
     public function folder()

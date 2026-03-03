@@ -56,6 +56,7 @@ export default function ModuleFolderEditModal({ show, onClose, folder }) {
             color: toHex(data.color),
             icon: data.icon,
             description: data.description,
+            return_url: typeof window !== 'undefined' ? window.location.href : '',
         };
         router.put(route('folders.update', folder.id), payload, {
             preserveScroll: true,
@@ -63,6 +64,7 @@ export default function ModuleFolderEditModal({ show, onClose, folder }) {
                 onClose();
                 reset();
                 setIsSubmitting(false);
+                router.reload(); // Refrescar datos en producción para ver la carpeta actualizada
             },
             onError: () => setIsSubmitting(false),
             onFinish: () => setIsSubmitting(false),

@@ -14,7 +14,7 @@ class Inmobiliaria extends Model
 
     public function getImagenUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->imagen);
+        return \storage_url_for_path($this->imagen);
     }
 
     protected function casts(): array

@@ -30,7 +30,7 @@ class Contrato extends Model
 
     public function getFilePathUrlAttribute(): ?string
     {
-        return storage_url_for_path($this->file_path);
+        return \storage_url_for_path($this->file_path);
     }
 
     protected $casts = [

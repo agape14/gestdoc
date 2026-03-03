@@ -17,6 +17,6 @@ class ProveedorServicioDocumento extends Model
 
     public function getUrlAttribute(): string
     {
-        return storage_url_for_path($this->file_path) ?? '';
+        return \storage_url_for_path($this->file_path) ?? '';
     }
 }

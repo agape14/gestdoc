@@ -28,6 +28,6 @@ class DocumentFile extends Model
 
     public function getUrlAttribute(): string
     {
-        return storage_url_for_path($this->path) ?? '';
+        return \storage_url_for_path($this->path) ?? '';
     }
 }

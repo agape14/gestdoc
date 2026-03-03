@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
 
 export default function FolderModal({ show, onClose, folder = null, parentId = null }) {
     const isEditing = !!folder;
@@ -37,11 +37,18 @@ export default function FolderModal({ show, onClose, folder = null, parentId = n
         e.preventDefault();
 
         if (isEditing) {
-            put(route('folders.update', folder.id), {
+            router.put(route('folders.update', folder.id), {
+                name: data.name,
+                color: data.color,
+                icon: data.icon,
+                description: data.description,
+                return_url: typeof window !== 'undefined' ? window.location.href : '',
+            }, {
                 preserveScroll: true,
                 onSuccess: () => {
                     onClose();
                     reset();
+                    router.reload();
                 },
             });
         } else {
