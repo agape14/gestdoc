@@ -133,9 +133,9 @@ export default function ModuleIndex({ title, description, items, columns, create
         setShowDocumentsModal(true);
     };
 
-    const openPdfInModal = (label, path) => {
+    const openPdfInModal = (label, path, url) => {
         setPdfModalTitle(`${breadcrumbTitle} - ${label}`);
-        setPdfModalUrl(`/storage/${path}`);
+        setPdfModalUrl(url || (path ? `/storage/${path}` : ''));
         setShowPdfModal(true);
     };
 
@@ -456,7 +456,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                     {listDocumentLinks.map((doc, idx) => (
                                         <li key={idx} className="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                                             <span>{doc.label}</span>
-                                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setShowDocumentsModal(false); openPdfInModal(doc.label, doc.path); }}>
+                                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setShowDocumentsModal(false); openPdfInModal(doc.label, doc.path, doc.url); }}>
                                                 <i className="bi bi-file-earmark-pdf me-1"></i> Ver PDF
                                             </button>
                                         </li>

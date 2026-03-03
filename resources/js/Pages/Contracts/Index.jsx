@@ -42,8 +42,8 @@ export default function Index({ contratos, filters, flash }) {
         });
     };
 
-    const handleViewPdf = (pdfPath, title) => {
-        setSelectedPdfUrl(`/storage/${pdfPath}`);
+    const handleViewPdf = (pdfPath, title, url) => {
+        setSelectedPdfUrl(url || (pdfPath ? `/storage/${pdfPath}` : ''));
         setSelectedPdfTitle(title || 'Ver Contrato');
         setShowPdfModal(true);
     };
@@ -152,9 +152,9 @@ export default function Index({ contratos, filters, flash }) {
                                             })() : '-'}
                                         </td>
                                         <td>
-                                            {contrato.archivo_path ? (
+                                            {(contrato.file_path || contrato.archivo_path) ? (
                                                 <button 
-                                                    onClick={() => handleViewPdf(contrato.archivo_path, contrato.licitacion?.titulo || 'Contrato')}
+                                                    onClick={() => handleViewPdf(contrato.file_path || contrato.archivo_path, contrato.licitacion?.titulo || 'Contrato', contrato.file_path_url)}
                                                     className="btn btn-sm btn-outline-danger border-0 text-danger text-decoration-none p-0"
                                                     title="Ver PDF"
                                                 >

@@ -30,12 +30,48 @@ class ProveedorServicio extends Model
         return $query->where('anulado', false);
     }
 
+    protected $appends = [
+        'contrato_archivo_url', 'tdr_archivo_url', 'panel_fotografico_url',
+        'actas_resoluciones_url', 'conformidad_tecnica_url', 'informes_tecnicos_urls',
+    ];
+
     protected $casts = [
         'plantel_tecnico_aplica' => 'boolean',
         'valorizaciones_aplica' => 'boolean',
         'liquidacion_aplica' => 'boolean',
         'cargos' => 'array',
     ];
+
+    public function getContratoArchivoUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->contrato_archivo);
+    }
+
+    public function getTdrArchivoUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->tdr_archivo);
+    }
+
+    public function getPanelFotograficoUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->panel_fotografico);
+    }
+
+    public function getActasResolucionesUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->actas_resoluciones);
+    }
+
+    public function getConformidadTecnicaUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->conformidad_tecnica);
+    }
+
+    public function getInformesTecnicosUrlsAttribute(): array
+    {
+        $paths = is_array($this->informes_tecnicos) ? $this->informes_tecnicos : [];
+        return array_map(fn ($p) => storage_url_for_path($p), $paths);
+    }
 
     public function scopeForUser($query, $user)
     {

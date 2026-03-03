@@ -9,6 +9,13 @@ class Curriculum extends Model
     protected $table = 'curricula'; // Laravel default might be curricula, but let's be safe. Plural of curriculum is curricula.
     protected $fillable = ['user_id', 'nombre_candidato', 'especialidad', 'archivo_cv', 'anulado', 'folder_id'];
 
+    protected $appends = ['archivo_cv_url'];
+
+    public function getArchivoCvUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->archivo_cv);
+    }
+
     protected function casts(): array
     {
         return ['anulado' => 'boolean'];

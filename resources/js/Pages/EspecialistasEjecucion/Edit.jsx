@@ -54,7 +54,7 @@ export default function Edit({ especialista }) {
                             <label className="form-label fw-medium">Documento (CV/Brochure)</label>
                             <input type="file" className="form-control" accept=".pdf,.doc,.docx" onChange={e => setData('documento', e.target.files[0])} />
                             {especialista.documento && (
-                                <a href={`/storage/${especialista.documento}`} target="_blank" className="small text-primary mt-1 d-block">
+                                <a href={especialista.documento_url || `/storage/${especialista.documento}`} target="_blank" className="small text-primary mt-1 d-block">
                                     <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                                 </a>
                             )}

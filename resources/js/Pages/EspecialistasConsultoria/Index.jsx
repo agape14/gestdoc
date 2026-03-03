@@ -2,7 +2,7 @@ import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 
 export default function Index({ especialistas, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [] }) {
-    const getDocumentLinks = (item) => (item.documento ? [{ label: 'Documento', path: item.documento }] : []);
+    const getDocumentLinks = (item) => (item.documento ? [{ label: 'Documento', path: item.documento, url: item.documento_url }] : []);
 
     const columns = [
         { header: 'NOMBRE / RAZÓN SOCIAL', accessor: 'nombre' },

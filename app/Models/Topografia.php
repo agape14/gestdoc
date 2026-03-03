@@ -10,6 +10,13 @@ class Topografia extends Model
         'titulo', 'descripcion', 'archivo', 'user_id', 'anulado', 'folder_id'
     ];
 
+    protected $appends = ['archivo_url'];
+
+    public function getArchivoUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->archivo);
+    }
+
     protected function casts(): array
     {
         return ['anulado' => 'boolean'];

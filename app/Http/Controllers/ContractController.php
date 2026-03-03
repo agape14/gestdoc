@@ -75,7 +75,7 @@ class ContractController extends Controller
 
         $path = null;
         if ($request->hasFile('file')) {
-            $path = $request->file('file')->store('contratos', 'public');
+            $path = $request->file('file')->store('expedientes/contratos', 'r2');
         }
 
         $contrato = Contrato::create([
@@ -131,9 +131,9 @@ class ContractController extends Controller
         // Update Contract File if new one uploaded
         if ($request->hasFile('file')) {
             if ($contract->file_path) {
-                Storage::disk('public')->delete($contract->file_path);
+                Storage::disk(storage_disk_for_path($contract->file_path))->delete($contract->file_path);
             }
-            $validated['file_path'] = $request->file('file')->store('contratos', 'public');
+            $validated['file_path'] = $request->file('file')->store('expedientes/contratos', 'r2');
         }
 
         $contract->update($validated);
@@ -147,7 +147,7 @@ class ContractController extends Controller
         $folderId = $contract->folder_id;
 
         if ($contract->file_path) {
-            Storage::disk('public')->delete($contract->file_path);
+            Storage::disk(storage_disk_for_path($contract->file_path))->delete($contract->file_path);
         }
 
         $contract->delete();
@@ -161,11 +161,14 @@ class ContractController extends Controller
      */
     public function download(Contrato $contract)
     {
-        if (!$contract->file_path || !Storage::disk('public')->exists($contract->file_path)) {
+        if (!$contract->file_path) {
             return redirect()->back()->with('error', 'El archivo no existe.');
         }
-
-        return Storage::disk('public')->download($contract->file_path);
+        $disk = storage_disk_for_path($contract->file_path);
+        if (!Storage::disk($disk)->exists($contract->file_path)) {
+            return redirect()->back()->with('error', 'El archivo no existe.');
+        }
+        return Storage::disk($disk)->download($contract->file_path);
     }
 
     /**
@@ -173,11 +176,13 @@ class ContractController extends Controller
      */
     public function viewPdf(Contrato $contract)
     {
-        if (!$contract->file_path || !Storage::disk('public')->exists($contract->file_path)) {
+        if (!$contract->file_path) {
             return response()->json(['error' => 'El archivo no existe.'], 404);
         }
-
-        $path = Storage::disk('public')->path($contract->file_path);
-        return response()->file($path);
+        $disk = storage_disk_for_path($contract->file_path);
+        if (!Storage::disk($disk)->exists($contract->file_path)) {
+            return response()->json(['error' => 'El archivo no existe.'], 404);
+        }
+        return redirect(Storage::disk($disk)->url($contract->file_path));
     }
 }

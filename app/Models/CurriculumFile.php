@@ -15,6 +15,8 @@ class CurriculumFile extends Model
         'orden',
     ];
 
+    protected $appends = ['url'];
+
     protected $casts = [
         'orden' => 'integer',
         'created_at' => 'datetime',
@@ -24,5 +26,10 @@ class CurriculumFile extends Model
     public function curriculum()
     {
         return $this->belongsTo(Curriculum::class);
+    }
+
+    public function getUrlAttribute(): string
+    {
+        return storage_url_for_path($this->path) ?? '';
     }
 }

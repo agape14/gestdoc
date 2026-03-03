@@ -38,7 +38,7 @@ export default function Edit({ item }) {
                             <label className="form-label fw-medium">Archivo</label>
                             <input type="file" className="form-control" accept=".pdf,.doc,.docx" onChange={e => setData('archivo', e.target.files[0])} />
                             {item.archivo && (
-                                <a href={`/storage/${item.archivo}`} target="_blank" className="small text-primary mt-1 d-block">
+                                <a href={item.archivo_url || `/storage/${item.archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                                     <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                                 </a>
                             )}

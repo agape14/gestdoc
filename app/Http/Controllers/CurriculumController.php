@@ -173,7 +173,7 @@ class CurriculumController extends Controller
                 "archivos.{$index}.file" => 'required|file|mimes:pdf|max:10240',
             ], [], ["archivos.{$index}.file" => 'archivo PDF']);
             $nombre = \Str::limit($item['nombre_archivo'], 255);
-            $path = $item['file']->store('cvs', 'public');
+            $path = $item['file']->store('expedientes/cvs', 'r2');
             CurriculumFile::create([
                 'curriculum_id' => $cv->id,
                 'nombre_archivo' => $nombre,
@@ -233,7 +233,7 @@ class CurriculumController extends Controller
                 continue;
             }
             $orden++;
-            $path = $file->store('cvs', 'public');
+            $path = $file->store('expedientes/cvs', 'r2');
             CurriculumFile::create([
                 'curriculum_id' => $cv->id,
                 'nombre_archivo' => $item['nombre_archivo'] ?? $file->getClientOriginalName(),
@@ -274,9 +274,12 @@ class CurriculumController extends Controller
         if ($file) {
             return $this->downloadFile($cv, $file);
         }
-        if ($cv->archivo_cv && Storage::disk('public')->exists($cv->archivo_cv)) {
-            $this->authorizeDownload($cv);
-            return Storage::disk('public')->download($cv->archivo_cv, \Str::slug($cv->nombre_candidato) . '-cv.pdf');
+        if ($cv->archivo_cv) {
+            $disk = storage_disk_for_path($cv->archivo_cv);
+            if (Storage::disk($disk)->exists($cv->archivo_cv)) {
+                $this->authorizeDownload($cv);
+                return Storage::disk($disk)->download($cv->archivo_cv, \Str::slug($cv->nombre_candidato) . '-cv.pdf');
+            }
         }
         return redirect()->back()->with('error', 'El archivo no existe.');
     }
@@ -289,12 +292,13 @@ class CurriculumController extends Controller
         if ($file->curriculum_id !== $cv->id) {
             abort(404);
         }
-        if (!Storage::disk('public')->exists($file->path)) {
+        $disk = storage_disk_for_path($file->path);
+        if (!Storage::disk($disk)->exists($file->path)) {
             return redirect()->back()->with('error', 'El archivo no existe.');
         }
         $this->authorizeDownload($cv);
         $name = \Str::slug($file->nombre_archivo) . '.pdf';
-        return Storage::disk('public')->download($file->path, $name);
+        return Storage::disk($disk)->download($file->path, $name);
     }
 
     private function authorizeDownload(Curriculum $cv): void
@@ -354,18 +358,45 @@ class CurriculumController extends Controller
         $filesToZip = [];
         foreach ($cvs as $cv) {
             foreach ($cv->files as $file) {
-                if (Storage::disk('public')->exists($file->path)) {
+                $disk = storage_disk_for_path($file->path);
+                if (!Storage::disk($disk)->exists($file->path)) {
+                    continue;
+                }
+                if ($disk === 'public') {
                     $filesToZip[] = [
                         'path' => Storage::disk('public')->path($file->path),
                         'nombre_archivo' => $file->nombre_archivo,
                     ];
+                } else {
+                    $content = Storage::disk($disk)->get($file->path);
+                    $tmpPath = storage_path('app/cvs_temp_' . uniqid() . '.pdf');
+                    file_put_contents($tmpPath, $content);
+                    $filesToZip[] = [
+                        'path' => $tmpPath,
+                        'nombre_archivo' => $file->nombre_archivo,
+                        'temp' => true,
+                    ];
                 }
             }
-            if ($cv->files->isEmpty() && $cv->archivo_cv && Storage::disk('public')->exists($cv->archivo_cv)) {
-                $filesToZip[] = [
-                    'path' => Storage::disk('public')->path($cv->archivo_cv),
-                    'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
-                ];
+            if ($cv->files->isEmpty() && $cv->archivo_cv) {
+                $disk = storage_disk_for_path($cv->archivo_cv);
+                if (Storage::disk($disk)->exists($cv->archivo_cv)) {
+                    if ($disk === 'public') {
+                        $filesToZip[] = [
+                            'path' => Storage::disk('public')->path($cv->archivo_cv),
+                            'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
+                        ];
+                    } else {
+                        $content = Storage::disk($disk)->get($cv->archivo_cv);
+                        $tmpPath = storage_path('app/cvs_temp_' . uniqid() . '.pdf');
+                        file_put_contents($tmpPath, $content);
+                        $filesToZip[] = [
+                            'path' => $tmpPath,
+                            'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
+                            'temp' => true,
+                        ];
+                    }
+                }
             }
         }
 
@@ -393,6 +424,12 @@ class CurriculumController extends Controller
             $zip->addFile($item['path'], $fileName);
         }
         $zip->close();
+
+        foreach ($filesToZip as $item) {
+            if (!empty($item['temp']) && file_exists($item['path'])) {
+                @unlink($item['path']);
+            }
+        }
 
         $downloadName = 'cvs-' . ($folderId ? 'carpeta-' . $folderId . '-' : '') . now()->format('Y-m-d-His') . '.zip';
         return response()->download($zipPath, $downloadName, ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);

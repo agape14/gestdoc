@@ -134,7 +134,7 @@ class PlantillaIngController extends Controller
         }
 
         if ($request->hasFile('archivo')) {
-            $data['archivo'] = $request->file('archivo')->store('plantillas_ing', 'public');
+            $data['archivo'] = $request->file('archivo')->store('expedientes/plantillas_ing', 'r2');
         }
 
         $item = PlantillaIng::create($data);
@@ -171,9 +171,9 @@ class PlantillaIngController extends Controller
 
         if ($request->hasFile('archivo')) {
             if ($plantilla_ing->archivo) {
-                Storage::disk('public')->delete($plantilla_ing->archivo);
+                Storage::disk(storage_disk_for_path($plantilla_ing->archivo))->delete($plantilla_ing->archivo);
             }
-            $data['archivo'] = $request->file('archivo')->store('plantillas_ing', 'public');
+            $data['archivo'] = $request->file('archivo')->store('expedientes/plantillas_ing', 'r2');
         }
 
         $plantilla_ing->update($data);

@@ -136,7 +136,7 @@ class InmobiliariaController extends Controller
         }
 
         if ($request->hasFile('imagen')) {
-            $data['imagen'] = $request->file('imagen')->store('inmobiliaria', 'public');
+            $data['imagen'] = $request->file('imagen')->store('expedientes/inmobiliaria', 'r2');
         }
 
         $item = Inmobiliaria::create($data);
@@ -175,9 +175,9 @@ class InmobiliariaController extends Controller
 
         if ($request->hasFile('imagen')) {
             if ($inmobiliaria->imagen) {
-                Storage::disk('public')->delete($inmobiliaria->imagen);
+                Storage::disk(storage_disk_for_path($inmobiliaria->imagen))->delete($inmobiliaria->imagen);
             }
-            $data['imagen'] = $request->file('imagen')->store('inmobiliaria', 'public');
+            $data['imagen'] = $request->file('imagen')->store('expedientes/inmobiliaria', 'r2');
         }
 
         $inmobiliaria->update($data);

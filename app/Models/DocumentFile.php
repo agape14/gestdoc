@@ -13,6 +13,8 @@ class DocumentFile extends Model
         'orden',
     ];
 
+    protected $appends = ['url'];
+
     protected $casts = [
         'orden' => 'integer',
         'created_at' => 'datetime',
@@ -22,5 +24,10 @@ class DocumentFile extends Model
     public function document()
     {
         return $this->belongsTo(Document::class);
+    }
+
+    public function getUrlAttribute(): string
+    {
+        return storage_url_for_path($this->path) ?? '';
     }
 }

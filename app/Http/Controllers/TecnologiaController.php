@@ -134,7 +134,7 @@ class TecnologiaController extends Controller
         }
 
         if ($request->hasFile('archivo')) {
-            $data['archivo'] = $request->file('archivo')->store('tecnologia', 'public');
+            $data['archivo'] = $request->file('archivo')->store('expedientes/tecnologia', 'r2');
         }
 
         $item = Tecnologia::create($data);
@@ -171,9 +171,9 @@ class TecnologiaController extends Controller
 
         if ($request->hasFile('archivo')) {
             if ($tecnologia->archivo) {
-                Storage::disk('public')->delete($tecnologia->archivo);
+                Storage::disk(storage_disk_for_path($tecnologia->archivo))->delete($tecnologia->archivo);
             }
-            $data['archivo'] = $request->file('archivo')->store('tecnologia', 'public');
+            $data['archivo'] = $request->file('archivo')->store('expedientes/tecnologia', 'r2');
         }
 
         $tecnologia->update($data);

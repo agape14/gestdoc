@@ -10,6 +10,13 @@ class Inmobiliaria extends Model
         'titulo', 'ubicacion', 'precio', 'estado', 'imagen', 'user_id', 'anulado', 'folder_id'
     ];
 
+    protected $appends = ['imagen_url'];
+
+    public function getImagenUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->imagen);
+    }
+
     protected function casts(): array
     {
         return ['anulado' => 'boolean'];

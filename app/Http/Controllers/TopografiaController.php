@@ -134,7 +134,7 @@ class TopografiaController extends Controller
         }
 
         if ($request->hasFile('archivo')) {
-            $data['archivo'] = $request->file('archivo')->store('topografia', 'public');
+            $data['archivo'] = $request->file('archivo')->store('expedientes/topografia', 'r2');
         }
 
         $item = Topografia::create($data);
@@ -171,9 +171,9 @@ class TopografiaController extends Controller
 
         if ($request->hasFile('archivo')) {
             if ($topografia->archivo) {
-                Storage::disk('public')->delete($topografia->archivo);
+                Storage::disk(storage_disk_for_path($topografia->archivo))->delete($topografia->archivo);
             }
-            $data['archivo'] = $request->file('archivo')->store('topografia', 'public');
+            $data['archivo'] = $request->file('archivo')->store('expedientes/topografia', 'r2');
         }
 
         $topografia->update($data);

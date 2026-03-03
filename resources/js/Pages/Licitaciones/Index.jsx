@@ -141,7 +141,7 @@ const DetailForm = ({ item, onClose }) => {
                             return (
                                 <div key={doc.id} className={`d-flex align-items-center gap-2 p-2 mb-2 rounded ${marked ? 'bg-danger bg-opacity-10' : 'bg-body-tertiary'}`}>
                                     <span className="fw-medium small">{doc.nombre}</span>
-                                    <a href={`/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="small">Ver archivo</a>
+                                    <a href={doc.url || `/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="small">Ver archivo</a>
                                     {marked ? (
                                         <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => undoRemoveExisting(doc.id)}>Deshacer</button>
                                     ) : (

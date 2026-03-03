@@ -185,7 +185,7 @@ class LicitacionController extends Controller
         $data = $request->except(['promesa_consorcio', 'documentos']);
 
         if ($request->hasFile('promesa_consorcio')) {
-            $data['promesa_consorcio'] = $request->file('promesa_consorcio')->store('licitaciones/consorcios', 'public');
+            $data['promesa_consorcio'] = $request->file('promesa_consorcio')->store('expedientes/licitaciones/consorcios', 'r2');
         }
 
         $data['user_id'] = auth()->id();
@@ -225,11 +225,12 @@ class LicitacionController extends Controller
                 continue;
             }
             $file = $request->file("documentos.{$index}.archivo");
-            $path = $file->store('licitaciones/documentos', 'public');
+            $path = $file->store('expedientes/licitaciones', 'r2');
             LicitacionDocumento::create([
                 'licitacion_id' => $licitacion->id,
                 'nombre' => $nombre ?: $file->getClientOriginalName(),
                 'file_path' => $path,
+                'disk' => 'r2',
             ]);
         }
     }
@@ -281,9 +282,9 @@ class LicitacionController extends Controller
 
         if ($request->hasFile('promesa_consorcio')) {
             if ($licitacion->promesa_consorcio) {
-                Storage::disk('public')->delete($licitacion->promesa_consorcio);
+                Storage::disk(storage_disk_for_path($licitacion->promesa_consorcio))->delete($licitacion->promesa_consorcio);
             }
-            $data['promesa_consorcio'] = $request->file('promesa_consorcio')->store('licitaciones/consorcios', 'public');
+            $data['promesa_consorcio'] = $request->file('promesa_consorcio')->store('expedientes/licitaciones/consorcios', 'r2');
         }
 
         $licitacion->update($data);
@@ -299,7 +300,8 @@ class LicitacionController extends Controller
         if (is_array($deleteIds)) {
             $docs = LicitacionDocumento::where('licitacion_id', $licitacion->id)->whereIn('id', $deleteIds)->get();
             foreach ($docs as $doc) {
-                Storage::disk('public')->delete($doc->file_path);
+                $disk = $doc->disk ?? 'public';
+                Storage::disk($disk)->delete($doc->file_path);
                 $doc->delete();
             }
         }
@@ -314,11 +316,12 @@ class LicitacionController extends Controller
             }
             $nombre = is_array($doc) ? ($doc['nombre'] ?? '') : '';
             $file = $request->file("documentos.{$index}.archivo");
-            $path = $file->store('licitaciones/documentos', 'public');
+            $path = $file->store('expedientes/licitaciones', 'r2');
             LicitacionDocumento::create([
                 'licitacion_id' => $licitacion->id,
                 'nombre' => $nombre ?: $file->getClientOriginalName(),
                 'file_path' => $path,
+                'disk' => 'r2',
             ]);
         }
     }

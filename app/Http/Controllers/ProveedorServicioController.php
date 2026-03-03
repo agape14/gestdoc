@@ -226,9 +226,9 @@ class ProveedorServicioController extends Controller
         $handleFile = function($field, $path) use ($request, &$data, $proveedor_servicio) {
             if ($request->hasFile($field)) {
                 if ($proveedor_servicio->$field) {
-                    Storage::disk('public')->delete($proveedor_servicio->$field);
+                    Storage::disk(storage_disk_for_path($proveedor_servicio->$field))->delete($proveedor_servicio->$field);
                 }
-                $data[$field] = $request->file($field)->store($path, 'public');
+                $data[$field] = $request->file($field)->store('expedientes/' . $path, 'r2');
             }
         };
 
@@ -241,7 +241,7 @@ class ProveedorServicioController extends Controller
         if ($request->hasFile('informes_tecnicos')) {
             $paths = [];
             foreach($request->file('informes_tecnicos') as $file) {
-                $paths[] = $file->store('proveedor_servicios/informes', 'public');
+                $paths[] = $file->store('expedientes/proveedor_servicios/informes', 'r2');
             }
             $existing = is_array($proveedor_servicio->informes_tecnicos) ? $proveedor_servicio->informes_tecnicos : [];
             $data['informes_tecnicos'] = array_merge($existing, $paths);

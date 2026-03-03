@@ -11,6 +11,13 @@ class EspecialistaEjecucion extends Model
         'anulado', 'folder_id', 'clasificacion'
     ];
 
+    protected $appends = ['documento_url'];
+
+    public function getDocumentoUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->documento);
+    }
+
     public function folder()
     {
         return $this->belongsTo(\App\Models\Folder::class);

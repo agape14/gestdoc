@@ -90,8 +90,8 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
         });
     };
 
-    const handleViewPdf = (pdfPath, title) => {
-        setSelectedPdfUrl(`/storage/${pdfPath}`);
+    const handleViewPdf = (pdfPath, title, url) => {
+        setSelectedPdfUrl(url || (pdfPath ? `/storage/${pdfPath}` : ''));
         setSelectedPdfTitle(title || 'Ver CV');
         setShowPdfModal(true);
     };
@@ -309,11 +309,11 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                             {(cv.files && cv.files.length > 0) ? (
                                                 <span className="d-flex flex-column gap-1 align-items-stretch w-100">
                                                     {cv.files.map((f) => (
-                                                        <button key={f.id} type="button" onClick={() => handleViewPdf(f.path, f.nombre_archivo)} className="btn btn-sm btn-outline-primary d-flex align-items-center flex-grow-1 text-start overflow-hidden" style={{ minWidth: 0 }} title={f.nombre_archivo}><i className="bi bi-file-earmark-pdf me-1 flex-shrink-0"></i><span className="text-truncate" style={{ minWidth: 0 }}>{f.nombre_archivo}</span></button>
+                                                        <button key={f.id} type="button" onClick={() => handleViewPdf(f.path, f.nombre_archivo, f.url)} className="btn btn-sm btn-outline-primary d-flex align-items-center flex-grow-1 text-start overflow-hidden" style={{ minWidth: 0 }} title={f.nombre_archivo}><i className="bi bi-file-earmark-pdf me-1 flex-shrink-0"></i><span className="text-truncate" style={{ minWidth: 0 }}>{f.nombre_archivo}</span></button>
                                                     ))}
                                                 </span>
                                             ) : cv.archivo_cv ? (
-                                                <button type="button" onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`)} className="btn btn-sm btn-outline-primary"><i className="bi bi-file-earmark-pdf"></i></button>
+                                                <button type="button" onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`, cv.archivo_cv_url)} className="btn btn-sm btn-outline-primary"><i className="bi bi-file-earmark-pdf"></i></button>
                                             ) : <span className="text-muted">-</span>}
                                         </td>
                                         <td className="text-end pe-4"><span className="badge bg-secondary">Anulado</span></td>
@@ -369,7 +369,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                                     <span key={f.id} className="d-flex gap-1 flex-nowrap align-items-center" style={{ minWidth: 0 }}>
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleViewPdf(f.path, f.nombre_archivo)}
+                                                            onClick={() => handleViewPdf(f.path, f.nombre_archivo, f.url)}
                                                             className="btn btn-sm btn-outline-primary d-flex align-items-center flex-grow-1 text-start overflow-hidden"
                                                             style={{ minWidth: 0 }}
                                                             title={f.nombre_archivo}
@@ -390,7 +390,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                         ) : cv.archivo_cv ? (
                                             <span className="d-inline-flex gap-1">
                                                 <button
-                                                    onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`)}
+                                                    onClick={() => handleViewPdf(cv.archivo_cv, `CV - ${cv.nombre_candidato}`, cv.archivo_cv_url)}
                                                     className="btn btn-sm btn-outline-primary"
                                                     title="Ver PDF"
                                                 >

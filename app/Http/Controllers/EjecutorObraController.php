@@ -191,7 +191,7 @@ class EjecutorObraController extends Controller
                 continue;
             }
             $file = $request->file("documentos.{$index}.archivo");
-            $path = $file->store('ejecutor_obras/documentos', 'public');
+            $path = $file->store('expedientes/ejecutor_obras/documentos', 'r2');
             \App\Models\EjecutorObraDocumento::create([
                 'ejecutor_obra_id' => $obra->id,
                 'nombre' => $nombre ?: $file->getClientOriginalName(),
@@ -233,9 +233,9 @@ class EjecutorObraController extends Controller
         $handleFile = function($field, $path) use ($request, &$data, $ejecutor_obra) {
             if ($request->hasFile($field)) {
                 if ($ejecutor_obra->$field) {
-                    Storage::disk('public')->delete($ejecutor_obra->$field);
+                    Storage::disk(storage_disk_for_path($ejecutor_obra->$field))->delete($ejecutor_obra->$field);
                 }
-                $data[$field] = $request->file($field)->store($path, 'public');
+                $data[$field] = $request->file($field)->store('expedientes/' . $path, 'r2');
             }
         };
 
@@ -250,7 +250,7 @@ class EjecutorObraController extends Controller
         if ($request->hasFile('valorizaciones')) {
             $paths = [];
             foreach($request->file('valorizaciones') as $file) {
-                $paths[] = $file->store('ejecutor_obras/valorizaciones', 'public');
+                $paths[] = $file->store('expedientes/ejecutor_obras/valorizaciones', 'r2');
             }
             $existing = is_array($ejecutor_obra->valorizaciones) ? $ejecutor_obra->valorizaciones : [];
             $data['valorizaciones'] = array_merge($existing, $paths);
@@ -259,7 +259,7 @@ class EjecutorObraController extends Controller
         if ($request->hasFile('informes_tecnicos')) {
             $paths = [];
             foreach($request->file('informes_tecnicos') as $file) {
-                $paths[] = $file->store('ejecutor_obras/informes', 'public');
+                $paths[] = $file->store('expedientes/ejecutor_obras/informes', 'r2');
             }
             $existing = is_array($ejecutor_obra->informes_tecnicos) ? $ejecutor_obra->informes_tecnicos : [];
             $data['informes_tecnicos'] = array_merge($existing, $paths);

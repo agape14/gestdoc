@@ -130,7 +130,7 @@ class EspecialistaConsultoriaController extends Controller
         }
 
         if ($request->hasFile('documento')) {
-            $data['documento'] = $request->file('documento')->store('especialistas_consultoria', 'public');
+            $data['documento'] = $request->file('documento')->store('expedientes/especialistas_consultoria', 'r2');
         }
 
         $especialista = EspecialistaConsultoria::create($data);
@@ -170,9 +170,9 @@ class EspecialistaConsultoriaController extends Controller
 
         if ($request->hasFile('documento')) {
             if ($especialista_consultoria->documento) {
-                Storage::disk('public')->delete($especialista_consultoria->documento);
+                Storage::disk(storage_disk_for_path($especialista_consultoria->documento))->delete($especialista_consultoria->documento);
             }
-            $data['documento'] = $request->file('documento')->store('especialistas_consultoria', 'public');
+            $data['documento'] = $request->file('documento')->store('expedientes/especialistas_consultoria', 'r2');
         }
 
         $especialista_consultoria->update($data);
@@ -188,7 +188,7 @@ class EspecialistaConsultoriaController extends Controller
         }
 
         if ($especialista_consultoria->documento) {
-            Storage::disk('public')->delete($especialista_consultoria->documento);
+            Storage::disk(storage_disk_for_path($especialista_consultoria->documento))->delete($especialista_consultoria->documento);
         }
         $especialista_consultoria->delete();
         return redirect()->route('especialistas-consultoria.index')->with('success', 'Registro eliminado.');

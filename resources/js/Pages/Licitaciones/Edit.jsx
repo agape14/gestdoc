@@ -114,7 +114,7 @@ export default function Edit({ licitacion }) {
                                 return (
                                     <div key={doc.id} className={`d-flex align-items-center gap-3 p-3 mb-2 rounded-3 ${marked ? 'bg-danger bg-opacity-10' : 'bg-body-tertiary'}`}>
                                         <span className="fw-medium">{doc.nombre}</span>
-                                        <a href={`/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="small">Ver archivo</a>
+                                        <a href={doc.url || `/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="small">Ver archivo</a>
                                         {marked ? (
                                             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => undoRemoveExisting(doc.id)}>Deshacer</button>
                                         ) : (

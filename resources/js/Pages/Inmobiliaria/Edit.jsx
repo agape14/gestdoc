@@ -55,7 +55,7 @@ export default function Edit({ item }) {
                             <label className="form-label fw-medium">Imagen</label>
                             <input type="file" className="form-control" accept="image/*" onChange={e => setData('imagen', e.target.files[0])} />
                             {item.imagen && (
-                                <a href={`/storage/${item.imagen}`} target="_blank" className="small text-primary mt-1 d-block">
+                                <a href={item.imagen_url || `/storage/${item.imagen}`} target="_blank" className="small text-primary mt-1 d-block">
                                     <i className="bi bi-image"></i> Ver imagen actual
                                 </a>
                             )}

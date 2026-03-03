@@ -26,6 +26,13 @@ class Contrato extends Model
         'fecha_firma', // Mantener compatibilidad
     ];
 
+    protected $appends = ['file_path_url', 'calculated_amount'];
+
+    public function getFilePathUrlAttribute(): ?string
+    {
+        return storage_url_for_path($this->file_path);
+    }
+
     protected $casts = [
         'fecha_firma' => 'date',
         'contract_date' => 'date',
@@ -38,9 +45,7 @@ class Contrato extends Model
         'updated_at' => 'datetime',
     ];
 
-    protected $appends = ['calculated_amount'];
-
-    /**
+      /**
      * Relación con carpeta
      */
     public function folder()

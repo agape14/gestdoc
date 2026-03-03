@@ -142,7 +142,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Contrato</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('contrato_archivo', e.target.files[0])} disabled={!canEdit} />
                     {item.contrato_archivo && (
-                        <a href={`/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.contrato_archivo_url || `/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -151,7 +151,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">TDR</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('tdr_archivo', e.target.files[0])} disabled={!canEdit} />
                     {item.tdr_archivo && (
-                        <a href={`/storage/${item.tdr_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.tdr_archivo_url || `/storage/${item.tdr_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -168,7 +168,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Liquidación</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('liquidacion', e.target.files[0])} disabled={!canEdit} />
                     {item.liquidacion && (
-                        <a href={`/storage/${item.liquidacion}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.liquidacion_url || `/storage/${item.liquidacion}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -177,7 +177,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Panel Fotográfico</label>
                     <input type="file" className="form-control form-control-sm" accept="image/*" onChange={e => setData('panel_fotografico', e.target.files[0])} disabled={!canEdit} />
                     {item.panel_fotografico && (
-                        <a href={`/storage/${item.panel_fotografico}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.panel_fotografico_url || `/storage/${item.panel_fotografico}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-image"></i> Ver imagen actual
                         </a>
                     )}
@@ -186,7 +186,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Expediente Técnico</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('expediente_tecnico', e.target.files[0])} disabled={!canEdit} />
                     {item.expediente_tecnico && (
-                        <a href={`/storage/${item.expediente_tecnico}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.expediente_tecnico_url || `/storage/${item.expediente_tecnico}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -195,7 +195,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Actas y Resoluciones</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('actas_resoluciones', e.target.files[0])} disabled={!canEdit} />
                     {item.actas_resoluciones && (
-                        <a href={`/storage/${item.actas_resoluciones}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.actas_resoluciones_url || `/storage/${item.actas_resoluciones}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -204,7 +204,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Conformidad Técnica</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('conformidad_tecnica', e.target.files[0])} disabled={!canEdit} />
                     {item.conformidad_tecnica && (
-                        <a href={`/storage/${item.conformidad_tecnica}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.conformidad_tecnica_url || `/storage/${item.conformidad_tecnica}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -235,15 +235,15 @@ const getIconClass = (iconName) => {
 
 const getDocumentLinks = (item) => {
     const links = [];
-    if (item.contrato_archivo) links.push({ label: 'Contrato', path: item.contrato_archivo });
-    if (item.tdr_archivo) links.push({ label: 'TDR', path: item.tdr_archivo });
-    if (item.liquidacion) links.push({ label: 'Liquidación', path: item.liquidacion });
-    if (item.expediente_tecnico) links.push({ label: 'Expediente técnico', path: item.expediente_tecnico });
-    if (item.actas_resoluciones) links.push({ label: 'Actas / Resoluciones', path: item.actas_resoluciones });
-    if (item.conformidad_tecnica) links.push({ label: 'Conformidad técnica', path: item.conformidad_tecnica });
+    if (item.contrato_archivo) links.push({ label: 'Contrato', path: item.contrato_archivo, url: item.contrato_archivo_url });
+    if (item.tdr_archivo) links.push({ label: 'TDR', path: item.tdr_archivo, url: item.tdr_archivo_url });
+    if (item.liquidacion) links.push({ label: 'Liquidación', path: item.liquidacion, url: item.liquidacion_url });
+    if (item.expediente_tecnico) links.push({ label: 'Expediente técnico', path: item.expediente_tecnico, url: item.expediente_tecnico_url });
+    if (item.actas_resoluciones) links.push({ label: 'Actas / Resoluciones', path: item.actas_resoluciones, url: item.actas_resoluciones_url });
+    if (item.conformidad_tecnica) links.push({ label: 'Conformidad técnica', path: item.conformidad_tecnica, url: item.conformidad_tecnica_url });
     (item.documentos || []).forEach((d, i) => {
-        const path = d.archivo || d.path;
-        if (path) links.push({ label: d.nombre || `Documento ${i + 1}`, path });
+        const path = d.file_path || d.archivo || d.path;
+        if (path) links.push({ label: d.nombre || `Documento ${i + 1}`, path, url: d.url });
     });
     return links;
 };
@@ -359,9 +359,9 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
         setShowDocumentsModal(true);
     };
 
-    const openPdfInModal = (label, path) => {
+    const openPdfInModal = (label, path, url) => {
         setPdfModalTitle(`${breadcrumbTitle} - ${label}`);
-        setPdfModalUrl(`/storage/${path}`);
+        setPdfModalUrl(url || (path ? `/storage/${path}` : ''));
         setShowPdfModal(true);
     };
 
@@ -718,7 +718,7 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
                                     {listDocumentLinks.map((doc, idx) => (
                                         <li key={idx} className="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                                             <span>{doc.label}</span>
-                                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setShowDocumentsModal(false); openPdfInModal(doc.label, doc.path); }}>
+                                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setShowDocumentsModal(false); openPdfInModal(doc.label, doc.path, doc.url); }}>
                                                 <i className="bi bi-file-earmark-pdf me-1"></i> Ver PDF
                                             </button>
                                         </li>

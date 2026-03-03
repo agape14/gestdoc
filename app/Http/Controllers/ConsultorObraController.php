@@ -221,7 +221,7 @@ class ConsultorObraController extends Controller
                 continue;
             }
             $file = $request->file("documentos.{$index}.archivo");
-            $path = $file->store('consultor_obras/documentos', 'public');
+            $path = $file->store('expedientes/consultor_obras/documentos', 'r2');
             ConsultorObraDocumento::create([
                 'consultor_obra_id' => $consultorObra->id,
                 'nombre' => $nombre ?: $file->getClientOriginalName(),
@@ -305,13 +305,13 @@ class ConsultorObraController extends Controller
             $data['consorciado'] = filter_var($data['consorciado'], FILTER_VALIDATE_BOOLEAN);
         }
 
-        // Helper to store file
+        // Helper to store file (R2)
         $handleFile = function($field, $path) use ($request, &$data, $consultor_obra) {
             if ($request->hasFile($field)) {
                 if ($consultor_obra->$field) {
-                    Storage::disk('public')->delete($consultor_obra->$field);
+                    Storage::disk(storage_disk_for_path($consultor_obra->$field))->delete($consultor_obra->$field);
                 }
-                $data[$field] = $request->file($field)->store($path, 'public');
+                $data[$field] = $request->file($field)->store('expedientes/' . $path, 'r2');
             }
         };
 
@@ -325,7 +325,7 @@ class ConsultorObraController extends Controller
         if ($request->hasFile('producto_tecnico')) {
             $paths = [];
             foreach($request->file('producto_tecnico') as $file) {
-                $paths[] = $file->store('consultor_obras/productos', 'public');
+                $paths[] = $file->store('expedientes/consultor_obras/productos', 'r2');
             }
             $existing = is_array($consultor_obra->producto_tecnico) ? $consultor_obra->producto_tecnico : [];
             $data['producto_tecnico'] = array_merge($existing, $paths);
@@ -344,7 +344,7 @@ class ConsultorObraController extends Controller
         if (is_array($deleteIds)) {
             $docs = ConsultorObraDocumento::where('consultor_obra_id', $consultorObra->id)->whereIn('id', $deleteIds)->get();
             foreach ($docs as $doc) {
-                Storage::disk('public')->delete($doc->file_path);
+                Storage::disk(storage_disk_for_path($doc->file_path))->delete($doc->file_path);
                 $doc->delete();
             }
         }
@@ -358,7 +358,7 @@ class ConsultorObraController extends Controller
             }
             $nombre = is_array($doc) ? ($doc['nombre'] ?? '') : '';
             $file = $request->file("documentos.{$index}.archivo");
-            $path = $file->store('consultor_obras/documentos', 'public');
+            $path = $file->store('expedientes/consultor_obras/documentos', 'r2');
             ConsultorObraDocumento::create([
                 'consultor_obra_id' => $consultorObra->id,
                 'nombre' => $nombre ?: $file->getClientOriginalName(),

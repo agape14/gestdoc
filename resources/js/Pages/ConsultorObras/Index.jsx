@@ -195,7 +195,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Contrato</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('contrato_archivo', e.target.files[0])} />
                     {item.contrato_archivo && (
-                        <a href={`/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.contrato_archivo_url || `/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -204,7 +204,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">TDR</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('tdr_archivo', e.target.files[0])} />
                     {item.tdr_archivo && (
-                        <a href={`/storage/${item.tdr_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.tdr_archivo_url || `/storage/${item.tdr_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -213,7 +213,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Personal Clave</label>
                     <input type="file" className="form-control form-control-sm" accept="image/*" onChange={e => setData('personal_clave', e.target.files[0])} />
                     {item.personal_clave && (
-                        <a href={`/storage/${item.personal_clave}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.personal_clave_url || `/storage/${item.personal_clave}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-image"></i> Ver imagen actual
                         </a>
                     )}
@@ -224,7 +224,7 @@ const DetailForm = ({ item, onClose }) => {
                     {item.producto_tecnico && Array.isArray(item.producto_tecnico) && item.producto_tecnico.length > 0 && (
                         <div className="small mt-1">
                             {item.producto_tecnico.map((file, idx) => (
-                                <a key={idx} href={`/storage/${file}`} target="_blank" className="d-block text-primary">
+                                <a key={idx} href={(item.producto_tecnico_urls && item.producto_tecnico_urls[idx]) || `/storage/${file}`} target="_blank" className="d-block text-primary">
                                     <i className="bi bi-file-earmark-pdf"></i> Archivo {idx + 1}
                                 </a>
                             ))}
@@ -235,7 +235,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Actas y Resoluciones</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('actas_resoluciones', e.target.files[0])} />
                     {item.actas_resoluciones && (
-                        <a href={`/storage/${item.actas_resoluciones}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.actas_resoluciones_url || `/storage/${item.actas_resoluciones}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}
@@ -244,7 +244,7 @@ const DetailForm = ({ item, onClose }) => {
                     <label className="form-label fw-bold small text-secondary">Conformidad Técnica</label>
                     <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('conformidad_tecnica', e.target.files[0])} />
                     {item.conformidad_tecnica && (
-                        <a href={`/storage/${item.conformidad_tecnica}`} target="_blank" className="small text-primary mt-1 d-block">
+                        <a href={item.conformidad_tecnica_url || `/storage/${item.conformidad_tecnica}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
                         </a>
                     )}

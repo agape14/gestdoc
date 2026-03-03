@@ -130,7 +130,7 @@ class EspecialistaEjecucionController extends Controller
         }
 
         if ($request->hasFile('documento')) {
-            $data['documento'] = $request->file('documento')->store('especialistas_ejecucion', 'public');
+            $data['documento'] = $request->file('documento')->store('expedientes/especialistas_ejecucion', 'r2');
         }
 
         $especialista = EspecialistaEjecucion::create($data);
@@ -170,9 +170,9 @@ class EspecialistaEjecucionController extends Controller
 
         if ($request->hasFile('documento')) {
             if ($especialista_ejecucion->documento) {
-                Storage::disk('public')->delete($especialista_ejecucion->documento);
+                Storage::disk(storage_disk_for_path($especialista_ejecucion->documento))->delete($especialista_ejecucion->documento);
             }
-            $data['documento'] = $request->file('documento')->store('especialistas_ejecucion', 'public');
+            $data['documento'] = $request->file('documento')->store('expedientes/especialistas_ejecucion', 'r2');
         }
 
         $especialista_ejecucion->update($data);
@@ -188,7 +188,7 @@ class EspecialistaEjecucionController extends Controller
         }
 
         if ($especialista_ejecucion->documento) {
-            Storage::disk('public')->delete($especialista_ejecucion->documento);
+            Storage::disk(storage_disk_for_path($especialista_ejecucion->documento))->delete($especialista_ejecucion->documento);
         }
         $especialista_ejecucion->delete();
         return redirect()->route('especialistas-ejecucion.index')->with('success', 'Registro eliminado.');

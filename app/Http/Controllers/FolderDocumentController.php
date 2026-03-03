@@ -59,7 +59,7 @@ class FolderDocumentController extends Controller
                 "archivos.{$index}.file" => 'required|file|mimes:pdf|max:10240',
             ], [], ["archivos.{$index}.file" => 'archivo PDF']);
             $nombre = \Str::limit($item['nombre_archivo'], 255);
-            $path = $item['file']->store('documentos', 'public');
+            $path = $item['file']->store('expedientes/documentos', 'r2');
             DocumentFile::create([
                 'document_id' => $document->id,
                 'nombre_archivo' => $nombre,
@@ -135,7 +135,7 @@ class FolderDocumentController extends Controller
                 continue;
             }
             $orden++;
-            $path = $file->store('documentos', 'public');
+            $path = $file->store('expedientes/documentos', 'r2');
             DocumentFile::create([
                 'document_id' => $document->id,
                 'nombre_archivo' => $item['nombre_archivo'] ?? $file->getClientOriginalName(),
@@ -163,7 +163,7 @@ class FolderDocumentController extends Controller
         }
 
         foreach ($document->files as $file) {
-            Storage::disk('public')->delete($file->path);
+            Storage::disk(storage_disk_for_path($file->path))->delete($file->path);
         }
         $document->delete();
 
@@ -179,11 +179,12 @@ class FolderDocumentController extends Controller
         if ($file->document_id !== $document->id) {
             abort(404);
         }
-        if (!Storage::disk('public')->exists($file->path)) {
+        $disk = storage_disk_for_path($file->path);
+        if (!Storage::disk($disk)->exists($file->path)) {
             return redirect()->back()->with('error', 'El archivo no existe.');
         }
         $downloadName = \Str::slug($file->nombre_archivo) . '.pdf';
-        return Storage::disk('public')->download($file->path, $downloadName);
+        return Storage::disk($disk)->download($file->path, $downloadName);
     }
 
     /**
@@ -194,11 +195,11 @@ class FolderDocumentController extends Controller
         if ($file->document_id !== $document->id) {
             abort(404);
         }
-        if (!Storage::disk('public')->exists($file->path)) {
+        $disk = storage_disk_for_path($file->path);
+        if (!Storage::disk($disk)->exists($file->path)) {
             abort(404);
         }
-        $path = Storage::disk('public')->path($file->path);
-        return response()->file($path);
+        return redirect(Storage::disk($disk)->url($file->path));
     }
 
     /**
@@ -229,10 +230,23 @@ class FolderDocumentController extends Controller
         $filesToZip = [];
         foreach ($documents as $doc) {
             foreach ($doc->files as $file) {
-                if (Storage::disk('public')->exists($file->path)) {
+                $disk = storage_disk_for_path($file->path);
+                if (!Storage::disk($disk)->exists($file->path)) {
+                    continue;
+                }
+                if ($disk === 'public') {
                     $filesToZip[] = [
                         'path' => Storage::disk('public')->path($file->path),
                         'nombre_archivo' => $file->nombre_archivo,
+                    ];
+                } else {
+                    $content = Storage::disk($disk)->get($file->path);
+                    $tmpPath = storage_path('app/documentos_temp_' . uniqid() . '.pdf');
+                    file_put_contents($tmpPath, $content);
+                    $filesToZip[] = [
+                        'path' => $tmpPath,
+                        'nombre_archivo' => $file->nombre_archivo,
+                        'temp' => true,
                     ];
                 }
             }
@@ -267,6 +281,12 @@ class FolderDocumentController extends Controller
         }
 
         $zip->close();
+
+        foreach ($filesToZip as $item) {
+            if (!empty($item['temp']) && file_exists($item['path'])) {
+                @unlink($item['path']);
+            }
+        }
 
         $downloadName = \Str::slug($folder->name) . '-documentos-' . now()->format('Y-m-d-His') . '.zip';
 
