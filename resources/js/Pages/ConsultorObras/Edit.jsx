@@ -81,7 +81,7 @@ export default function Edit({ consultorObra }) {
                     <div className="row g-3 mb-3">
                         <div className="col-md-12">
                             <label className="form-label fw-bold small text-secondary">Proyecto / Título</label>
-                            <input type="text" className={`form-control ${errors.titulo ? 'is-invalid' : ''}`} value={data.titulo} onChange={e => setData('titulo', e.target.value)} />
+                            <textarea className={`form-control ${errors.titulo ? 'is-invalid' : ''}`} rows={3} value={data.titulo} onChange={e => setData('titulo', e.target.value)} />
                             {errors.titulo && <div className="invalid-feedback">{errors.titulo}</div>}
                         </div>
                         <div className="col-md-12">
@@ -109,10 +109,6 @@ export default function Edit({ consultorObra }) {
                             <label className="form-label fw-bold small text-secondary">FECHA DE LA CONFORMIDAD DE SER EL CASO</label>
                             <input type="date" className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
                         </div>
-                        <div className="col-md-12">
-                            <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
-                            <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
-                        </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">MONEDA</label>
                             <select className="form-select" value={data.moneda || 'Soles'} onChange={e => setData('moneda', e.target.value)}>
@@ -129,17 +125,33 @@ export default function Edit({ consultorObra }) {
                         </div>
                         {data.consorciado && (
                             <>
+                                <div className="col-md-12">
+                                    <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
+                                    <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
+                                </div>
                                 <div className="col-md-6">
-                                    <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
+                                    <label className="form-label fw-bold small text-secondary">IMPORTE</label>
                                     <div className="input-group">
                                         <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
-                                        <input type="number" step="0.01" className="form-control" value={data.monto_contratado ?? ''} onChange={e => setData('monto_contratado', e.target.value)} />
+                                        <input type="number" step="0.01" className="form-control" value={data.monto_contratado ?? ''} onChange={e => {
+                                            const val = e.target.value;
+                                            setData('monto_contratado', val);
+                                            const m = parseFloat(val) || 0;
+                                            const p = parseFloat(data.porcentaje_participacion) || 0;
+                                            setData('importe', (m * p / 100) || '');
+                                        }} />
                                     </div>
                                 </div>
                                 <div className="col-md-6">
                                     <label className="form-label fw-bold small text-secondary">% DE PARTICIPACIÓN</label>
                                     <div className="input-group">
-                                        <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion ?? ''} onChange={e => setData('porcentaje_participacion', e.target.value)} />
+                                        <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion ?? ''} onChange={e => {
+                                            const val = e.target.value;
+                                            setData('porcentaje_participacion', val);
+                                            const m = parseFloat(data.monto_contratado) || 0;
+                                            const p = parseFloat(val) || 0;
+                                            setData('importe', (m * p / 100) || '');
+                                        }} />
                                         <span className="input-group-text">%</span>
                                     </div>
                                 </div>
@@ -149,19 +161,12 @@ export default function Edit({ consultorObra }) {
                             <label className="form-label fw-bold small text-secondary">IMPORTE</label>
                             <div className="input-group">
                                 <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
-                                <input type="number" step="0.01" className="form-control" value={data.importe ?? ''} onChange={e => setData('importe', e.target.value)} />
+                                <input type="number" step="0.01" className="form-control" value={data.importe ?? ''} onChange={e => setData('importe', e.target.value)} readOnly={data.consorciado} />
                             </div>
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">TIPO DE CAMBIO VENTA</label>
                             <input type="number" step="0.0001" className="form-control" value={data.tipo_cambio_venta ?? ''} onChange={e => setData('tipo_cambio_venta', e.target.value)} />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">MONTO FACTURADO ACUMULADO</label>
-                            <div className="input-group">
-                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
-                                <input type="number" step="0.01" className="form-control" value={data.monto_facturado_acumulado ?? ''} onChange={e => setData('monto_facturado_acumulado', e.target.value)} />
-                            </div>
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">N° DE RESOLUCIÓN</label>
@@ -172,41 +177,15 @@ export default function Edit({ consultorObra }) {
                             <input type="date" className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                         </div>
                         <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Categoría</label>
-                            <select className="form-select" value={data.categoria} onChange={e => setData('categoria', e.target.value)}>
-                                <option value="Publica">Pública</option>
-                                <option value="Privada">Privada</option>
-                            </select>
-                        </div>
-                        <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">Especialidad</label>
                             <input type="text" className="form-control" value={data.especialidad} onChange={e => setData('especialidad', e.target.value)} />
                         </div>
                         <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Tipo de servicio</label>
-                            <input type="text" className="form-control" value={data.tipo_servicio} onChange={e => setData('tipo_servicio', e.target.value)} />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Presupuesto (S/)</label>
-                            <div className="input-group">
-                                <span className="input-group-text">S/</span>
-                                <input type="number" step="0.01" className="form-control" value={data.presupuesto} onChange={e => setData('presupuesto', e.target.value)} />
-                            </div>
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Estado</label>
-                            <select className="form-select" value={data.estado} onChange={e => setData('estado', e.target.value)}>
-                                <option value="En Curso">En Curso</option>
-                                <option value="Finalizado">Finalizado</option>
-                            </select>
-                        </div>
-                        <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">Duración</label>
-                            <input type="text" className="form-control" value={data.duracion} onChange={e => setData('duracion', e.target.value)} />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">Modalidad</label>
-                            <input type="text" className="form-control" value={data.modalidad} onChange={e => setData('modalidad', e.target.value)} />
+                            <div className="input-group">
+                                <input type="number" step="1" min="0" className="form-control" value={data.duracion} onChange={e => setData('duracion', e.target.value)} />
+                                <span className="input-group-text">días calendario</span>
+                            </div>
                         </div>
                         <div className="col-md-12">
                             <label className="form-label fw-bold small text-secondary">Tipo / Clasificación</label>
