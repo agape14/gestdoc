@@ -2,9 +2,10 @@
 
 namespace App\Console\Commands;
 
+use Aws\S3\S3Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Config;
 
 class CacheR2StorageUsage extends Command
 {
@@ -18,11 +19,25 @@ class CacheR2StorageUsage extends Command
             $ttl = 60;
         }
 
+        $config = Config::get('filesystems.disks.r2', []);
+        $bucket = $config['bucket'] ?? null;
+        if (empty($bucket)) {
+            $this->error('Configuración R2 incompleta: falta AWS_BUCKET en .env');
+            Cache::forget('r2_storage_used_bytes');
+            return self::FAILURE;
+        }
+
         try {
-            $disk = Storage::disk('r2');
-            $adapter = $disk->getAdapter();
-            $client = $adapter->getClient();
-            $bucket = $adapter->getBucket();
+            $client = new S3Client([
+                'version' => 'latest',
+                'region' => $config['region'] ?? 'auto',
+                'endpoint' => $config['endpoint'] ?? null,
+                'use_path_style_endpoint' => $config['use_path_style_endpoint'] ?? false,
+                'credentials' => [
+                    'key' => $config['key'] ?? '',
+                    'secret' => $config['secret'] ?? '',
+                ],
+            ]);
 
             $totalBytes = 0;
             $continuationToken = null;
