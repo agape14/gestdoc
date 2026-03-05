@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ConsultorObrasExport;
 use App\Traits\HasRoleBasedAccess;
@@ -240,6 +241,14 @@ class ConsultorObraController extends Controller
         }
     }
 
+    /**
+     * Redirigir a edición (la app no tiene vista "show" propia).
+     */
+    public function show(ConsultorObra $consultorObra)
+    {
+        return redirect()->route('consultor-obras.edit', $consultorObra);
+    }
+
     public function edit(ConsultorObra $consultorObra)
     {
         $user = auth()->user();
@@ -391,15 +400,32 @@ class ConsultorObraController extends Controller
 
     public function destroy(ConsultorObra $consultor_obra)
     {
+        Log::info('ConsultorObraController::destroy called', ['id' => $consultor_obra->id]);
+
         $user = auth()->user();
         if (!$this->canDelete($consultor_obra, $user)) {
+            Log::warning('ConsultorObraController::destroy denied', ['id' => $consultor_obra->id, 'user_id' => $user->id]);
             if (request()->header('X-Inertia')) {
                 return response()->json(['message' => 'No tienes permiso para anular este registro.'], 403);
             }
             return redirect()->back()->with('error', 'No tienes permiso para anular este registro.');
         }
 
-        $consultor_obra->update(['anulado' => true, 'estado_registro' => 'anulado']);
+        try {
+            $data = ['anulado' => true];
+            if (Schema::hasColumn($consultor_obra->getTable(), 'estado_registro')) {
+                $data['estado_registro'] = 'anulado';
+            }
+            $consultor_obra->update($data);
+            Log::info('ConsultorObraController::destroy success', ['id' => $consultor_obra->id]);
+        } catch (\Throwable $e) {
+            Log::error('ConsultorObraController::destroy failed', ['id' => $consultor_obra->id, 'message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            if (request()->header('X-Inertia')) {
+                return response()->json(['message' => 'Error al anular: ' . $e->getMessage()], 500);
+            }
+            return redirect()->back()->with('error', 'Error al anular el registro.');
+        }
+
         $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
         return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro anulado.');
     }

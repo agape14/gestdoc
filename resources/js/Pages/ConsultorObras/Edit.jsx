@@ -266,7 +266,14 @@ export default function Edit({ consultorObra, folderId = null, canDelete = false
                                 <button
                                     type="button"
                                     className="btn btn-outline-danger"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const id = consultorObra?.id ?? consultorObra?.consultor_obra_id;
+                                        if (!id) {
+                                            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo obtener el ID del registro.' });
+                                            return;
+                                        }
                                         Swal.fire({
                                             title: '¿Anular este registro?',
                                             text: 'El registro se marcará como anulado. Esta acción no se puede deshacer.',
@@ -277,13 +284,10 @@ export default function Edit({ consultorObra, folderId = null, canDelete = false
                                             confirmButtonText: 'Sí, anular'
                                         }).then((result) => {
                                             if (result.isConfirmed) {
-                                                const id = consultorObra?.id ?? consultorObra?.consultor_obra_id;
-                                                if (id) {
-                                                    router.delete(route('consultor-obras.destroy', id), {
-                                                        onSuccess: () => Swal.fire({ icon: 'success', title: 'Listo', text: 'Registro anulado.' }),
-                                                        onError: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo anular el registro.' }),
-                                                    });
-                                                }
+                                                router.delete(route('consultor-obras.destroy', id), {
+                                                    onSuccess: () => Swal.fire({ icon: 'success', title: 'Listo', text: 'Registro anulado.' }),
+                                                    onError: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo anular el registro.' }),
+                                                });
                                             }
                                         });
                                     }}
