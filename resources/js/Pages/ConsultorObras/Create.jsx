@@ -1,6 +1,6 @@
 import React from 'react';
 import MainLayout from '@/Layouts/MainLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 
 export default function Create({ folderId = null, breadcrumbLabel = '' }) {
@@ -59,7 +59,27 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('consultor-obras.store'), { forceFormData: true });
+        const formData = new FormData();
+        const scalarKeys = [
+            'titulo', 'entidad', 'categoria', 'especialidad', 'tipo_servicio', 'presupuesto', 'estado',
+            'duracion', 'modalidad', 'clasificacion', 'objeto_contrato', 'cui', 'numero_contrato_os_comprobante',
+            'fecha_contrato_cp', 'fecha_conformidad', 'experiencia_proveniente_de', 'moneda', 'monto_contratado',
+            'consorciado', 'porcentaje_participacion', 'importe', 'tipo_cambio_venta', 'monto_facturado_acumulado',
+            'numero_resolucion', 'fecha_aprobacion',
+        ];
+        scalarKeys.forEach((key) => {
+            const val = data[key];
+            if (val !== undefined && val !== null && val !== '')
+                formData.append(key, typeof val === 'boolean' ? (val ? '1' : '0') : String(val));
+        });
+        if (data.folder_id) formData.append('folder_id', data.folder_id);
+        (data.documentos || []).forEach((doc, i) => {
+            if (doc.archivo && (doc.nombre || doc.archivo.name)) {
+                formData.append(`documentos[${i}][nombre]`, doc.nombre || doc.archivo.name || '');
+                formData.append(`documentos[${i}][archivo]`, doc.archivo);
+            }
+        });
+        router.post(route('consultor-obras.store'), formData, { forceFormData: true });
     };
 
     return (

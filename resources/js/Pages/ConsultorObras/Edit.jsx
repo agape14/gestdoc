@@ -3,7 +3,7 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 
-export default function Edit({ consultorObra }) {
+export default function Edit({ consultorObra, folderId = null }) {
     const existingDocs = consultorObra.documentos || [];
     const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
     const [sending, setSending] = useState(false);
@@ -59,8 +59,28 @@ export default function Edit({ consultorObra }) {
     const submit = (e) => {
         e.preventDefault();
         setSending(true);
-        // POST a ruta explícita para que Laravel parsee el FormData (PUT + multipart no rellena $request->input)
-        router.post(route('consultor-obras.update.post', consultorObra.id), data, {
+        const formData = new FormData();
+        formData.append('_method', 'PUT');
+        const scalarKeys = [
+            'titulo', 'entidad', 'categoria', 'especialidad', 'tipo_servicio', 'presupuesto', 'estado',
+            'duracion', 'modalidad', 'clasificacion', 'objeto_contrato', 'cui', 'numero_contrato_os_comprobante',
+            'fecha_contrato_cp', 'fecha_conformidad', 'experiencia_proveniente_de', 'moneda', 'monto_contratado',
+            'consorciado', 'porcentaje_participacion', 'importe', 'tipo_cambio_venta', 'monto_facturado_acumulado',
+            'numero_resolucion', 'fecha_aprobacion',
+        ];
+        scalarKeys.forEach((key) => {
+            const val = data[key];
+            if (val !== undefined && val !== null)
+                formData.append(key, typeof val === 'boolean' ? (val ? '1' : '0') : String(val));
+        });
+        (data.documento_delete_ids || []).forEach((id, i) => formData.append(`documento_delete_ids[${i}]`, id));
+        (data.documentos || []).forEach((doc, i) => {
+            if (doc.archivo && (doc.nombre || doc.archivo.name)) {
+                formData.append(`documentos[${i}][nombre]`, doc.nombre || doc.archivo.name || '');
+                formData.append(`documentos[${i}][archivo]`, doc.archivo);
+            }
+        });
+        router.post(route('consultor-obras.update.post', consultorObra.id), formData, {
             forceFormData: true,
             onFinish: () => setSending(false),
         });
@@ -235,7 +255,7 @@ export default function Edit({ consultorObra }) {
                     </div>
 
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">
-                        <Link href={route('consultor-obras.index')} className="btn btn-outline-secondary">Cancelar</Link>
+                        <Link href={folderId ? route('consultor-obras.index', { folder_id: folderId }) : route('consultor-obras.index')} className="btn btn-outline-secondary">Cancelar</Link>
                         <SubmitButton processing={sending} icon="bi-save" className="px-5">Actualizar</SubmitButton>
                     </div>
                 </form>

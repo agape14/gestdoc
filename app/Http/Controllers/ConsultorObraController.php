@@ -239,6 +239,7 @@ class ConsultorObraController extends Controller
         $consultorObra->load('documentos');
         return Inertia::render('ConsultorObras/Edit', [
             'consultorObra' => $consultorObra,
+            'folderId' => $consultorObra->folder_id,
         ]);
     }
 
@@ -335,7 +336,8 @@ class ConsultorObraController extends Controller
         $consultor_obra->save();
         $this->syncDocumentosUpdate($request, $consultor_obra);
 
-        return redirect()->route('consultor-obras.index')->with('success', 'Registro actualizado.');
+        $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
+        return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro actualizado.');
     }
 
     private function syncDocumentosUpdate(Request $request, ConsultorObra $consultorObra): void
