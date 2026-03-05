@@ -250,6 +250,7 @@ class ConsultorObraController extends Controller
         return Inertia::render('ConsultorObras/Edit', [
             'consultorObra' => $consultorObra,
             'folderId' => $consultorObra->folder_id,
+            'canDelete' => $this->canDelete($consultorObra, $user),
         ]);
     }
 
@@ -392,6 +393,9 @@ class ConsultorObraController extends Controller
     {
         $user = auth()->user();
         if (!$this->canDelete($consultor_obra, $user)) {
+            if (request()->header('X-Inertia')) {
+                return response()->json(['message' => 'No tienes permiso para anular este registro.'], 403);
+            }
             return redirect()->back()->with('error', 'No tienes permiso para anular este registro.');
         }
 

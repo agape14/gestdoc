@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
+import Swal from 'sweetalert2';
 
-export default function Edit({ consultorObra, folderId = null }) {
+export default function Edit({ consultorObra, folderId = null, canDelete = false }) {
     const existingDocs = consultorObra.documentos || [];
     const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
     const [sending, setSending] = useState(false);
@@ -258,9 +259,42 @@ export default function Edit({ consultorObra, folderId = null }) {
                         </button>
                     </div>
 
-                    <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">
-                        <Link href={folderId ? route('consultor-obras.index', { folder_id: folderId }) : route('consultor-obras.index')} className="btn btn-outline-secondary">Cancelar</Link>
-                        <SubmitButton processing={sending} icon="bi-save" className="px-5">Actualizar</SubmitButton>
+                    <div className="d-flex justify-content-between align-items-center mt-5 pt-3 border-top flex-wrap gap-2">
+                        <div>
+                            {canDelete && (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-danger"
+                                    onClick={() => {
+                                        Swal.fire({
+                                            title: '¿Anular este registro?',
+                                            text: 'El registro se marcará como anulado. Esta acción no se puede deshacer.',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonColor: '#dc3545',
+                                            cancelButtonColor: '#6c757d',
+                                            confirmButtonText: 'Sí, anular'
+                                        }).then((result) => {
+                                            if (result.isConfirmed) {
+                                                const id = consultorObra?.id ?? consultorObra?.consultor_obra_id;
+                                                if (id) {
+                                                    router.delete(route('consultor-obras.destroy', id), {
+                                                        onSuccess: () => Swal.fire({ icon: 'success', title: 'Listo', text: 'Registro anulado.' }),
+                                                        onError: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo anular el registro.' }),
+                                                    });
+                                                }
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <i className="bi bi-trash me-1" /> Anular registro
+                                </button>
+                            )}
+                        </div>
+                        <div className="d-flex gap-2">
+                            <Link href={folderId ? route('consultor-obras.index', { folder_id: folderId }) : route('consultor-obras.index')} className="btn btn-outline-secondary">Cancelar</Link>
+                            <SubmitButton processing={sending} icon="bi-save" className="px-5">Actualizar</SubmitButton>
+                        </div>
                     </div>
                 </form>
             </div>

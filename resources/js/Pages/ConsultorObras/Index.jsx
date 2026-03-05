@@ -292,7 +292,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     const canDelete = (item) => {
         if (currentUserRole === 'Administrador') return true;
         if (currentUserRole === 'Operador') {
-            return item.user_id === auth?.user?.id;
+            return item.user_id == null || item.user_id === auth?.user?.id;
         }
         return false;
     };
@@ -354,6 +354,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
         }).then((result) => {
             if (result.isConfirmed) {
                 router.delete(route('consultor-obras.destroy', id), {
+                    preserveScroll: true,
                     onSuccess: () => Swal.fire({ icon: 'success', title: 'Listo', text: 'Registro anulado correctamente.' }),
                     onError: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo anular el registro.' }),
                 });
