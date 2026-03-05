@@ -355,7 +355,11 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
             if (result.isConfirmed) {
                 router.delete(route('consultor-obras.destroy', id), {
                     preserveScroll: true,
-                    onSuccess: () => Swal.fire({ icon: 'success', title: 'Listo', text: 'Registro anulado correctamente.' }),
+                    onSuccess: () => {
+                        Swal.fire({ icon: 'success', title: 'Listo', text: 'Registro anulado correctamente.' }).then(() => {
+                            router.reload({ only: ['consultorias', 'groupedByEspecialidad', 'anulados'], preserveScroll: true });
+                        });
+                    },
                     onError: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo anular el registro.' }),
                 });
             }
