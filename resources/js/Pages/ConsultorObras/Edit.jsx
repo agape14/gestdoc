@@ -80,7 +80,7 @@ export default function Edit({ consultorObra, folderId = null }) {
                 formData.append(`documentos[${i}][archivo]`, doc.archivo);
             }
         });
-        router.post(route('consultor-obras.update.post', consultorObra.id), formData, {
+        router.post(route('consultor-obras.update', consultorObra.id), formData, {
             forceFormData: true,
             onFinish: () => setSending(false),
         });
