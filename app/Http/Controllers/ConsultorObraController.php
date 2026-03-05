@@ -398,13 +398,13 @@ class ConsultorObraController extends Controller
         }
     }
 
-    public function destroy(ConsultorObra $consultor_obra)
+    public function destroy(ConsultorObra $consultorObra)
     {
-        Log::info('ConsultorObraController::destroy called', ['id' => $consultor_obra->id]);
+        Log::info('ConsultorObraController::destroy called', ['id' => $consultorObra->id]);
 
         $user = auth()->user();
-        if (!$this->canDelete($consultor_obra, $user)) {
-            Log::warning('ConsultorObraController::destroy denied', ['id' => $consultor_obra->id, 'user_id' => $user->id]);
+        if (!$this->canDelete($consultorObra, $user)) {
+            Log::warning('ConsultorObraController::destroy denied', ['id' => $consultorObra->id, 'user_id' => $user->id]);
             if (request()->header('X-Inertia')) {
                 return response()->json(['message' => 'No tienes permiso para anular este registro.'], 403);
             }
@@ -413,20 +413,20 @@ class ConsultorObraController extends Controller
 
         try {
             $data = ['anulado' => true];
-            if (Schema::hasColumn($consultor_obra->getTable(), 'estado_registro')) {
+            if (Schema::hasColumn($consultorObra->getTable(), 'estado_registro')) {
                 $data['estado_registro'] = 'anulado';
             }
-            $consultor_obra->update($data);
-            Log::info('ConsultorObraController::destroy success', ['id' => $consultor_obra->id]);
+            $consultorObra->update($data);
+            Log::info('ConsultorObraController::destroy success', ['id' => $consultorObra->id]);
         } catch (\Throwable $e) {
-            Log::error('ConsultorObraController::destroy failed', ['id' => $consultor_obra->id, 'message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('ConsultorObraController::destroy failed', ['id' => $consultorObra->id, 'message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             if (request()->header('X-Inertia')) {
                 return response()->json(['message' => 'Error al anular: ' . $e->getMessage()], 500);
             }
             return redirect()->back()->with('error', 'Error al anular el registro.');
         }
 
-        $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
+        $query = $consultorObra->folder_id ? ['folder_id' => $consultorObra->folder_id] : [];
         return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro anulado.');
     }
 
@@ -442,7 +442,11 @@ class ConsultorObraController extends Controller
             }
             return redirect()->back()->with('error', 'No tienes permiso para reactivar este registro.');
         }
-        $consultor_obra->update(['anulado' => false, 'estado_registro' => 'activo']);
+        $data = ['anulado' => false];
+        if (Schema::hasColumn($consultor_obra->getTable(), 'estado_registro')) {
+            $data['estado_registro'] = 'activo';
+        }
+        $consultor_obra->update($data);
         $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
         return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro reactivado.');
     }
