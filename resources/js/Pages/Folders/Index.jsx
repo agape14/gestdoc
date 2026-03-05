@@ -26,6 +26,8 @@ export default function Index({
     const [editingDocument, setEditingDocument] = useState(null);
     const [viewingFile, setViewingFile] = useState(null);
     const [viewingDocument, setViewingDocument] = useState(null);
+    const [movingDocument, setMovingDocument] = useState(null);
+    const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
 
     const [search, setSearch] = useState(filters.search || '');
     const [dateStart, setDateStart] = useState(filters.date_start || '');
@@ -124,6 +126,14 @@ export default function Index({
         setViewingDocument(doc);
         setViewingFile(file);
         setShowPdfModal(true);
+    };
+
+    const handleMoveDocument = () => {
+        if (!movingDocument || !moveTargetFolderId) return;
+        router.put(route('folders.documents.move', movingDocument.id), { folder_id: moveTargetFolderId }, {
+            preserveScroll: true,
+            onSuccess: () => { setMovingDocument(null); setMoveTargetFolderId(''); },
+        });
     };
 
     const toggleDocSelection = (docId) => {
@@ -530,6 +540,13 @@ export default function Index({
                                                                 <i className="bi bi-pencil"></i>
                                                             </button>
                                                             <button
+                                                                onClick={() => { setMovingDocument(doc); setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : ''); }}
+                                                                className="btn btn-sm btn-outline-info me-1"
+                                                                title="Mover a otra carpeta"
+                                                            >
+                                                                <i className="bi bi-folder-symlink"></i>
+                                                            </button>
+                                                            <button
                                                                 onClick={() => handleDeleteDocument(doc)}
                                                                 className="btn btn-sm btn-outline-danger"
                                                                 title="Eliminar"
@@ -735,6 +752,33 @@ export default function Index({
                 document={viewingDocument}
                 file={viewingFile}
             />
+
+            {movingDocument && (
+                <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-0">
+                                <h5 className="modal-title fw-bold">Mover a otra carpeta</h5>
+                                <button type="button" className="btn-close" onClick={() => { setMovingDocument(null); setMoveTargetFolderId(''); }}></button>
+                            </div>
+                            <div className="modal-body">
+                                <p className="text-secondary small mb-2">Documento: <strong>{movingDocument.numero || movingDocument.asunto || 'Sin número'}</strong></p>
+                                <label className="form-label fw-semibold">Carpeta de destino</label>
+                                <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
+                                    <option value="">Seleccionar carpeta...</option>
+                                    {(folders || []).filter((f) => String(f.id) !== String(movingDocument.folder_id)).map((f) => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button type="button" className="btn btn-secondary" onClick={() => { setMovingDocument(null); setMoveTargetFolderId(''); }}>Cancelar</button>
+                                <button type="button" className="btn btn-primary" disabled={!moveTargetFolderId} onClick={handleMoveDocument}>Mover</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             </div>
         </MainLayout>
     );

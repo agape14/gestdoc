@@ -18,7 +18,7 @@ const DASHBOARD_CARDS = [
     { key: 'folders', statsKey: 'gestionDocumental', title: 'Gestión Doc', icon: 'bi-folder-fill', color: 'light', route: '/folders' },
 ];
 
-export default function Dashboard({ auth, stats }) {
+export default function Dashboard({ auth, stats, r2StorageUsedBytes = null, r2StorageLimitBytes = 2 * 1024 ** 4 }) {
     const { props } = usePage();
     const user = props.auth?.user;
     const isAdmin = user?.role === 'Administrador';
@@ -164,11 +164,38 @@ export default function Dashboard({ auth, stats }) {
             </div>
 
             <div className="dashboard-content container-fluid py-2">
-                <div className="d-flex align-items-center justify-content-between mb-5">
+                <div className="d-flex align-items-center justify-content-between mb-5 flex-wrap gap-3">
                     <div>
                         <h1 className="display-5 fw-bold text-white mb-2 text-shadow">Panel de Control</h1>
                         <p className="lead text-white-50 mb-0">Bienvenido a TECCONING Gestión Integral</p>
                     </div>
+                    {isAdmin && (r2StorageUsedBytes != null || r2StorageLimitBytes) && (
+                        <div className="card border-0 shadow-sm bg-white bg-opacity-25 text-white p-3 rounded-4" style={{ minWidth: '280px' }}>
+                            <div className="d-flex align-items-center gap-3">
+                                <div className="bg-info bg-opacity-25 rounded-circle p-2">
+                                    <i className="bi bi-cloud-arrow-up fs-4"></i>
+                                </div>
+                                <div>
+                                    <div className="small text-white-50 text-uppercase fw-semibold">Almacenamiento R2</div>
+                                    <div className="fw-bold">
+                                        {r2StorageUsedBytes != null
+                                            ? `${(r2StorageUsedBytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+                                            : '—'}
+                                        <span className="text-white-50 fw-normal"> de 2 TB</span>
+                                    </div>
+                                    {r2StorageUsedBytes != null && r2StorageLimitBytes > 0 && (
+                                        <div className="progress mt-1" style={{ height: '6px', width: '120px' }}>
+                                            <div
+                                                className="progress-bar bg-info"
+                                                role="progressbar"
+                                                style={{ width: `${Math.min(100, (r2StorageUsedBytes / r2StorageLimitBytes) * 100)}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-5">

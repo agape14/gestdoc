@@ -10,7 +10,7 @@ class ConsultorObra extends Model
         'titulo', 'entidad', 'especialidad', 'tipo_servicio', 'presupuesto',
         'estado', 'duracion', 'modalidad', 'contrato_archivo', 'tdr_archivo',
         'personal_clave', 'producto_tecnico', 'actas_resoluciones',
-        'conformidad_tecnica', 'categoria', 'user_id', 'anulado', 'folder_id', 'clasificacion',
+        'conformidad_tecnica', 'categoria', 'user_id', 'anulado', 'estado_registro', 'folder_id', 'clasificacion',
         'objeto_contrato', 'cui', 'numero_contrato_os_comprobante', 'fecha_contrato_cp',
         'fecha_conformidad', 'experiencia_proveniente_de', 'moneda', 'monto_contratado',
         'consorciado', 'porcentaje_participacion', 'importe', 'tipo_cambio_venta',
@@ -72,9 +72,24 @@ class ConsultorObra extends Model
         return array_map(fn ($p) => \storage_url_for_path($p), $paths);
     }
 
+    /** Solo registros activos (no anulados). Usa estado_registro si existe, sino anulado. */
     public function scopeActive($query)
     {
+        $model = new self;
+        if (\Schema::hasColumn($model->getTable(), 'estado_registro')) {
+            return $query->where('estado_registro', 'activo');
+        }
         return $query->where('anulado', false);
+    }
+
+    /** Registros anulados (para pestaña Anulados). */
+    public function scopeAnulados($query)
+    {
+        $model = new self;
+        if (\Schema::hasColumn($model->getTable(), 'estado_registro')) {
+            return $query->where('estado_registro', 'anulado');
+        }
+        return $query->where('anulado', true);
     }
 
     // Global Scope for RBAC can be added here or used in Controller trait

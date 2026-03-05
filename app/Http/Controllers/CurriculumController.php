@@ -146,6 +146,7 @@ class CurriculumController extends Controller
     {
         $validated = $request->validate([
             'nombre_candidato' => 'required|string|max:255',
+            'nombre' => 'nullable|string|max:255',
             'folder_id' => 'nullable|exists:folders,id',
         ]);
 
@@ -157,6 +158,7 @@ class CurriculumController extends Controller
         $data = [
             'user_id' => auth()->id(),
             'nombre_candidato' => $validated['nombre_candidato'],
+            'nombre' => $validated['nombre'] ?? null,
             'especialidad' => null,
         ];
         if ($request->filled('folder_id')) {
@@ -203,6 +205,7 @@ class CurriculumController extends Controller
     {
         $validated = $request->validate([
             'nombre_candidato' => 'required|string|max:255',
+            'nombre' => 'nullable|string|max:255',
             'archivos_existentes' => 'nullable|array',
             'archivos_existentes.*.id' => 'required|exists:curriculum_files,id',
             'archivos_existentes.*.nombre_archivo' => 'required|string|max:255',
@@ -214,7 +217,10 @@ class CurriculumController extends Controller
             'archivos.*.file' => 'archivo PDF',
         ]);
 
-        $cv->update(['nombre_candidato' => $validated['nombre_candidato']]);
+        $cv->update([
+            'nombre_candidato' => $validated['nombre_candidato'],
+            'nombre' => $validated['nombre'] ?? null,
+        ]);
 
         if (!empty($validated['archivos_existentes'])) {
             foreach ($validated['archivos_existentes'] as $item) {

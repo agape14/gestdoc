@@ -88,7 +88,7 @@ class ConsultorObraController extends Controller
         $groupedByEspecialidad = $consultorias->groupBy('especialidad');
 
         $anulados = $user->role === 'Administrador'
-            ? ConsultorObra::where('anulado', true)->when($folderId, fn($q) => $q->where('folder_id', $folderId))->when($request->filled('user_id'), fn($q) => $q->where('user_id', $request->user_id))->latest()->get()
+            ? ConsultorObra::query()->anulados()->with('documentos')->when($folderId, fn($q) => $q->where('folder_id', $folderId))->when($request->filled('user_id'), fn($q) => $q->where('user_id', $request->user_id))->latest()->get()
             : collect();
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
@@ -399,8 +399,25 @@ class ConsultorObraController extends Controller
             return redirect()->back()->with('error', 'No tienes permiso para anular este registro.');
         }
 
-        $consultor_obra->update(['anulado' => true]);
+        $consultor_obra->update(['anulado' => true, 'estado_registro' => 'anulado']);
         $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
         return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro anulado.');
+    }
+
+    /**
+     * Reactivar un registro anulado (cambiar estado_registro a activo).
+     */
+    public function reactivate(ConsultorObra $consultor_obra)
+    {
+        $user = auth()->user();
+        if (!$this->canDelete($consultor_obra, $user)) {
+            if (request()->header('X-Inertia')) {
+                return response()->json(['message' => 'No tienes permiso para reactivar este registro.'], 403);
+            }
+            return redirect()->back()->with('error', 'No tienes permiso para reactivar este registro.');
+        }
+        $consultor_obra->update(['anulado' => false, 'estado_registro' => 'activo']);
+        $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
+        return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro reactivado.');
     }
 }

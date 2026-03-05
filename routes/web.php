@@ -35,6 +35,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/folders/documents/{document}', [FolderDocumentController::class, 'destroy'])->name('folders.documents.destroy');
         Route::get('/folders/documents/{document}/files/{file}/download', [FolderDocumentController::class, 'download'])->name('folders.documents.files.download');
         Route::get('/folders/documents/{document}/files/{file}/view', [FolderDocumentController::class, 'view'])->name('folders.documents.files.view');
+        Route::delete('/folders/documents/{document}/files/{file}', [FolderDocumentController::class, 'destroyFile'])->name('folders.documents.files.destroy');
+        Route::put('/folders/documents/{document}/move', [FolderDocumentController::class, 'move'])->name('folders.documents.move');
         Route::get('/folders/{folder}/documents/download-zip', [FolderDocumentController::class, 'downloadZip'])->name('folders.documents.download-zip');
         Route::get('/folders/{folder}/documents/export-excel', [FolderController::class, 'exportDocuments'])->name('folders.documents.export-excel');
         Route::resource('contracts', ContractController::class);
@@ -53,6 +55,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/consultor-obras/export', [\App\Http\Controllers\ConsultorObraController::class, 'export'])->name('consultor-obras.export');
         Route::get('/consultor-obras/{consultorObra}/export', [\App\Http\Controllers\ConsultorObraController::class, 'exportProject'])->name('consultor-obras.export-project');
         Route::post('/consultor-obras/{consultor_obra}/update', [\App\Http\Controllers\ConsultorObraController::class, 'update'])->name('consultor-obras.update.post');
+        Route::post('/consultor-obras/{consultor_obra}/reactivate', [\App\Http\Controllers\ConsultorObraController::class, 'reactivate'])->name('consultor-obras.reactivate');
         Route::resource('consultor-obras', \App\Http\Controllers\ConsultorObraController::class)->parameters(['consultor-obras' => 'consultorObra']);
         Route::post('/ejecutor-obra/folders', [\App\Http\Controllers\EjecutorObraController::class, 'storeFolder'])->name('ejecutor-obra.folders.store');
         Route::get('/ejecutor-obra/export', [\App\Http\Controllers\EjecutorObraController::class, 'export'])->name('ejecutor-obra.export');

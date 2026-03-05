@@ -172,6 +172,50 @@ class FolderDocumentController extends Controller
     }
 
     /**
+     * Soft delete a single file (solo marca eliminado, no borra de R2).
+     */
+    public function destroyFile(Document $document, DocumentFile $file)
+    {
+        if (request()->user()->role === 'Visualizador') {
+            abort(403, 'No tienes permiso.');
+        }
+        if ($file->document_id !== $document->id) {
+            abort(404);
+        }
+        $file->delete(); // Soft delete
+        if (request()->header('X-Inertia')) {
+            return back();
+        }
+        return redirect()->route('folders.show', $document->folder_id)->with('success', 'Archivo eliminado.');
+    }
+
+    /**
+     * Mover documento a otra carpeta.
+     */
+    public function move(Request $request, Document $document)
+    {
+        if ($request->user()->role === 'Visualizador') {
+            abort(403, 'No tienes permiso.');
+        }
+        $document->load('folder');
+        if ($document->folder->module !== null) {
+            return redirect()->back()->with('error', 'Este documento no es de gestión documental.');
+        }
+        $validated = $request->validate([
+            'folder_id' => 'required|exists:folders,id',
+        ]);
+        $folder = Folder::findOrFail($validated['folder_id']);
+        if ($folder->module !== null) {
+            return redirect()->back()->with('error', 'La carpeta de destino debe ser de gestión documental.');
+        }
+        $document->update(['folder_id' => $folder->id]);
+        if (request()->header('X-Inertia')) {
+            return back();
+        }
+        return redirect()->route('folders.show', $document->folder_id)->with('success', 'Documento movido.');
+    }
+
+    /**
      * Download a single document file.
      */
     public function download(Document $document, DocumentFile $file)

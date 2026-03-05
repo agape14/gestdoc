@@ -280,6 +280,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     const [showGrouped, setShowGrouped] = useState(true);
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [editingFolder, setEditingFolder] = useState(null);
+    const [tabActivo, setTabActivo] = useState('activos');
 
     const canEdit = (item) => {
         if (currentUserRole === 'Administrador') return true;
@@ -361,6 +362,30 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                         });
                     },
                     onError: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo anular el registro.' }),
+                });
+            }
+        });
+    };
+
+    const handleReactivate = (id) => {
+        Swal.fire({
+            title: '¿Reactivar registro?',
+            text: 'El registro volverá a mostrarse en el listado principal.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, reactivar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('consultor-obras.reactivate', id), {}, {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        Swal.fire({ icon: 'success', title: 'Listo', text: 'Registro reactivado.' }).then(() => {
+                            router.reload({ only: ['consultorias', 'groupedByEspecialidad', 'anulados'], preserveScroll: true });
+                        });
+                    },
+                    onError: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo reactivar.' }),
                 });
             }
         });
@@ -485,13 +510,63 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
 
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body min-w-0 w-100">
                 <div className="card-header bg-body border-0 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h6 className="mb-0 fw-bold text-truncate min-w-0">Listado {showGrouped ? 'Agrupado por Especialidad' : 'General'}</h6>
-                    <button className="btn btn-sm btn-outline-secondary flex-shrink-0" onClick={() => setShowGrouped(!showGrouped)}>
-                        <i className={`bi bi-${showGrouped ? 'list' : 'grid'} me-1`}></i>
-                        {showGrouped ? 'Vista General' : 'Vista Agrupada'}
-                    </button>
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                        {isAdmin && Array.isArray(anulados) && (
+                            <ul className="nav nav-tabs border-0 p-0 me-3">
+                                <li className="nav-item">
+                                    <button type="button" className={`nav-link rounded-pill border-0 ${tabActivo === 'activos' ? 'active bg-primary text-white fw-semibold' : 'bg-body-tertiary text-secondary'}`} onClick={() => setTabActivo('activos')}>
+                                        Activos {allConsultorias.length != null && <span className="badge bg-white text-primary ms-1">{allConsultorias.length}</span>}
+                                    </button>
+                                </li>
+                                <li className="nav-item ms-1">
+                                    <button type="button" className={`nav-link rounded-pill border-0 ${tabActivo === 'anulados' ? 'active bg-secondary text-white fw-semibold' : 'bg-body-tertiary text-secondary'}`} onClick={() => setTabActivo('anulados')}>
+                                        Anulados {anulados.length > 0 && <span className="badge bg-white text-secondary ms-1">{anulados.length}</span>}
+                                    </button>
+                                </li>
+                            </ul>
+                        )}
+                        <h6 className="mb-0 fw-bold text-truncate min-w-0">Listado {tabActivo === 'activos' && (showGrouped ? 'Agrupado por Especialidad' : 'General')}</h6>
+                    </div>
+                    {tabActivo === 'activos' && (
+                        <button className="btn btn-sm btn-outline-secondary flex-shrink-0" onClick={() => setShowGrouped(!showGrouped)}>
+                            <i className={`bi bi-${showGrouped ? 'list' : 'grid'} me-1`}></i>
+                            {showGrouped ? 'Vista General' : 'Vista Agrupada'}
+                        </button>
+                    )}
                 </div>
                 <div className="table-responsive overflow-x-auto min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    {tabActivo === 'anulados' && isAdmin ? (
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '900px' }}>
+                            <thead className="border-bottom text-secondary small text-uppercase">
+                                <tr>
+                                    <th className="ps-4 py-3">PROYECTO</th>
+                                    <th className="py-3">CLIENTE</th>
+                                    <th className="py-3">ESPECIALIDAD</th>
+                                    <th className="py-3">N° RESOL.</th>
+                                    <th className="text-end pe-4 py-3">ACCIÓN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {anulados.length > 0 ? anulados.map((c) => (
+                                    <tr key={c.id} className="table-secondary">
+                                        <td className="ps-4 py-3 fw-medium">{c.titulo}</td>
+                                        <td className="text-secondary">{c.entidad}</td>
+                                        <td className="text-secondary">{c.especialidad || '-'}</td>
+                                        <td className="text-secondary">{c.numero_resolucion || '-'}</td>
+                                        <td className="text-end pe-4">
+                                            {canDelete(c) && (
+                                                <button type="button" className="btn btn-sm btn-success" onClick={() => handleReactivate(c.id)} title="Reactivar">
+                                                    <i className="bi bi-arrow-counterclockwise me-1"></i> Reactivar
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr><td colSpan="5" className="text-center py-5 text-muted">No hay registros anulados.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
                     <table className="table table-hover align-middle mb-0" style={{ minWidth: '1100px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
@@ -655,8 +730,9 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                             )}
                         </tbody>
                     </table>
+                    )}
                 </div>
-                {consultorias.links && consultorias.links.length > 3 && (
+                {tabActivo === 'activos' && consultorias.links && consultorias.links.length > 3 && (
                     <div className="card-footer bg-body border-top-0 py-3">
                         <nav aria-label="Page navigation">
                             <ul className="pagination justify-content-center mb-0">

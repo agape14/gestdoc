@@ -15,6 +15,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
 
     const { data, setData, post, processing, errors } = useForm({
         nombre_candidato: defaultNombre,
+        nombre: '',
         folder_id: folderId || '',
     });
 
@@ -36,6 +37,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
         }
         const formData = new FormData();
         formData.append('nombre_candidato', data.nombre_candidato);
+        if (data.nombre != null && data.nombre !== '') formData.append('nombre', data.nombre);
         if (data.folder_id) formData.append('folder_id', data.folder_id);
         conArchivo.forEach((a, i) => {
             formData.append(`archivos[${i}][nombre_archivo]`, a.nombre_archivo);
@@ -95,6 +97,10 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
                             onChange={(e) => setData('nombre_candidato', e.target.value)}
                         />
                         {errors.nombre_candidato && <div className="invalid-feedback">{errors.nombre_candidato}</div>}
+                        <div className="mt-3">
+                            <label className="form-label fw-medium text-body">NOMBRE (opcional)</label>
+                            <input type="text" className="form-control" placeholder="Texto libre para identificar en el listado" value={data.nombre || ''} onChange={(e) => setData('nombre', e.target.value)} />
+                        </div>
                     </div>
 
                     <div className="col-12 mb-4">

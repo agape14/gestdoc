@@ -147,7 +147,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                     <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
                                 </div>
                                 <div className="col-md-6">
-                                    <label className="form-label fw-bold small text-secondary">IMPORTE</label>
+                                    <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
                                     <div className="input-group">
                                         <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
                                         <input type="number" step="0.01" className="form-control" value={data.monto_contratado || ''} onChange={e => {
@@ -170,6 +170,13 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                             setData('importe', (m * p / 100) || '');
                                         }} />
                                         <span className="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div className="col-md-12">
+                                    <label className="form-label fw-bold small text-secondary">RESULTADO (Monto contratado × % Participación / 100)</label>
+                                    <div className="input-group">
+                                        <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                        <input type="text" className="form-control bg-light fw-bold" value={(() => { const m = parseFloat(data.monto_contratado) || 0; const p = parseFloat(data.porcentaje_participacion) || 0; return (m * p / 100).toFixed(2); })()} readOnly />
                                     </div>
                                 </div>
                             </>

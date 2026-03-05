@@ -22,6 +22,7 @@ use App\Models\Topografia;
 use App\Models\Tecnologia;
 use App\Models\PlantillaIng;
 use App\Models\Folder;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -181,9 +182,14 @@ class DashboardController extends Controller
             Log::warning("Error getting Configuration: " . $e->getMessage());
         }
 
+        $r2StorageUsedBytes = $isAdmin ? Cache::get('r2_storage_used_bytes') : null;
+        $r2StorageLimitBytes = 2 * 1024 * 1024 * 1024 * 1024; // 2 TB
+
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'image360' => $image360,
+            'r2StorageUsedBytes' => $r2StorageUsedBytes,
+            'r2StorageLimitBytes' => $r2StorageLimitBytes,
         ]);
     }
 }

@@ -16,6 +16,7 @@ export default function Edit({ cv, operadores = [] }) {
     const { data, setData, post, processing, errors } = useForm({
         _method: 'PUT',
         nombre_candidato: cv.nombre_candidato || '',
+        nombre: cv.nombre || '',
     });
 
     useEffect(() => {
@@ -40,6 +41,7 @@ export default function Edit({ cv, operadores = [] }) {
         const formData = new FormData();
         formData.append('_method', 'PUT');
         formData.append('nombre_candidato', data.nombre_candidato);
+        if (data.nombre != null && data.nombre !== '') formData.append('nombre', data.nombre);
         archivosExistentes.forEach((a, i) => {
             formData.append(`archivos_existentes[${i}][id]`, a.id);
             formData.append(`archivos_existentes[${i}][nombre_archivo]`, a.nombre_archivo);
@@ -101,6 +103,10 @@ export default function Edit({ cv, operadores = [] }) {
                             onChange={(e) => setData('nombre_candidato', e.target.value)}
                         />
                         {errors.nombre_candidato && <div className="invalid-feedback">{errors.nombre_candidato}</div>}
+                        <div className="mt-3">
+                            <label className="form-label fw-medium text-body">NOMBRE (opcional)</label>
+                            <input type="text" className="form-control" placeholder="Texto libre para el listado" value={data.nombre || ''} onChange={(e) => setData('nombre', e.target.value)} />
+                        </div>
                     </div>
 
                     {archivosExistentes.length > 0 && (

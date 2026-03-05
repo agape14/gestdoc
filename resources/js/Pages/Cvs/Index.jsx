@@ -27,6 +27,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
     const [selectedPdfTitle, setSelectedPdfTitle] = useState('');
     const [selectedCvIds, setSelectedCvIds] = useState([]);
+    const [nombreValues, setNombreValues] = useState({});
 
     const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (currentFolder?.name || 'Banco de CVs');
     const buildParams = (extra = {}) => ({ ...filters, ...extra });
@@ -294,7 +295,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                         <table className="table table-hover align-middle mb-0" style={{ minWidth: '560px' }}>
                             <thead className="border-bottom text-secondary small text-uppercase">
                                 <tr>
-                                    <th scope="col" className="ps-4 py-3">Candidato</th>
+                                    <th scope="col" className="ps-4 py-3">NOMBRE</th>
                                     <th scope="col" className="py-3">Fecha Registro</th>
                                     <th scope="col" className="text-center py-3" style={{ minWidth: '260px' }}>Archivos</th>
                                     <th scope="col" className="text-end pe-4 py-3">Estado</th>
@@ -303,7 +304,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                             <tbody>
                                 {anulados.length > 0 ? anulados.map(cv => (
                                     <tr key={cv.id} className="table-secondary">
-                                        <td className="ps-4 py-3">{cv.nombre_candidato}</td>
+                                        <td className="ps-4 py-3">{cv.nombre ?? '—'}</td>
                                         <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
                                         <td className="text-center" style={{ minWidth: '260px' }}>
                                             {(cv.files && cv.files.length > 0) ? (
@@ -338,7 +339,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                         />
                                     )}
                                 </th>
-                                <th scope="col" className="py-3">Candidato</th>
+                                <th scope="col" className="py-3">NOMBRE</th>
                                 <th scope="col" className="py-3">Fecha Registro</th>
                                 <th scope="col" className="text-center py-3" style={{ minWidth: '260px' }}>Archivos</th>
                                 <th scope="col" className="text-end pe-4 py-3">Acciones</th>
@@ -360,7 +361,23 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                             <span className="text-muted">—</span>
                                         )}
                                     </td>
-                                    <td className="ps-4 py-3 fw-medium text-body">{cv.nombre_candidato}</td>
+                                    <td className="ps-4 py-3">
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            placeholder="Escribir nombre..."
+                                            value={nombreValues[cv.id] !== undefined ? nombreValues[cv.id] : (cv.nombre ?? '')}
+                                            onChange={(e) => setNombreValues(prev => ({ ...prev, [cv.id]: e.target.value }))}
+                                            onBlur={(e) => {
+                                                const v = e.target.value.trim();
+                                                const prev = cv.nombre ?? '';
+                                                if (v !== prev) {
+                                                    router.put(route('cvs.update', cv.id), { nombre_candidato: cv.nombre_candidato, nombre: v || null }, { preserveScroll: true });
+                                                    setNombreValues(prevState => { const next = { ...prevState }; delete next[cv.id]; return next; });
+                                                }
+                                            }}
+                                        />
+                                    </td>
                                     <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
                                     <td className="text-center" style={{ minWidth: '260px' }}>
                                         {(cv.files && cv.files.length > 0) ? (

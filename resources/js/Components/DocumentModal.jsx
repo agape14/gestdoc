@@ -248,18 +248,33 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                 {/* Archivos existentes (solo edición) */}
                                 {isEditing && archivosExistentes.length > 0 && (
                                     <div className="col-12">
-                                        <label className="form-label fw-semibold">Archivos actuales (renombrar si desea)</label>
+                                        <label className="form-label fw-semibold">Archivos actuales (renombrar o eliminar)</label>
                                         <div className="list-group list-group-flush">
                                             {archivosExistentes.map((a, i) => (
-                                                <div key={a.id} className="list-group-item d-flex align-items-center gap-2">
+                                                <div key={a.id} className="list-group-item d-flex align-items-center gap-2 flex-wrap">
                                                     <i className="bi bi-file-pdf-fill text-danger"></i>
                                                     <input
                                                         type="text"
-                                                        className="form-control form-control-sm"
+                                                        className="form-control form-control-sm flex-grow-1"
                                                         value={a.nombre_archivo}
                                                         onChange={(e) => setExistentesNombre(i, e.target.value)}
-                                                        placeholder="Nombre del archivo"
+                                                        placeholder="Nombre del archivo (solo nombre, no extensión)"
                                                     />
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline-danger btn-sm"
+                                                        title="Eliminar archivo"
+                                                        onClick={() => {
+                                                            if (window.confirm('¿Eliminar este archivo del expediente? No se borrará del almacenamiento.')) {
+                                                                router.delete(route('folders.documents.files.destroy', { document: doc.id, file: a.id }), {
+                                                                    preserveScroll: true,
+                                                                    onSuccess: () => setArchivosExistentes((prev) => prev.filter((x) => x.id !== a.id)),
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
                                                 </div>
                                             ))}
                                         </div>
