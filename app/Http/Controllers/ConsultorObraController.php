@@ -8,6 +8,7 @@ use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ConsultorObrasExport;
 use App\Traits\HasRoleBasedAccess;
@@ -220,13 +221,22 @@ class ConsultorObraController extends Controller
             if (!$request->hasFile("documentos.{$index}.archivo")) {
                 continue;
             }
-            $file = $request->file("documentos.{$index}.archivo");
-            $path = $file->store('expedientes/consultor_obras/documentos', 'r2');
-            ConsultorObraDocumento::create([
-                'consultor_obra_id' => $consultorObra->id,
-                'nombre' => $nombre ?: $file->getClientOriginalName(),
-                'file_path' => $path,
-            ]);
+            try {
+                $file = $request->file("documentos.{$index}.archivo");
+                $path = $file->store('expedientes/consultor_obras/documentos', 'r2');
+                ConsultorObraDocumento::create([
+                    'consultor_obra_id' => $consultorObra->id,
+                    'nombre' => $nombre ?: $file->getClientOriginalName(),
+                    'file_path' => $path,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('ConsultorObra storeDocumentos: fallo al subir a R2', [
+                    'consultor_obra_id' => $consultorObra->id,
+                    'index' => $index,
+                    'message' => $e->getMessage(),
+                ]);
+                throw $e;
+            }
         }
     }
 
@@ -359,13 +369,22 @@ class ConsultorObraController extends Controller
                 continue;
             }
             $nombre = is_array($doc) ? ($doc['nombre'] ?? '') : '';
-            $file = $request->file("documentos.{$index}.archivo");
-            $path = $file->store('expedientes/consultor_obras/documentos', 'r2');
-            ConsultorObraDocumento::create([
-                'consultor_obra_id' => $consultorObra->id,
-                'nombre' => $nombre ?: $file->getClientOriginalName(),
-                'file_path' => $path,
-            ]);
+            try {
+                $file = $request->file("documentos.{$index}.archivo");
+                $path = $file->store('expedientes/consultor_obras/documentos', 'r2');
+                ConsultorObraDocumento::create([
+                    'consultor_obra_id' => $consultorObra->id,
+                    'nombre' => $nombre ?: $file->getClientOriginalName(),
+                    'file_path' => $path,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('ConsultorObra syncDocumentosUpdate: fallo al subir a R2', [
+                    'consultor_obra_id' => $consultorObra->id,
+                    'index' => $index,
+                    'message' => $e->getMessage(),
+                ]);
+                throw $e;
+            }
         }
     }
 
@@ -377,6 +396,7 @@ class ConsultorObraController extends Controller
         }
 
         $consultor_obra->update(['anulado' => true]);
-        return redirect()->route('consultor-obras.index')->with('success', 'Registro anulado.');
+        $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
+        return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro anulado.');
     }
 }
