@@ -58,9 +58,13 @@ export default function Edit({ consultorObra, folderId = null }) {
 
     const submit = (e) => {
         e.preventDefault();
+        const id = consultorObra?.id ?? consultorObra?.consultor_obra_id;
+        if (!id) {
+            console.error('Edit: falta id del registro');
+            return;
+        }
         setSending(true);
         const formData = new FormData();
-        formData.append('_method', 'PUT');
         const scalarKeys = [
             'titulo', 'entidad', 'categoria', 'especialidad', 'tipo_servicio', 'presupuesto', 'estado',
             'duracion', 'modalidad', 'clasificacion', 'objeto_contrato', 'cui', 'numero_contrato_os_comprobante',
@@ -73,14 +77,14 @@ export default function Edit({ consultorObra, folderId = null }) {
             if (val !== undefined && val !== null)
                 formData.append(key, typeof val === 'boolean' ? (val ? '1' : '0') : String(val));
         });
-        (data.documento_delete_ids || []).forEach((id, i) => formData.append(`documento_delete_ids[${i}]`, id));
+        (data.documento_delete_ids || []).forEach((docId, i) => formData.append(`documento_delete_ids[${i}]`, docId));
         (data.documentos || []).forEach((doc, i) => {
             if (doc.archivo && (doc.nombre || doc.archivo.name)) {
                 formData.append(`documentos[${i}][nombre]`, doc.nombre || doc.archivo.name || '');
                 formData.append(`documentos[${i}][archivo]`, doc.archivo);
             }
         });
-        router.post(route('consultor-obras.update', consultorObra.id), formData, {
+        router.post(route('consultor-obras.update.post', id), formData, {
             forceFormData: true,
             onFinish: () => setSending(false),
         });
