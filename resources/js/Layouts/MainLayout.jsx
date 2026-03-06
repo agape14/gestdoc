@@ -162,7 +162,6 @@ export default function MainLayout({ children }) {
                             <NavItemWithSubmenu icon="bi-gear" label="CONFIGURACION" activePattern="/config">
                                 <SubNavItem href="/config" icon="bi-people" label="Usuarios" />
                                 <SubNavItem href="/config/image360" icon="bi-image" label="Imagen 360°" />
-                                <SubNavItem href="/config/reset-data" icon="bi-trash3" label="Resetear datos" />
                             </NavItemWithSubmenu>
                         )}
                     </ul>

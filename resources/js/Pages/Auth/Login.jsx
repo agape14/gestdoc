@@ -1,9 +1,8 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const DEMO_PASSWORD = 'password';
-
-export default function Login({ status, canResetPassword, demoUsers = [] }) {
+export default function Login({ status, canResetPassword }) {
+    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -22,11 +21,6 @@ export default function Login({ status, canResetPassword, demoUsers = [] }) {
         post(route('login'), {
             onFinish: () => reset('password'),
         });
-    };
-
-    const iniciarConUsuario = (email) => {
-        setData('email', email);
-        setData('password', DEMO_PASSWORD);
     };
 
     return (
@@ -92,15 +86,28 @@ export default function Login({ status, canResetPassword, demoUsers = [] }) {
 
                                         <div className="mb-4">
                                             <label className="form-label text-secondary small fw-bold text-uppercase">Contraseña</label>
-                                            <div className="input-group">
+                                            <div className="input-group position-relative">
                                                 <span className="input-group-text bg-body-tertiary border-end-0 text-secondary"><i className="bi bi-lock"></i></span>
                                                 <input
-                                                    type="password"
-                                                    className={`form-control border-start-0 bg-body-tertiary ${errors.password ? 'is-invalid' : ''}`}
+                                                    type={showPassword ? 'text' : 'password'}
+                                                    name="password"
+                                                    id="password"
+                                                    autoComplete="current-password"
+                                                    className={`form-control border-start-0 bg-body-tertiary pe-5 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="••••••••"
                                                     value={data.password}
                                                     onChange={(e) => setData('password', e.target.value)}
                                                 />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword((prev) => !prev)}
+                                                    className="position-absolute end-0 top-50 translate-middle-y btn btn-link text-secondary border-0 p-2 me-2"
+                                                    style={{ zIndex: 5 }}
+                                                    title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                                >
+                                                    <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`} aria-hidden="true"></i>
+                                                </button>
                                             </div>
                                             {errors.password && <div className="text-danger small mt-1">{errors.password}</div>}
                                         </div>
@@ -133,30 +140,6 @@ export default function Login({ status, canResetPassword, demoUsers = [] }) {
                                 </div>
                             </div>
                         </div>
-
-                        {demoUsers && demoUsers.length > 0 && (
-                            <div className="mt-4 p-3 rounded-3 bg-body-tertiary border border-secondary border-opacity-25">
-                                <p className="text-secondary small mb-2 d-flex align-items-center gap-1">
-                                    <i className="bi bi-person-check text-primary"></i>
-                                    <span>Iniciar sesión con usuario de prueba</span>
-                                </p>
-                                <p className="text-muted small mb-2" style={{ fontSize: '0.8rem' }}>Contraseña: <kbd className="px-1 py-0 rounded" style={{ fontSize: '0.75rem' }}>password</kbd></p>
-                                <div className="d-flex flex-wrap gap-2">
-                                    {demoUsers.map((user) => (
-                                        <button
-                                            key={user.id}
-                                            type="button"
-                                            className="btn btn-sm btn-outline-secondary py-2 px-3 rounded-pill"
-                                            onClick={() => iniciarConUsuario(user.email)}
-                                            title={user.email}
-                                        >
-                                            <span className="d-inline-block text-truncate" style={{ maxWidth: '140px' }}>{user.name}</span>
-                                            <span className="badge bg-secondary ms-1 rounded-pill" style={{ fontSize: '0.65rem' }}>{user.role}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         <div className="text-center mt-4 text-secondary small opacity-75">
                             &copy; {new Date().getFullYear()} GestDoc. Todos los derechos reservados.

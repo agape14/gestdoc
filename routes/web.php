@@ -92,8 +92,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/config/image360', [ConfigurationController::class, 'image360'])->name('config.image360');
         Route::post('/config/image360/update', [ConfigurationController::class, 'updateImage360'])->name('config.image360.update');
         Route::post('/config/image360/restore', [ConfigurationController::class, 'restoreDefault360'])->name('config.image360.restore');
-        Route::get('/config/reset-data', [ConfigurationController::class, 'resetData'])->name('config.resetData');
-        Route::post('/config/reset-data/execute', [ConfigurationController::class, 'executeResetData'])->name('config.resetData.execute');
+        // Reseteo de datos deshabilitado por seguridad (acceso solo en entorno local vía controlador)
+        // Route::get('/config/reset-data', [ConfigurationController::class, 'resetData'])->name('config.resetData');
+        // Route::post('/config/reset-data/execute', [ConfigurationController::class, 'executeResetData'])->name('config.resetData.execute');
     });
 });
 

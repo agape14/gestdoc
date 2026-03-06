@@ -105,10 +105,13 @@ class ConfigurationController extends Controller
     }
 
     /**
-     * Página de reseteo de datos (solo Administrador)
+     * Página de reseteo de datos (solo Administrador, solo entorno local)
      */
     public function resetData()
     {
+        if (!app()->environment('local')) {
+            return redirect()->route('dashboard')->with('error', 'Esta función no está disponible.');
+        }
         $user = Auth::user();
         if (!$user || $user->role !== 'Administrador') {
             return redirect()->route('dashboard')->with('error', 'No tienes permiso para acceder.');
@@ -117,10 +120,13 @@ class ConfigurationController extends Controller
     }
 
     /**
-     * Ejecutar borrado de todos los datos ingresados para dejar contadores en 0 (solo Administrador)
+     * Ejecutar borrado de todos los datos ingresados para dejar contadores en 0 (solo Administrador, solo entorno local)
      */
     public function executeResetData(Request $request)
     {
+        if (!app()->environment('local')) {
+            return redirect()->route('dashboard')->with('error', 'Esta función no está disponible.');
+        }
         $user = Auth::user();
         if (!$user || $user->role !== 'Administrador') {
             return redirect()->route('dashboard')->with('error', 'No tienes permiso para esta acción.');
@@ -185,7 +191,7 @@ class ConfigurationController extends Controller
             }
 
             Log::info('Reset de datos ejecutado por usuario id=' . $user->id);
-            return redirect()->route('config.resetData')->with('success', 'Datos eliminados correctamente. Los contadores del dashboard están en 0.');
+            return redirect()->route('config')->with('success', 'Datos eliminados correctamente. Los contadores del dashboard están en 0.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error en reset de datos: ' . $e->getMessage());

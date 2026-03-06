@@ -131,6 +131,7 @@ export default function Edit({ user, menuOptions = [], allowedMenusDefault = [] 
                                 className={`form-control ${errors.password ? 'is-invalid' : ''}`}
                                 value={data.password}
                                 onChange={e => setData('password', e.target.value)}
+                                autoComplete="new-password"
                             />
                             {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                         </div>
@@ -141,7 +142,9 @@ export default function Edit({ user, menuOptions = [], allowedMenusDefault = [] 
                                 className={`form-control ${errors.password_confirmation ? 'is-invalid' : ''}`}
                                 value={data.password_confirmation}
                                 onChange={e => setData('password_confirmation', e.target.value)}
+                                autoComplete="new-password"
                             />
+                            {errors.password_confirmation && <div className="invalid-feedback">{errors.password_confirmation}</div>}
                         </div>
                     </div>
 
