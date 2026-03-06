@@ -7,255 +7,70 @@ import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 
+const fmtDate = (d) => (!d ? '-' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
+
 const DetailForm = ({ item, onClose }) => {
     const { auth } = usePage().props;
     const currentUserRole = auth?.user?.role || 'Visualizador';
     const canEdit = currentUserRole === 'Administrador' || (currentUserRole === 'Operador' && item.user_id === auth?.user?.id);
 
-    const { data, setData, post, processing, errors } = useForm({
-        _method: 'PUT',
-        titulo: item.titulo || '',
-        entidad: item.entidad || '',
-        modalidad: item.modalidad || '',
-        especialidad: item.especialidad || '',
-        tipo_obra: item.tipo_obra || '',
-        presupuesto: item.presupuesto || '',
-        estado: item.estado || 'En Curso',
-        plazo_ejecucion: item.plazo_ejecucion || '',
-        tiempo_culminacion: item.tiempo_culminacion || '',
-        plantel_tecnico: item.plantel_tecnico || '',
-        contrato_archivo: null,
-        tdr_archivo: null,
-        valorizaciones: null,
-        informes_tecnicos: null,
-        liquidacion: null,
-        panel_fotografico: null,
-        expediente_tecnico: null,
-        actas_resoluciones: null,
-        conformidad_tecnica: null,
-        cargos: Array.isArray(item.cargos)
-            ? item.cargos.map(c => typeof c === 'object' && c !== null ? { cargo: c.cargo || '', nombre: c.nombre || '' } : { cargo: String(c), nombre: '' })
-            : [{ cargo: '', nombre: '' }],
-    });
-
-    const handleAddCargo = () => {
-        setData('cargos', [...(data.cargos || []), { cargo: '', nombre: '' }]);
-    };
-    const handleRemoveCargo = (index) => {
-        const list = (data.cargos || []).filter((_, i) => i !== index);
-        setData('cargos', list.length ? list : [{ cargo: '', nombre: '' }]);
-    };
-    const handleCargoChange = (index, field, value) => {
-        const list = [...(data.cargos || [])];
-        if (!list[index]) list[index] = { cargo: '', nombre: '' };
-        list[index][field] = value;
-        setData('cargos', list);
-    };
-
-    const submit = (e) => {
-        e.preventDefault();
-        if (!canEdit) {
-            Swal.fire('Error', 'No tienes permiso para editar este registro', 'error');
-            return;
-        }
-        post(route('ejecutor-obra.update', item.id), {
-            forceFormData: true,
-            transform: (d) => ({ ...d, cargos: typeof d.cargos !== 'undefined' ? JSON.stringify(d.cargos) : undefined }),
-            onSuccess: () => {
-                Swal.fire('Éxito', 'Registro actualizado correctamente', 'success');
-                onClose();
-            }
-        });
-    };
-
     return (
-        <form onSubmit={submit} className="p-4 bg-white rounded-4 shadow-sm">
+        <div className="p-4 bg-white rounded-4 shadow-sm">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h5 className="fw-bold mb-0">Detalle de Ejecutor de Obra</h5>
-                <button type="button" className="btn-close" onClick={onClose}></button>
-            </div>
-
-            <div className="row g-3 mb-3">
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Proyecto</label>
-                    <input type="text" className="form-control" value={data.titulo} onChange={e => setData('titulo', e.target.value)} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Entidad</label>
-                    <input type="text" className="form-control" value={data.entidad} onChange={e => setData('entidad', e.target.value)} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Modalidad</label>
-                    <input type="text" className="form-control" value={data.modalidad} onChange={e => setData('modalidad', e.target.value)} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Especialidad</label>
-                    <input type="text" className="form-control" value={data.especialidad} onChange={e => setData('especialidad', e.target.value)} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Tipo</label>
-                    <input type="text" className="form-control" value={data.tipo_obra} onChange={e => setData('tipo_obra', e.target.value)} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Presupuesto</label>
-                    <div className="input-group">
-                        <span className="input-group-text">S/</span>
-                        <input type="number" step="0.01" className="form-control" value={data.presupuesto} onChange={e => setData('presupuesto', e.target.value)} disabled={!canEdit} />
-                    </div>
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Plazo de Ejecución</label>
-                    <input type="text" className="form-control" value={data.plazo_ejecucion} onChange={e => setData('plazo_ejecucion', e.target.value)} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Tiempo de Culminación</label>
-                    <input type="text" className="form-control" value={data.tiempo_culminacion} onChange={e => setData('tiempo_culminacion', e.target.value)} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Plantel Técnico</label>
-                    <input type="text" className="form-control" value={data.plantel_tecnico} onChange={e => setData('plantel_tecnico', e.target.value)} disabled={!canEdit} />
-                </div>
-            </div>
-
-            <div className="mb-3">
-                <label className="form-label fw-bold small text-secondary">Cargos (identificar cargo de quien es)</label>
-                {(data.cargos || []).map((c, index) => (
-                    <div key={index} className="d-flex gap-2 align-items-center mb-2">
-                        <input type="text" className="form-control form-control-sm" placeholder="Cargo" value={c.cargo || ''} onChange={e => handleCargoChange(index, 'cargo', e.target.value)} disabled={!canEdit} />
-                        <input type="text" className="form-control form-control-sm" placeholder="Nombre" value={c.nombre || ''} onChange={e => handleCargoChange(index, 'nombre', e.target.value)} disabled={!canEdit} />
-                        {(data.cargos || []).length > 1 && canEdit && (
-                            <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => handleRemoveCargo(index)}><i className="bi bi-trash"></i></button>
-                        )}
-                    </div>
-                ))}
-                {canEdit && (
-                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={handleAddCargo}>
-                        <i className="bi bi-plus-lg me-1"></i> Agregar cargo
-                    </button>
-                )}
-            </div>
-
-            <hr className="my-3" />
-
-            <div className="row g-3 mb-3">
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Contrato</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('contrato_archivo', e.target.files[0])} disabled={!canEdit} />
-                    {item.contrato_archivo && (
-                        <a href={item.contrato_archivo_url || `/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                        </a>
-                    )}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">TDR</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('tdr_archivo', e.target.files[0])} disabled={!canEdit} />
-                    {item.tdr_archivo && (
-                        <a href={item.tdr_archivo_url || `/storage/${item.tdr_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                        </a>
-                    )}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Valorizaciones</label>
-                    <input type="file" className="form-control form-control-sm" multiple accept=".pdf,.doc,.docx" onChange={e => setData('valorizaciones', Array.from(e.target.files))} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Informes Técnicos</label>
-                    <input type="file" className="form-control form-control-sm" multiple accept=".pdf,.doc,.docx" onChange={e => setData('informes_tecnicos', Array.from(e.target.files))} disabled={!canEdit} />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Liquidación</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('liquidacion', e.target.files[0])} disabled={!canEdit} />
-                    {item.liquidacion && (
-                        <a href={item.liquidacion_url || `/storage/${item.liquidacion}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                        </a>
-                    )}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Panel Fotográfico</label>
-                    <input type="file" className="form-control form-control-sm" accept="image/*" onChange={e => setData('panel_fotografico', e.target.files[0])} disabled={!canEdit} />
-                    {item.panel_fotografico && (
-                        <a href={item.panel_fotografico_url || `/storage/${item.panel_fotografico}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-image"></i> Ver imagen actual
-                        </a>
-                    )}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Expediente Técnico</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('expediente_tecnico', e.target.files[0])} disabled={!canEdit} />
-                    {item.expediente_tecnico && (
-                        <a href={item.expediente_tecnico_url || `/storage/${item.expediente_tecnico}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                        </a>
-                    )}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Actas y Resoluciones</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('actas_resoluciones', e.target.files[0])} disabled={!canEdit} />
-                    {item.actas_resoluciones && (
-                        <a href={item.actas_resoluciones_url || `/storage/${item.actas_resoluciones}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                        </a>
-                    )}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-bold small text-secondary">Conformidad Técnica</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('conformidad_tecnica', e.target.files[0])} disabled={!canEdit} />
-                    {item.conformidad_tecnica && (
-                        <a href={item.conformidad_tecnica_url || `/storage/${item.conformidad_tecnica}`} target="_blank" className="small text-primary mt-1 d-block">
-                            <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                        </a>
+                <div className="d-flex gap-2">
+                    <button type="button" className="btn-close" onClick={onClose} aria-label="Cerrar"></button>
+                    {canEdit && (
+                        <Link href={route('ejecutor-obra.edit', item.id)} className="btn btn-primary btn-sm rounded-pill">
+                            <i className="bi bi-pencil me-1"></i> Editar
+                        </Link>
                     )}
                 </div>
             </div>
-
-            <div className="d-flex justify-content-between align-items-center mt-3">
-                <a href={route('licitaciones.index')} className="btn btn-link text-decoration-none btn-sm">
-                    <i className="bi bi-box-arrow-up-right me-1"></i> Ver Proceso (Licitación)
-                </a>
-                {canEdit && (
-                    <div className="d-flex gap-2">
-                        <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
-                        <button type="submit" disabled={processing} className="btn btn-primary">
-                            <i className="bi bi-save me-2"></i> Guardar
-                        </button>
-                    </div>
-                )}
+            <div className="row g-3 mb-3 small">
+                <div className="col-md-6"><span className="text-secondary">Entidad:</span> {item.nombre_sigla_entidad || '-'}</div>
+                <div className="col-md-6"><span className="text-secondary">Nomenclatura:</span> {item.nomenclatura || '-'}</div>
+                <div className="col-12"><span className="text-secondary">Descripción:</span> {(item.descripcion_objeto || '-').substring(0, 200)}{(item.descripcion_objeto || '').length > 200 ? '…' : ''}</div>
+                <div className="col-md-6"><span className="text-secondary">CUI:</span> {item.cui || '-'}</div>
+                <div className="col-md-6"><span className="text-secondary"># Contrato:</span> {item.numero_contrato || '-'}</div>
+                <div className="col-md-6"><span className="text-secondary">F. Firma contrato:</span> {fmtDate(item.fecha_firma_contrato)}</div>
+                <div className="col-md-6"><span className="text-secondary">Monto total:</span> S/ {parseFloat(item.monto_total || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</div>
+                <div className="col-md-6"><span className="text-secondary">Plazo (días):</span> {item.plazo ?? '-'}</div>
+                <div className="col-md-6"><span className="text-secondary">Liquidado/recepcionado:</span> {item.liquidado_recepcionado ? 'Sí' : 'No'}</div>
             </div>
-        </form>
+            <div className="d-flex justify-content-end">
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={onClose}>Cerrar</button>
+            </div>
+        </div>
     );
-};
-
-const getIconClass = (iconName) => {
-    const iconMap = { Lock: 'bi-lock-fill', Folder: 'bi-folder-fill', Building: 'bi-building', Road: 'bi-signpost-fill' };
-    return iconMap[iconName] || 'bi-folder-fill';
 };
 
 const getDocumentLinks = (item) => {
     const links = [];
-    if (item.contrato_archivo) links.push({ label: 'Contrato', path: item.contrato_archivo, url: item.contrato_archivo_url });
-    if (item.tdr_archivo) links.push({ label: 'TDR', path: item.tdr_archivo, url: item.tdr_archivo_url });
-    if (item.liquidacion) links.push({ label: 'Liquidación', path: item.liquidacion, url: item.liquidacion_url });
-    if (item.expediente_tecnico) links.push({ label: 'Expediente técnico', path: item.expediente_tecnico, url: item.expediente_tecnico_url });
-    if (item.actas_resoluciones) links.push({ label: 'Actas / Resoluciones', path: item.actas_resoluciones, url: item.actas_resoluciones_url });
-    if (item.conformidad_tecnica) links.push({ label: 'Conformidad técnica', path: item.conformidad_tecnica, url: item.conformidad_tecnica_url });
-    (item.documentos || []).forEach((d, i) => {
-        const path = d.file_path || d.archivo || d.path;
-        if (path) links.push({ label: d.nombre || `Documento ${i + 1}`, path, url: d.url });
+    const files = [
+        ['archivo_contrato', 'Contrato'],
+        ['archivo_acta_recepcion', 'Acta de Recepción'],
+        ['archivo_acta_inicio', 'Acta de Inicio'],
+        ['archivo_acta_suspension', 'Acta de Suspensión'],
+        ['archivo_acta_reinicio', 'Acta de Reinicio'],
+        ['archivo_acta_entrega_terreno', 'Acta de Entrega de Terreno'],
+        ['archivo_resolucion_liquidacion', 'Resolución de Liquidación'],
+    ];
+    files.forEach(([key, label]) => {
+        const path = item[key];
+        const url = item[key + '_url'];
+        if (path || url) links.push({ label, path: path || '', url: url || null });
     });
     return links;
 };
 
-export default function Index({ obras, groupedByEspecialidad, filters, flash, userRole, operadores = [], folders = [], currentFolder = null, breadcrumb = [] }) {
+export default function Index({ obras, filters, flash, userRole, operadores = [], folders = [], currentFolder = null, breadcrumb = [] }) {
     const { auth } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
     const [search, setSearch] = useState(filters.search || '');
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [expandedRow, setExpandedRow] = useState(null);
-    const [showGrouped, setShowGrouped] = useState(true);
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [editingFolder, setEditingFolder] = useState(null);
     const [showDocumentsModal, setShowDocumentsModal] = useState(false);
@@ -299,10 +114,7 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
     };
 
     const handleExport = () => {
-        const params = new URLSearchParams();
-        if (filters.tipo) params.append('tipo', filters.tipo);
-        if (filters.especialidad) params.append('especialidad', filters.especialidad);
-        window.location.href = route('ejecutor-obra.export') + '?' + params.toString();
+        window.location.href = route('ejecutor-obra.export');
     };
 
     const handleExportProject = (id) => {
@@ -366,7 +178,6 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
     };
 
     const allObras = obras.data || [];
-    const grouped = groupedByEspecialidad || {};
 
     return (
         <MainLayout>
@@ -457,7 +268,7 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
                             <input
                                 type="text"
                                 className="form-control border-start-0 bg-body-tertiary rounded-end-pill"
-                                placeholder="Buscar por proyecto, entidad o especialidad..."
+                                placeholder="Buscar por entidad, nomenclatura, CUI o número de contrato..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
@@ -467,122 +278,24 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
             </div>
 
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-body min-w-0 w-100">
-                <div className="card-header bg-body border-0 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h6 className="mb-0 fw-bold text-truncate min-w-0">Listado {showGrouped ? 'Agrupado por Especialidad' : 'General'}</h6>
-                    <button className="btn btn-sm btn-outline-secondary flex-shrink-0" onClick={() => setShowGrouped(!showGrouped)}>
-                        <i className={`bi bi-${showGrouped ? 'list' : 'grid'} me-1`}></i>
-                        {showGrouped ? 'Vista General' : 'Vista Agrupada'}
-                    </button>
+                <div className="card-header bg-body border-0 py-3">
+                    <h6 className="mb-0 fw-bold text-truncate min-w-0">Listado</h6>
                 </div>
                 <div className="table-responsive overflow-x-auto min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
                     <table className="table table-hover align-middle mb-0" style={{ minWidth: '720px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
-                                <th scope="col" className="ps-4 py-3">PROYECTO</th>
-                                <th scope="col" className="py-3">ENTIDAD</th>
-                                <th scope="col" className="py-3">ESPECIALIDAD</th>
-                                <th scope="col" className="py-3">TIPO</th>
-                                <th scope="col" className="py-3">PRESUPUESTO</th>
-                                <th scope="col" className="py-3">ESTADO</th>
-                                <th scope="col" className="py-3">DURACIÓN</th>
+                                <th scope="col" className="ps-4 py-3">ENTIDAD</th>
+                                <th scope="col" className="py-3">NOMENCLATURA</th>
+                                <th scope="col" className="py-3">CUI</th>
+                                <th scope="col" className="py-3"># CONTRATO</th>
+                                <th scope="col" className="py-3">MONTO TOTAL</th>
+                                <th scope="col" className="py-3">PLAZO</th>
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {showGrouped && Object.keys(grouped).length > 0 ? (
-                                Object.entries(grouped).map(([especialidad, items]) => (
-                                    <React.Fragment key={especialidad}>
-                                        <tr className="bg-light">
-                                            <td colSpan="8" className="ps-4 py-2 fw-bold text-primary">
-                                                <i className="bi bi-folder-fill me-2"></i>
-                                                {especialidad || 'Sin Especialidad'} ({items.length} {items.length === 1 ? 'registro' : 'registros'})
-                                            </td>
-                                        </tr>
-                                        {items.map(obra => (
-                                            <React.Fragment key={obra.id}>
-                                                <tr
-                                                    className="cursor-pointer"
-                                                    onClick={() => setExpandedRow(expandedRow === obra.id ? null : obra.id)}
-                                                    style={{ backgroundColor: expandedRow === obra.id ? 'var(--bs-light)' : 'transparent' }}
-                                                >
-                                                    <td className="ps-4 py-3 fw-medium text-body">{obra.titulo}</td>
-                                                    <td className="text-secondary">{obra.entidad}</td>
-                                                    <td className="text-secondary">{obra.especialidad || '-'}</td>
-                                                    <td className="text-secondary">{obra.tipo_obra || '-'}</td>
-                                                    <td className="text-secondary fw-bold text-body">
-                                                        S/ {parseFloat(obra.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </td>
-                                                    <td>
-                                                        <span className={`badge bg-${obra.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${obra.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${obra.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
-                                                            {obra.estado}
-                                                        </span>
-                                                    </td>
-                                                    <td className="text-secondary">{obra.plazo_ejecucion || obra.tiempo_culminacion || '-'}</td>
-                                                    <td className="text-end pe-4">
-                                                        {getDocumentLinks(obra).filter(d => d.path).length > 0 && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => openDocumentsModal(obra, e)}
-                                                                className="btn btn-sm btn-outline-primary me-1"
-                                                                title="Ver documentos"
-                                                            >
-                                                                <i className="bi bi-file-earmark-pdf"></i>
-                                                            </button>
-                                                        )}
-                                                        {currentUserRole === 'Visualizador' ? (
-                                                            <button className="btn btn-sm btn-outline-info" title="Ver">
-                                                                <i className="bi bi-eye"></i>
-                                                            </button>
-                                                        ) : (
-                                                            <>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setExpandedRow(expandedRow === obra.id ? null : obra.id);
-                                                                    }}
-                                                                    className="btn btn-sm btn-outline-primary me-1"
-                                                                >
-                                                                    <i className={`bi bi-chevron-${expandedRow === obra.id ? 'up' : 'down'}`}></i>
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleExportProject(obra.id);
-                                                                    }}
-                                                                    className="btn btn-sm btn-outline-success me-1"
-                                                                    title="Exportar a Excel"
-                                                                >
-                                                                    <i className="bi bi-file-earmark-excel"></i>
-                                                                </button>
-                                                                {canDelete(obra) && (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleDelete(obra.id);
-                                                                        }}
-                                                                        className="btn btn-sm btn-outline-danger"
-                                                                    >
-                                                                        <i className="bi bi-trash"></i>
-                                                                    </button>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                                {expandedRow === obra.id && (
-                                                    <tr>
-                                                        <td colSpan="8" className="p-0 border-0">
-                                                            <div className="p-3 bg-light">
-                                                                <DetailForm item={obra} onClose={() => setExpandedRow(null)} />
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        ))}
-                                    </React.Fragment>
-                                ))
-                            ) : allObras.length > 0 ? (
+                            {allObras.length > 0 ? (
                                 allObras.map(obra => (
                                     <React.Fragment key={obra.id}>
                                         <tr
@@ -590,21 +303,16 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
                                             onClick={() => setExpandedRow(expandedRow === obra.id ? null : obra.id)}
                                             style={{ backgroundColor: expandedRow === obra.id ? 'var(--bs-light)' : 'transparent' }}
                                         >
-                                            <td className="ps-4 py-3 fw-medium text-body">{obra.titulo}</td>
-                                            <td className="text-secondary">{obra.entidad}</td>
-                                            <td className="text-secondary">{obra.especialidad || '-'}</td>
-                                            <td className="text-secondary">{obra.tipo_obra || '-'}</td>
+                                            <td className="ps-4 py-3 fw-medium text-body">{(obra.nombre_sigla_entidad || obra.titulo || '-').substring(0, 40)}{(obra.nombre_sigla_entidad || obra.titulo || '').length > 40 ? '…' : ''}</td>
+                                            <td className="text-secondary">{(obra.nomenclatura || '-').substring(0, 25)}{(obra.nomenclatura || '').length > 25 ? '…' : ''}</td>
+                                            <td className="text-secondary">{obra.cui || '-'}</td>
+                                            <td className="text-secondary">{obra.numero_contrato || '-'}</td>
                                             <td className="text-secondary fw-bold text-body">
-                                                S/ {parseFloat(obra.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                S/ {parseFloat(obra.monto_total || obra.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
-                                            <td>
-                                                <span className={`badge bg-${obra.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${obra.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${obra.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
-                                                    {obra.estado}
-                                                </span>
-                                            </td>
-                                            <td className="text-secondary">{obra.plazo_ejecucion || obra.tiempo_culminacion || '-'}</td>
+                                            <td className="text-secondary">{obra.plazo ?? obra.plazo_ejecucion ?? '-'}</td>
                                             <td className="text-end pe-4">
-                                                {getDocumentLinks(obra).filter(d => d.path).length > 0 && (
+                                                {getDocumentLinks(obra).filter(d => d.path || d.url).length > 0 && (
                                                     <button
                                                         type="button"
                                                         onClick={(e) => openDocumentsModal(obra, e)}
@@ -629,6 +337,14 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
                                                         >
                                                             <i className={`bi bi-chevron-${expandedRow === obra.id ? 'up' : 'down'}`}></i>
                                                         </button>
+                                                        <Link
+                                                            href={route('ejecutor-obra.edit', obra.id)}
+                                                            className="btn btn-sm btn-outline-primary me-1"
+                                                            title="Editar"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <i className="bi bi-pencil"></i>
+                                                        </Link>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -656,7 +372,7 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
                                         </tr>
                                         {expandedRow === obra.id && (
                                             <tr>
-                                                <td colSpan="8" className="p-0 border-0">
+                                                <td colSpan="7" className="p-0 border-0">
                                                     <div className="p-3 bg-light">
                                                         <DetailForm item={obra} onClose={() => setExpandedRow(null)} />
                                                     </div>
@@ -667,7 +383,7 @@ export default function Index({ obras, groupedByEspecialidad, filters, flash, us
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="8" className="text-center py-5 text-muted">No se encontraron registros.</td>
+                                    <td colSpan="7" className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>

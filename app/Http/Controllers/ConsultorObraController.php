@@ -125,7 +125,7 @@ class ConsultorObraController extends Controller
 
     public function export(Request $request)
     {
-        $query = ConsultorObra::query();
+        $query = ConsultorObra::query()->active();
 
         if ($request->filled('tipo')) {
             $query->where('categoria', $request->tipo);
@@ -135,7 +135,8 @@ class ConsultorObraController extends Controller
             $query->where('especialidad', $request->especialidad);
         }
 
-        return Excel::download(new ConsultorObrasExport($query->get()), 'consultor-obras.xlsx');
+        $filename = 'consultor-obras_' . date('Y-m-d_H-i-s') . '.xlsx';
+        return Excel::download(new ConsultorObrasExport($query->get()), $filename);
     }
 
     public function exportProject(ConsultorObra $consultorObra)

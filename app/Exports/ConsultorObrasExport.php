@@ -19,9 +19,13 @@ class ConsultorObrasExport implements FromCollection, WithHeadings, WithMapping,
 {
     protected $consultorObras;
 
+    /** Acumulado para MONTO FACTURADO ACUMULADO: primera fila = IMPORTE, luego anterior + IMPORTE */
+    protected $montoFacturadoAcumulado = 0;
+
     public function __construct(Collection $consultorObras)
     {
         $this->consultorObras = $consultorObras;
+        $this->montoFacturadoAcumulado = 0;
     }
 
     public function collection()
@@ -51,6 +55,16 @@ class ConsultorObrasExport implements FromCollection, WithHeadings, WithMapping,
         ];
     }
 
+    /**
+     * Calcula MONTO FACTURADO ACUMULADO: primera fila = IMPORTE, siguientes = anterior + IMPORTE.
+     */
+    protected function formatMontoFacturadoAcumulado($consultorObra): string
+    {
+        $importe = (float)($consultorObra->importe ?? 0);
+        $this->montoFacturadoAcumulado += $importe;
+        return number_format($this->montoFacturadoAcumulado, 2, '.', ',');
+    }
+
     public function map($consultorObra): array
     {
         $fecha = function ($d) {
@@ -72,7 +86,7 @@ class ConsultorObrasExport implements FromCollection, WithHeadings, WithMapping,
             $consultorObra->consorciado ? (isset($consultorObra->porcentaje_participacion) ? number_format((float)$consultorObra->porcentaje_participacion, 0) . '%' : '---') : '---',
             number_format((float)($consultorObra->importe ?? 0), 2, '.', ','),
             $consultorObra->tipo_cambio_venta ? number_format((float)$consultorObra->tipo_cambio_venta, 4, '.', ',') : '---',
-            number_format((float)($consultorObra->monto_facturado_acumulado ?? 0), 2, '.', ','),
+            $this->formatMontoFacturadoAcumulado($consultorObra),
             $consultorObra->numero_resolucion ?? '',
             $fecha($consultorObra->fecha_aprobacion ?? null),
         ];

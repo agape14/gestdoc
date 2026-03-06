@@ -127,6 +127,17 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                             <input type="date" className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
                         </div>
                         <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">IMPORTE</label>
+                            <div className="input-group">
+                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                <input type="number" step="0.01" min="0" className="form-control" value={data.importe ?? ''} onChange={e => { if (!data.consorciado) setData('importe', e.target.value); }} readOnly={data.consorciado} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-bold small text-secondary">TIPO DE CAMBIO VENTA</label>
+                            <input type="number" step="0.0001" className="form-control" value={data.tipo_cambio_venta || ''} onChange={e => setData('tipo_cambio_venta', e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">MONEDA</label>
                             <select className="form-select" value={data.moneda || 'Soles'} onChange={e => setData('moneda', e.target.value)}>
                                 <option value="Soles">Soles</option>
@@ -147,51 +158,27 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                     <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
                                 </div>
                                 <div className="col-md-6">
-                                    <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
-                                    <div className="input-group">
-                                        <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
-                                        <input type="number" step="0.01" className="form-control" value={data.monto_contratado || ''} onChange={e => {
-                                            const val = e.target.value;
-                                            setData('monto_contratado', val);
-                                            const m = parseFloat(val) || 0;
-                                            const p = parseFloat(data.porcentaje_participacion) || 0;
-                                            setData('importe', (m * p / 100) || '');
-                                        }} />
-                                    </div>
-                                </div>
-                                <div className="col-md-6">
                                     <label className="form-label fw-bold small text-secondary">% DE PARTICIPACIÓN</label>
                                     <div className="input-group">
                                         <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion || ''} onChange={e => {
                                             const val = e.target.value;
                                             setData('porcentaje_participacion', val);
-                                            const m = parseFloat(data.monto_contratado) || 0;
+                                            const baseImporte = parseFloat(data.importe) || 0;
                                             const p = parseFloat(val) || 0;
-                                            setData('importe', (m * p / 100) || '');
+                                            setData('monto_contratado', baseImporte * p / 100);
                                         }} />
                                         <span className="input-group-text">%</span>
                                     </div>
                                 </div>
-                                <div className="col-md-12">
-                                    <label className="form-label fw-bold small text-secondary">RESULTADO (Monto contratado × % Participación / 100)</label>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
                                     <div className="input-group">
                                         <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
-                                        <input type="text" className="form-control bg-light fw-bold" value={(() => { const m = parseFloat(data.monto_contratado) || 0; const p = parseFloat(data.porcentaje_participacion) || 0; return (m * p / 100).toFixed(2); })()} readOnly />
+                                        <input type="text" className="form-control bg-light fw-bold" value={data.monto_contratado != null && data.monto_contratado !== '' ? Number(data.monto_contratado).toFixed(2) : ''} readOnly />
                                     </div>
                                 </div>
                             </>
                         )}
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">IMPORTE</label>
-                            <div className="input-group">
-                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
-                                <input type="number" step="0.01" className="form-control" value={data.importe || ''} onChange={e => setData('importe', e.target.value)} readOnly={data.consorciado} />
-                            </div>
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-bold small text-secondary">TIPO DE CAMBIO VENTA</label>
-                            <input type="number" step="0.0001" className="form-control" value={data.tipo_cambio_venta || ''} onChange={e => setData('tipo_cambio_venta', e.target.value)} />
-                        </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">N° DE RESOLUCIÓN</label>
                             <input type="text" className="form-control" value={data.numero_resolucion || ''} onChange={e => setData('numero_resolucion', e.target.value)} placeholder="Ej: 185-2025" />

@@ -7,17 +7,41 @@ use Illuminate\Database\Eloquent\Model;
 class EjecutorObra extends Model
 {
     protected $fillable = [
-        'titulo', 'entidad', 'especialidad', 'tipo_obra', 'presupuesto',
-        'estado', 'modalidad', 'contrato_archivo', 'tdr_archivo',
-        'plazo_ejecucion', 'tiempo_culminacion', 'plantel_tecnico',
-        'valorizaciones', 'informes_tecnicos', 'cargos', 'liquidacion',
-        'panel_fotografico', 'expediente_tecnico', 'actas_resoluciones',
-        'conformidad_tecnica', 'categoria', 'user_id', 'anulado', 'folder_id', 'clasificacion'
+        'nombre_sigla_entidad',
+        'nomenclatura',
+        'descripcion_objeto',
+        'cui',
+        'numero_contrato',
+        'fecha_firma_contrato',
+        'monto_total',
+        'fecha_recepcion',
+        'plazo',
+        'fecha_inicio',
+        'fecha_suspension',
+        'fecha_reinicio',
+        'fecha_final',
+        'porcentaje_participacion',
+        'monto_neto',
+        'monto_acumulado',
+        'liquidado_recepcionado',
+        'fecha_entrega_terreno',
+        'fecha_recepcion_obra',
+        'fecha_aprobacion_liquidacion',
+        'archivo_contrato',
+        'archivo_acta_recepcion',
+        'archivo_acta_inicio',
+        'archivo_acta_suspension',
+        'archivo_acta_reinicio',
+        'archivo_acta_entrega_terreno',
+        'archivo_resolucion_liquidacion',
+        'user_id',
+        'anulado',
+        'folder_id',
     ];
 
     public function folder()
     {
-        return $this->belongsTo(\App\Models\Folder::class);
+        return $this->belongsTo(Folder::class);
     }
 
     public function documentos()
@@ -25,76 +49,77 @@ class EjecutorObra extends Model
         return $this->hasMany(EjecutorObraDocumento::class);
     }
 
+    protected $casts = [
+        'fecha_firma_contrato' => 'date',
+        'fecha_recepcion' => 'date',
+        'fecha_inicio' => 'date',
+        'fecha_suspension' => 'date',
+        'fecha_reinicio' => 'date',
+        'fecha_final' => 'date',
+        'fecha_entrega_terreno' => 'date',
+        'fecha_recepcion_obra' => 'date',
+        'fecha_aprobacion_liquidacion' => 'date',
+        'liquidado_recepcionado' => 'boolean',
+        'anulado' => 'boolean',
+    ];
+
+    protected $appends = [
+        'archivo_contrato_url',
+        'archivo_acta_recepcion_url',
+        'archivo_acta_inicio_url',
+        'archivo_acta_suspension_url',
+        'archivo_acta_reinicio_url',
+        'archivo_acta_entrega_terreno_url',
+        'archivo_resolucion_liquidacion_url',
+    ];
+
+    public function getArchivoContratoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_contrato);
+    }
+
+    public function getArchivoActaRecepcionUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_acta_recepcion);
+    }
+
+    public function getArchivoActaInicioUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_acta_inicio);
+    }
+
+    public function getArchivoActaSuspensionUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_acta_suspension);
+    }
+
+    public function getArchivoActaReinicioUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_acta_reinicio);
+    }
+
+    public function getArchivoActaEntregaTerrenoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_acta_entrega_terreno);
+    }
+
+    public function getArchivoResolucionLiquidacionUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_resolucion_liquidacion);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('anulado', false);
     }
 
-    protected $appends = [
-        'contrato_archivo_url', 'tdr_archivo_url', 'liquidacion_url', 'panel_fotografico_url',
-        'expediente_tecnico_url', 'actas_resoluciones_url', 'conformidad_tecnica_url',
-        'valorizaciones_urls', 'informes_tecnicos_urls',
-    ];
-
-    protected $casts = [
-        'valorizaciones' => 'array',
-        'informes_tecnicos' => 'array',
-        'cargos' => 'array',
-    ];
-
-    public function getContratoArchivoUrlAttribute(): ?string
-    {
-        return \storage_url_for_path($this->contrato_archivo);
-    }
-
-    public function getTdrArchivoUrlAttribute(): ?string
-    {
-        return \storage_url_for_path($this->tdr_archivo);
-    }
-
-    public function getLiquidacionUrlAttribute(): ?string
-    {
-        return \storage_url_for_path($this->liquidacion);
-    }
-
-    public function getPanelFotograficoUrlAttribute(): ?string
-    {
-        return \storage_url_for_path($this->panel_fotografico);
-    }
-
-    public function getExpedienteTecnicoUrlAttribute(): ?string
-    {
-        return \storage_url_for_path($this->expediente_tecnico);
-    }
-
-    public function getActasResolucionesUrlAttribute(): ?string
-    {
-        return \storage_url_for_path($this->actas_resoluciones);
-    }
-
-    public function getConformidadTecnicaUrlAttribute(): ?string
-    {
-        return \storage_url_for_path($this->conformidad_tecnica);
-    }
-
-    public function getValorizacionesUrlsAttribute(): array
-    {
-        $paths = is_array($this->valorizaciones) ? $this->valorizaciones : [];
-        return array_map(fn ($p) => \storage_url_for_path($p), $paths);
-    }
-
-    public function getInformesTecnicosUrlsAttribute(): array
-    {
-        $paths = is_array($this->informes_tecnicos) ? $this->informes_tecnicos : [];
-        return array_map(fn ($p) => \storage_url_for_path($p), $paths);
-    }
-
-     public function scopeForUser($query, $user)
+    public function scopeForUser($query, $user)
     {
         if ($user->role === 'Administrador') {
             return $query;
-        } elseif ($user->role === 'Operador') {
-             return $query->where('user_id', $user->id);
+        }
+        if ($user->role === 'Operador') {
+            return $query->where('user_id', $user->id);
         }
         return $query;
     }
