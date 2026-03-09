@@ -61,8 +61,25 @@ class EspecialistaEjecucionController extends Controller
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
+        $especialistas = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $totalsQuery = EspecialistaEjecucion::query()->active();
+        $this->applyRoleBasedFilter($totalsQuery, $user);
+        if ($folderId) {
+            $totalsQuery->where('folder_id', $folderId);
+        } else {
+            $totalsQuery->whereNull('folder_id');
+        }
+        if ($request->filled('user_id') && $user->role === 'Administrador') {
+            $totalsQuery->where('user_id', $request->user_id);
+        }
+        $experienceTotals = [
+            'total_dias_sin_traslape' => (int) $totalsQuery->sum('total_dias_sin_traslape'),
+            'total_monto_acumulado' => (float) $totalsQuery->orderBy('id')->get()->last()?->monto_acumulado ?? 0,
+        ];
+
         return Inertia::render('EspecialistasEjecucion/Index', [
-            'especialistas' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
+            'especialistas' => $especialistas,
+            'experienceTotals' => $experienceTotals,
             'filters' => $request->only(['search', 'tipo', 'user_id', 'folder_id']),
             'userRole' => $user->role,
             'operadores' => $operadores,
@@ -107,17 +124,33 @@ class EspecialistaEjecucionController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
+        $rules = [
+            'nombre' => 'nullable|string|max:255',
             'especialidad' => 'nullable|string|max:255',
-            'tipo' => 'required|string|in:Profesional,Empresa',
+            'tipo' => 'nullable|string|in:Profesional,Empresa',
             'estado' => 'nullable|string',
             'documento' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'clasificacion' => 'nullable|string|max:500',
-        ]);
+            'cliente' => 'required|string|max:500',
+            'objeto_del_contrato' => 'required|string',
+            'cui' => 'nullable|string|max:100',
+            'numero_contrato_os_comprobante' => 'required|string|max:255',
+            'fecha_inicio' => 'required|string',
+            'fecha_suspension' => 'nullable|string',
+            'fecha_reinicio' => 'nullable|string',
+            'fecha_culminacion' => 'required|string',
+            'traslape' => 'nullable|numeric|min:0',
+            'monto_neto' => 'required|numeric|min:0.01',
+            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
+        ];
+        $request->validate($rules);
 
-        $data = $request->except(['documento']);
+        $data = $this->prepareExperienciaData($request, null);
         $data['user_id'] = auth()->id();
+        $data['nombre'] = $data['nombre'] ?? $data['cliente'];
+        $data['tipo'] = $data['tipo'] ?? 'Profesional';
+        $data['estado'] = $data['estado'] ?? 'Activo';
 
         if ($request->filled('folder_id')) {
             $folder = Folder::where('module', self::MODULE)->find($request->folder_id);
@@ -134,63 +167,161 @@ class EspecialistaEjecucionController extends Controller
         }
 
         $especialista = EspecialistaEjecucion::create($data);
+        $this->recalculateMontoAcumulado(EspecialistaEjecucion::class, $especialista->folder_id);
         $folderId = $especialista->folder_id;
 
         return redirect()->route('especialistas-ejecucion.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro creado.');
     }
 
-    public function edit(EspecialistaEjecucion $especialista_ejecucion)
+    private function prepareExperienciaData(Request $request, $model): array
+    {
+        $fechaInicio = parse_fecha_dd_mm_yyyy($request->input('fecha_inicio'));
+        $fechaCulminacion = parse_fecha_dd_mm_yyyy($request->input('fecha_culminacion'));
+        $totalDias = null;
+        if ($fechaInicio && $fechaCulminacion) {
+            $start = \Carbon\Carbon::parse($fechaInicio);
+            $end = \Carbon\Carbon::parse($fechaCulminacion);
+            $totalDias = $start->diffInDays($end) + 1;
+        }
+        $totalMeses = $totalDias !== null ? round($totalDias / 30, 2) : null;
+        $traslape = (float) ($request->input('traslape') ?? 0);
+        $totalDiasSinTraslape = $totalDias !== null ? max(0, (int) round($totalDias - $traslape)) : null;
+
+        $data = [
+            'cliente' => $request->input('cliente'),
+            'objeto_del_contrato' => $request->input('objeto_del_contrato'),
+            'cui' => $request->input('cui'),
+            'numero_contrato_os_comprobante' => $request->input('numero_contrato_os_comprobante'),
+            'fecha_inicio' => $fechaInicio,
+            'fecha_suspension' => parse_fecha_dd_mm_yyyy($request->input('fecha_suspension')),
+            'fecha_reinicio' => parse_fecha_dd_mm_yyyy($request->input('fecha_reinicio')),
+            'fecha_culminacion' => $fechaCulminacion,
+            'total_meses' => $totalMeses,
+            'total_dias' => $totalDias,
+            'traslape' => $traslape,
+            'total_dias_sin_traslape' => $totalDiasSinTraslape,
+            'monto_neto' => $request->input('monto_neto') !== null && $request->input('monto_neto') !== '' ? (float) preg_replace('/[^\d.]/', '', $request->input('monto_neto')) : null,
+        ];
+
+        $basePath = 'expedientes/especialistas_ejecucion';
+        $data['tipo_documento_adjunto'] = $request->input('tipo_documento_adjunto');
+        if ($request->hasFile('archivo_contrato')) {
+            $data['archivo_contrato'] = $request->file('archivo_contrato')->store($basePath . '/adjuntos', 'r2');
+        } elseif ($model) {
+            $data['archivo_contrato'] = $model->archivo_contrato;
+        }
+
+        return $data;
+    }
+
+    private function recalculateMontoAcumulado(string $modelClass, $folderId): void
+    {
+        $query = $modelClass::query()->where('anulado', false)->orderBy('id');
+        if ($folderId !== null) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $items = $query->get();
+        $acum = 0;
+        foreach ($items as $item) {
+            $acum += (float) ($item->monto_neto ?? 0);
+            $item->update(['monto_acumulado' => round($acum, 2)]);
+        }
+    }
+
+    public function edit(EspecialistaEjecucion $especialistaEjecucion)
     {
         $user = auth()->user();
-        if (!$this->canEdit($especialista_ejecucion, $user)) {
+        if (!$this->canEdit($especialistaEjecucion, $user)) {
             return redirect()->route('especialistas-ejecucion.index')->with('error', 'No tienes permiso para editar este registro.');
         }
 
+        $e = $especialistaEjecucion;
+        $especialista = [
+            'id' => $e->id,
+            'folder_id' => $e->folder_id,
+            'clasificacion' => $e->clasificacion,
+            'cliente' => $e->cliente,
+            'objeto_del_contrato' => $e->objeto_del_contrato,
+            'cui' => $e->cui,
+            'numero_contrato_os_comprobante' => $e->numero_contrato_os_comprobante,
+            'fecha_inicio' => $e->fecha_inicio?->format('Y-m-d'),
+            'fecha_suspension' => $e->fecha_suspension?->format('Y-m-d'),
+            'fecha_reinicio' => $e->fecha_reinicio?->format('Y-m-d'),
+            'fecha_culminacion' => $e->fecha_culminacion?->format('Y-m-d'),
+            'total_meses' => $e->total_meses,
+            'total_dias' => $e->total_dias,
+            'traslape' => $e->traslape,
+            'total_dias_sin_traslape' => $e->total_dias_sin_traslape,
+            'monto_neto' => $e->monto_neto,
+            'monto_acumulado' => $e->monto_acumulado,
+            'archivo_contrato' => $e->archivo_contrato,
+            'tipo_documento_adjunto' => $e->tipo_documento_adjunto,
+            'archivo_contrato_url' => $e->archivo_contrato_url,
+        ];
         return Inertia::render('EspecialistasEjecucion/Edit', [
-            'especialista' => $especialista_ejecucion
+            'especialista' => $especialista,
         ]);
     }
 
-    public function update(Request $request, EspecialistaEjecucion $especialista_ejecucion)
+    public function update(Request $request, EspecialistaEjecucion $especialistaEjecucion)
     {
         $user = auth()->user();
-        if (!$this->canEdit($especialista_ejecucion, $user)) {
+        if (!$this->canEdit($especialistaEjecucion, $user)) {
             return redirect()->back()->with('error', 'No tienes permiso para editar este registro.');
         }
 
-        $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
-            'especialidad' => 'nullable|string|max:255',
-            'tipo' => 'required|string|in:Profesional,Empresa',
-            'estado' => 'nullable|string',
-            'documento' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
-        ]);
+        $rules = [
+            'cliente' => 'required|string|max:500',
+            'objeto_del_contrato' => 'required|string',
+            'cui' => 'nullable|string|max:100',
+            'numero_contrato_os_comprobante' => 'required|string|max:255',
+            'fecha_inicio' => 'required|string',
+            'fecha_suspension' => 'nullable|string',
+            'fecha_reinicio' => 'nullable|string',
+            'fecha_culminacion' => 'required|string',
+            'traslape' => 'nullable|numeric|min:0',
+            'monto_neto' => 'required|numeric|min:0.01',
+            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
+        ];
+        $request->validate($rules);
 
-        $data = $request->except(['documento']);
+        $data = $this->prepareExperienciaData($request, $especialistaEjecucion);
 
         if ($request->hasFile('documento')) {
-            if ($especialista_ejecucion->documento) {
-                Storage::disk(storage_disk_for_path($especialista_ejecucion->documento))->delete($especialista_ejecucion->documento);
+            if ($especialistaEjecucion->documento) {
+                Storage::disk(storage_disk_for_path($especialistaEjecucion->documento))->delete($especialistaEjecucion->documento);
             }
             $data['documento'] = $request->file('documento')->store('expedientes/especialistas_ejecucion', 'r2');
         }
 
-        $especialista_ejecucion->update($data);
+        $especialistaEjecucion->update($data);
+        $this->recalculateMontoAcumulado(EspecialistaEjecucion::class, $especialistaEjecucion->folder_id);
 
-        return redirect()->route('especialistas-ejecucion.index')->with('success', 'Registro actualizado.');
+        return redirect()->route('especialistas-ejecucion.index', $especialistaEjecucion->folder_id ? ['folder_id' => $especialistaEjecucion->folder_id] : [])->with('success', 'Registro actualizado.');
     }
 
-    public function destroy(EspecialistaEjecucion $especialista_ejecucion)
+    public function destroy(EspecialistaEjecucion $especialistaEjecucion)
     {
         $user = auth()->user();
-        if (!$this->canDelete($especialista_ejecucion, $user)) {
+        if (!$this->canDelete($especialistaEjecucion, $user)) {
             return redirect()->back()->with('error', 'No tienes permiso para eliminar este registro.');
         }
 
-        if ($especialista_ejecucion->documento) {
-            Storage::disk(storage_disk_for_path($especialista_ejecucion->documento))->delete($especialista_ejecucion->documento);
+        $folderId = $especialistaEjecucion->folder_id;
+        if ($especialistaEjecucion->documento) {
+            Storage::disk(storage_disk_for_path($especialistaEjecucion->documento))->delete($especialistaEjecucion->documento);
         }
-        $especialista_ejecucion->delete();
-        return redirect()->route('especialistas-ejecucion.index')->with('success', 'Registro eliminado.');
+        foreach (['archivo_contrato'] as $field) {
+            $path = $especialistaEjecucion->$field ?? null;
+            if ($path) {
+                Storage::disk(storage_disk_for_path($path))->delete($path);
+            }
+        }
+        $especialistaEjecucion->delete();
+        $this->recalculateMontoAcumulado(EspecialistaEjecucion::class, $folderId);
+        return redirect()->route('especialistas-ejecucion.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
     }
 }

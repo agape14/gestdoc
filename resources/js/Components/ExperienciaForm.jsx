@@ -1,0 +1,365 @@
+import React, { useMemo } from 'react';
+import { useForm } from '@inertiajs/react';
+import SubmitButton from '@/Components/SubmitButton';
+import {
+    parseDateDDMMYYYY,
+    formatDateToDDMMYYYY,
+    calcTotalDias,
+    calcTotalMeses,
+    calcTotalDiasSinTraslape,
+} from '@/Utils/experienciaCalculations';
+
+const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png';
+const MAX_FILE_SIZE_MB = 5;
+
+function formatDateForInput(dateStrOrDate) {
+    if (!dateStrOrDate) return '';
+    if (dateStrOrDate instanceof Date) return dateStrOrDate.toISOString().slice(0, 10);
+    const d = parseDateDDMMYYYY(dateStrOrDate);
+    return d ? formatDateToDDMMYYYY(d).split('/').reverse().join('-') : '';
+}
+
+/** Convierte ISO (yyyy-mm-dd) o DD/MM/YYYY a DD/MM/YYYY para estado y backend. */
+function toDDMMYYYY(isoOrDDMMYYYY) {
+    if (!isoOrDDMMYYYY) return '';
+    const s = String(isoOrDDMMYYYY).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y, m, d] = s.split('-');
+        return `${d}/${m}/${y}`;
+    }
+    return s;
+}
+
+/** Valor para input type="date": siempre yyyy-mm-dd. */
+function toInputDate(value) {
+    if (!value) return '';
+    const d = parseDateDDMMYYYY(value);
+    if (d) return formatDateToDDMMYYYY(d).split('/').reverse().join('-');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) return String(value).trim();
+    return '';
+}
+
+/**
+ * structure: 1 = Especialistas (15 cols, CUI, O/S, Fecha Susp/Reinicio)
+ *            2 = Proveedor Servicios (14 cols, no CUI, O/S)
+ *            3 = Proveedor Bienes (12 cols, O/C, no Fecha Susp/Reinicio)
+ */
+const TIPOS_DOCUMENTO = [
+    { value: 'CONTRATO', label: 'CONTRATO' },
+    { value: 'COMPROBANTE_DE_PAGO', label: 'COMPROBANTE DE PAGO' },
+    { value: 'CONFORMIDAD_DE_SERVICIO', label: 'CONFORMIDAD DE SERVICIO' },
+];
+
+export default function ExperienciaForm({
+    structure,
+    initialData = {},
+    submitRoute,
+    method = 'POST',
+    cancelUrl,
+    title,
+}) {
+    const hasCUI = structure === 1;
+    const hasSuspensionReinicio = structure === 1 || structure === 2;
+    const numeroContratoLabel = structure === 3
+        ? 'N° CONTRATO / O/C / COMPROBANTE DE PAGO'
+        : 'N° CONTRATO / O/S / COMPROBANTE DE PAGO';
+
+    const getInitialFormData = () => {
+        const base = {
+            cliente: initialData.cliente ?? '',
+            objeto_del_contrato: initialData.objeto_del_contrato ?? '',
+            fecha_inicio: initialData.fecha_inicio ? toDDMMYYYY(initialData.fecha_inicio) : '',
+            fecha_culminacion: initialData.fecha_culminacion ? toDDMMYYYY(initialData.fecha_culminacion) : '',
+            traslape: initialData.traslape != null ? Number(initialData.traslape) : 0,
+            monto_neto: initialData.monto_neto != null ? initialData.monto_neto : '',
+            folder_id: initialData.folder_id ?? '',
+            clasificacion: initialData.clasificacion ?? '',
+            tipo_documento_adjunto: initialData.tipo_documento_adjunto ?? '',
+            archivo_contrato: null,
+        };
+        if (hasCUI) base.cui = initialData.cui ?? '';
+        if (structure === 3) base.numero_contrato_oc_comprobante = initialData.numero_contrato_oc_comprobante ?? '';
+        else base.numero_contrato_os_comprobante = initialData.numero_contrato_os_comprobante ?? '';
+        if (hasSuspensionReinicio) {
+            base.tiene_fecha_suspension = initialData.tiene_fecha_suspension ?? (initialData.fecha_suspension ? 'SI' : 'NO');
+            base.tiene_fecha_reinicio = initialData.tiene_fecha_reinicio ?? (initialData.fecha_reinicio ? 'SI' : 'NO');
+            base.fecha_suspension = initialData.fecha_suspension ? toDDMMYYYY(initialData.fecha_suspension) : '';
+            base.fecha_reinicio = initialData.fecha_reinicio ? toDDMMYYYY(initialData.fecha_reinicio) : '';
+        }
+        return base;
+    };
+
+    const initial = getInitialFormData();
+    if (method === 'PUT') initial._method = 'PUT';
+    const { data, setData, post, put, processing, errors } = useForm(initial);
+
+    const totalDias = useMemo(() => {
+        const d = calcTotalDias(data.fecha_inicio, data.fecha_culminacion);
+        return d;
+    }, [data.fecha_inicio, data.fecha_culminacion]);
+
+    const totalMeses = useMemo(() => calcTotalMeses(totalDias), [totalDias]);
+    const totalDiasSinTraslape = useMemo(
+        () => calcTotalDiasSinTraslape(totalDias, data.traslape),
+        [totalDias, data.traslape]
+    );
+
+    const handleFechaChange = (field, value) => {
+        setData(field, value);
+    };
+
+    const handleTraslapeChange = (value) => {
+        const n = parseFloat(value);
+        setData('traslape', isNaN(n) ? 0 : Math.max(0, n));
+    };
+
+    const submit = (e) => {
+        e.preventDefault();
+        // Usar siempre POST con FormData para que PHP reciba los campos (PUT + multipart no rellena $_POST).
+        // En edición, data ya incluye _method: 'PUT' para que Laravel enrute al update.
+        post(submitRoute, { forceFormData: true });
+    };
+
+    return (
+        <form onSubmit={submit} className="experiencia-form">
+            <div className="mb-4">
+                <h3 className="fw-bold mb-1">{title}</h3>
+            </div>
+
+            <div className="row g-3">
+                <div className="col-12">
+                    <label className="form-label fw-medium">CLIENTE *</label>
+                    <input
+                        type="text"
+                        className={`form-control ${errors.cliente ? 'is-invalid' : ''}`}
+                        value={data.cliente}
+                        onChange={e => setData('cliente', e.target.value)}
+                        required
+                    />
+                    {errors.cliente && <div className="invalid-feedback">{errors.cliente}</div>}
+                </div>
+                <div className="col-12">
+                    <label className="form-label fw-medium">OBJETO DEL CONTRATO *</label>
+                    <textarea
+                        className={`form-control ${errors.objeto_del_contrato ? 'is-invalid' : ''}`}
+                        rows={3}
+                        value={data.objeto_del_contrato}
+                        onChange={e => setData('objeto_del_contrato', e.target.value)}
+                        required
+                    />
+                    {errors.objeto_del_contrato && <div className="invalid-feedback">{errors.objeto_del_contrato}</div>}
+                </div>
+                {hasCUI && (
+                    <div className="col-md-6">
+                        <label className="form-label fw-medium">CUI</label>
+                        <input
+                            type="text"
+                            className={`form-control ${errors.cui ? 'is-invalid' : ''}`}
+                            value={data.cui}
+                            onChange={e => setData('cui', e.target.value)}
+                        />
+                        {errors.cui && <div className="invalid-feedback">{errors.cui}</div>}
+                    </div>
+                )}
+                <div className={hasCUI ? 'col-md-6' : 'col-12'}>
+                    <label className="form-label fw-medium">{numeroContratoLabel} *</label>
+                    <input
+                        type="text"
+                        className={`form-control ${errors.numero_contrato_os_comprobante || errors.numero_contrato_oc_comprobante ? 'is-invalid' : ''}`}
+                        value={structure === 3 ? (data.numero_contrato_oc_comprobante ?? '') : (data.numero_contrato_os_comprobante ?? '')}
+                        onChange={e => structure === 3 ? setData('numero_contrato_oc_comprobante', e.target.value) : setData('numero_contrato_os_comprobante', e.target.value)}
+                        required
+                    />
+                    {(errors.numero_contrato_os_comprobante || errors.numero_contrato_oc_comprobante) && (
+                        <div className="invalid-feedback">{errors.numero_contrato_os_comprobante || errors.numero_contrato_oc_comprobante}</div>
+                    )}
+                </div>
+                {hasSuspensionReinicio && (
+                    <>
+                        <div className="col-md-6">
+                            <div className="p-3 rounded bg-light border border-opacity-25">
+                                <label className="form-label fw-medium mb-2">FECHA DE SUSPENSIÓN</label>
+                                <div className="d-flex gap-4 mb-0">
+                                    <label className="form-check">
+                                        <input
+                                            type="radio"
+                                            name="tiene_fecha_suspension"
+                                            className="form-check-input"
+                                            value="SI"
+                                            checked={data.tiene_fecha_suspension === 'SI'}
+                                            onChange={() => setData('tiene_fecha_suspension', 'SI')}
+                                        />
+                                        <span className="form-check-label">Si</span>
+                                    </label>
+                                    <label className="form-check">
+                                        <input
+                                            type="radio"
+                                            name="tiene_fecha_suspension"
+                                            className="form-check-input"
+                                            value="NO"
+                                            checked={data.tiene_fecha_suspension === 'NO'}
+                                            onChange={() => { setData('tiene_fecha_suspension', 'NO'); setData('fecha_suspension', ''); }}
+                                        />
+                                        <span className="form-check-label">No</span>
+                                    </label>
+                                </div>
+                                {data.tiene_fecha_suspension === 'SI' && (
+                                    <div className="mt-3">
+                                        <input
+                                            type="date"
+                                            className="form-control"
+                                            value={toInputDate(data.fecha_suspension)}
+                                            onChange={e => setData('fecha_suspension', toDDMMYYYY(e.target.value))}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="p-3 rounded bg-light border border-opacity-25">
+                                <label className="form-label fw-medium mb-2">FECHA DE REINICIO</label>
+                                <div className="d-flex gap-4 mb-0">
+                                    <label className="form-check">
+                                        <input
+                                            type="radio"
+                                            name="tiene_fecha_reinicio"
+                                            className="form-check-input"
+                                            value="SI"
+                                            checked={data.tiene_fecha_reinicio === 'SI'}
+                                            onChange={() => setData('tiene_fecha_reinicio', 'SI')}
+                                        />
+                                        <span className="form-check-label">Si</span>
+                                    </label>
+                                    <label className="form-check">
+                                        <input
+                                            type="radio"
+                                            name="tiene_fecha_reinicio"
+                                            className="form-check-input"
+                                            value="NO"
+                                            checked={data.tiene_fecha_reinicio === 'NO'}
+                                            onChange={() => { setData('tiene_fecha_reinicio', 'NO'); setData('fecha_reinicio', ''); }}
+                                        />
+                                        <span className="form-check-label">No</span>
+                                    </label>
+                                </div>
+                                {data.tiene_fecha_reinicio === 'SI' && (
+                                    <div className="mt-3">
+                                        <input
+                                            type="date"
+                                            className="form-control"
+                                            value={toInputDate(data.fecha_reinicio)}
+                                            onChange={e => setData('fecha_reinicio', toDDMMYYYY(e.target.value))}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
+                <div className="col-md-6">
+                    <label className="form-label fw-medium">FECHA DE INICIO *</label>
+                    <input
+                        type="date"
+                        className={`form-control ${errors.fecha_inicio ? 'is-invalid' : ''}`}
+                        value={toInputDate(data.fecha_inicio)}
+                        onChange={e => handleFechaChange('fecha_inicio', toDDMMYYYY(e.target.value))}
+                        required
+                    />
+                    {errors.fecha_inicio && <div className="invalid-feedback">{errors.fecha_inicio}</div>}
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-medium">FECHA DE CULMINACION *</label>
+                    <input
+                        type="date"
+                        className={`form-control ${errors.fecha_culminacion ? 'is-invalid' : ''}`}
+                        value={toInputDate(data.fecha_culminacion)}
+                        onChange={e => handleFechaChange('fecha_culminacion', toDDMMYYYY(e.target.value))}
+                        required
+                    />
+                    {errors.fecha_culminacion && <div className="invalid-feedback">{errors.fecha_culminacion}</div>}
+                </div>
+                <div className="col-md-4">
+                    <label className="form-label fw-medium">TOTAL DE MESES</label>
+                    <input type="text" className="form-control bg-light" value={totalMeses != null ? Number(totalMeses).toFixed(2) : ''} readOnly />
+                </div>
+                <div className="col-md-4">
+                    <label className="form-label fw-medium">TOTAL DE DIAS</label>
+                    <input type="text" className="form-control bg-light" value={totalDias ?? ''} readOnly />
+                </div>
+                <div className="col-md-4">
+                    <label className="form-label fw-medium">TRASLAPE</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="form-control"
+                        value={data.traslape}
+                        onChange={e => handleTraslapeChange(e.target.value)}
+                    />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-medium">TOTAL DE DIAS SIN TRASLAPE</label>
+                    <input type="text" className="form-control bg-light" value={totalDiasSinTraslape != null ? `${totalDiasSinTraslape} Dias Calendario` : ''} readOnly />
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-medium">Monto Neto *</label>
+                    <input
+                        type="text"
+                        placeholder="S/. 1,000.00"
+                        className={`form-control ${errors.monto_neto ? 'is-invalid' : ''}`}
+                        value={data.monto_neto}
+                        onChange={e => setData('monto_neto', e.target.value)}
+                        required
+                    />
+                    {errors.monto_neto && <div className="invalid-feedback">{errors.monto_neto}</div>}
+                </div>
+            </div>
+
+            <div className="row g-3 mt-2">
+                <div className="col-md-6">
+                    <label className="form-label fw-medium">Tipo de documento *</label>
+                    <select
+                        className={`form-select ${errors.tipo_documento_adjunto ? 'is-invalid' : ''}`}
+                        value={data.tipo_documento_adjunto}
+                        onChange={e => setData('tipo_documento_adjunto', e.target.value)}
+                        required
+                    >
+                        <option value="">Seleccione...</option>
+                        {TIPOS_DOCUMENTO.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                    </select>
+                    {errors.tipo_documento_adjunto && <div className="invalid-feedback">{errors.tipo_documento_adjunto}</div>}
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label fw-medium">Adjuntar archivo {method !== 'PUT' ? '*' : ''}</label>
+                    {method === 'PUT' && initialData.archivo_contrato_url && (
+                        <div className="mb-2 p-2 rounded bg-light border border-opacity-25">
+                            <span className="small fw-medium text-muted d-block mb-1">Archivo actual:</span>
+                            <a href={initialData.archivo_contrato_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                                {(TIPOS_DOCUMENTO.find(t => t.value === initialData.tipo_documento_adjunto)?.label) || 'Documento adjunto'}
+                                <i className="bi bi-box-arrow-up-right ms-1 small"></i>
+                            </a>
+                        </div>
+                    )}
+                    <input
+                        type="file"
+                        accept={FILE_ACCEPT}
+                        className={`form-control ${errors.archivo_contrato ? 'is-invalid' : ''}`}
+                        onChange={e => setData('archivo_contrato', e.target.files[0] || null)}
+                        required={method !== 'PUT'}
+                    />
+                    {method === 'PUT' && initialData.archivo_contrato_url && (
+                        <div className="form-text">Dejar vacío para mantener el archivo actual, o elegir otro para reemplazarlo.</div>
+                    )}
+                    {errors.archivo_contrato && <div className="invalid-feedback">{errors.archivo_contrato}</div>}
+                </div>
+            </div>
+
+            <div className="d-flex justify-content-end mt-4 pt-3 border-top gap-2">
+                <a href={cancelUrl} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</a>
+                <SubmitButton processing={processing} icon="bi-save" className="px-5 rounded-pill shadow-sm">Guardar</SubmitButton>
+            </div>
+        </form>
+    );
+}

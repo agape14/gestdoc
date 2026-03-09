@@ -12,7 +12,13 @@ class ProveedorServicio extends Model
         'plantel_tecnico_aplica', 'valorizaciones_aplica', 'informes_tecnicos',
         'cargos', 'liquidacion_aplica', 'actas_resoluciones', 'conformidad_tecnica',
         'plazo_ejecucion', 'tiempo_culminacion', 'panel_fotografico', 'categoria', 'user_id',
-        'anulado', 'folder_id', 'clasificacion'
+        'anulado', 'folder_id', 'clasificacion',
+        'cliente', 'objeto_del_contrato', 'numero_contrato_os_comprobante',
+        'fecha_inicio', 'fecha_suspension', 'fecha_reinicio', 'fecha_culminacion',
+        'total_meses', 'total_dias', 'traslape', 'total_dias_sin_traslape',
+        'monto_neto', 'monto_acumulado',
+        'archivo_contrato', 'archivo_comprobante_pago', 'archivo_conformidad_servicio',
+        'tipo_documento_adjunto',
     ];
 
     public function folder()
@@ -33,6 +39,7 @@ class ProveedorServicio extends Model
     protected $appends = [
         'contrato_archivo_url', 'tdr_archivo_url', 'panel_fotografico_url',
         'actas_resoluciones_url', 'conformidad_tecnica_url', 'informes_tecnicos_urls',
+        'archivo_contrato_url', 'archivo_comprobante_pago_url', 'archivo_conformidad_servicio_url',
     ];
 
     protected $casts = [
@@ -40,6 +47,10 @@ class ProveedorServicio extends Model
         'valorizaciones_aplica' => 'boolean',
         'liquidacion_aplica' => 'boolean',
         'cargos' => 'array',
+        'fecha_inicio' => 'date',
+        'fecha_suspension' => 'date',
+        'fecha_reinicio' => 'date',
+        'fecha_culminacion' => 'date',
     ];
 
     public function getContratoArchivoUrlAttribute(): ?string
@@ -71,6 +82,21 @@ class ProveedorServicio extends Model
     {
         $paths = is_array($this->informes_tecnicos) ? $this->informes_tecnicos : [];
         return array_map(fn ($p) => \storage_url_for_path($p), $paths);
+    }
+
+    public function getArchivoContratoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_contrato ?? null);
+    }
+
+    public function getArchivoComprobantePagoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_comprobante_pago ?? null);
+    }
+
+    public function getArchivoConformidadServicioUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_conformidad_servicio ?? null);
     }
 
     public function scopeForUser($query, $user)

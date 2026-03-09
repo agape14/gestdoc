@@ -1,70 +1,46 @@
 import React from 'react';
 import MainLayout from '@/Layouts/MainLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
-import SubmitButton from '@/Components/SubmitButton';
+import { Head } from '@inertiajs/react';
+import ExperienciaForm from '@/Components/ExperienciaForm';
+
+/** Convierte fecha del backend (ISO o yyyy-mm-dd) a DD/MM/YYYY. */
+function toDDMMYYYY(val) {
+    if (!val) return '';
+    const s = String(val).trim();
+    const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+        const [, y, m, d] = isoMatch;
+        return `${d}/${m}/${y}`;
+    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) return s;
+    return s;
+}
 
 export default function Edit({ especialista }) {
-    const { data, setData, post, processing, errors } = useForm({
-        _method: 'PUT',
-        nombre: especialista.nombre || '',
-        especialidad: especialista.especialidad || '',
-        tipo: especialista.tipo || 'Profesional',
-        estado: especialista.estado || 'Activo',
-        documento: null,
-    });
-
-    const submit = (e) => {
-        e.preventDefault();
-        post(route('especialistas-consultoria.update', especialista.id), { forceFormData: true });
+    const initialData = {
+        ...especialista,
+        fecha_inicio: especialista.fecha_inicio ? toDDMMYYYY(especialista.fecha_inicio) : '',
+        fecha_suspension: especialista.fecha_suspension ? toDDMMYYYY(especialista.fecha_suspension) : '',
+        fecha_reinicio: especialista.fecha_reinicio ? toDDMMYYYY(especialista.fecha_reinicio) : '',
+        fecha_culminacion: especialista.fecha_culminacion ? toDDMMYYYY(especialista.fecha_culminacion) : '',
     };
+    const cancelUrl = especialista?.folder_id
+        ? route('especialistas-consultoria.index', { folder_id: especialista.folder_id })
+        : route('especialistas-consultoria.index');
 
     return (
         <MainLayout>
-            <Head title="Editar Especialista en Consultoría" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div className="mb-4">
-                    <h3 className="fw-bold mb-1">Editar Especialista en Consultoría</h3>
-                </div>
-                <form onSubmit={submit}>
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-12">
-                            <label className="form-label fw-medium">Nombre / Razón Social</label>
-                            <input type="text" className={`form-control ${errors.nombre ? 'is-invalid' : ''}`} value={data.nombre} onChange={e => setData('nombre', e.target.value)} required />
-                            {errors.nombre && <div className="invalid-feedback">{errors.nombre}</div>}
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">Tipo</label>
-                            <select className="form-select" value={data.tipo} onChange={e => setData('tipo', e.target.value)}>
-                                <option value="Profesional">Profesional</option>
-                                <option value="Empresa">Empresa</option>
-                            </select>
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">Especialidad</label>
-                            <input type="text" className="form-control" value={data.especialidad} onChange={e => setData('especialidad', e.target.value)} />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">Estado</label>
-                            <select className="form-select" value={data.estado} onChange={e => setData('estado', e.target.value)}>
-                                <option value="Activo">Activo</option>
-                                <option value="Inactivo">Inactivo</option>
-                            </select>
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">Documento (CV/Brochure)</label>
-                            <input type="file" className="form-control" accept=".pdf,.doc,.docx" onChange={e => setData('documento', e.target.files[0])} />
-                            {especialista.documento && (
-                                <a href={especialista.documento_url || `/storage/${especialista.documento}`} target="_blank" className="small text-primary mt-1 d-block">
-                                    <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                    <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">
-                        <Link href={route('especialistas-consultoria.index')} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</Link>
-                        <SubmitButton processing={processing} icon="bi-save" className="px-5 rounded-pill shadow-sm">Actualizar</SubmitButton>
-                    </div>
-                </form>
+            <Head title="Editar registro - Especialistas en Consultoría" />
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '900px', margin: '0 auto' }}>
+                <ExperienciaForm
+                    key={especialista?.id ?? 'edit'}
+                    structure={1}
+                    initialData={initialData}
+                    submitRoute={especialista?.id != null ? `/especialistas-consultoria/${especialista.id}` : '#'}
+                    method="PUT"
+                    cancelUrl={cancelUrl}
+                    title="Editar Especialista en Consultoría de Obra"
+                />
             </div>
         </MainLayout>
     );

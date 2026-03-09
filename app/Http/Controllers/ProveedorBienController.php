@@ -6,6 +6,7 @@ use App\Models\ProveedorBien;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 use App\Traits\HasRoleBasedAccess;
 
 class ProveedorBienController extends Controller
@@ -60,8 +61,25 @@ class ProveedorBienController extends Controller
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
+        $bienes = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $totalsQuery = ProveedorBien::query()->active();
+        $this->applyRoleBasedFilter($totalsQuery, $user);
+        if ($folderId) {
+            $totalsQuery->where('folder_id', $folderId);
+        } else {
+            $totalsQuery->whereNull('folder_id');
+        }
+        if ($request->filled('user_id') && $user->role === 'Administrador') {
+            $totalsQuery->where('user_id', $request->user_id);
+        }
+        $experienceTotals = [
+            'total_dias_sin_traslape' => (int) $totalsQuery->sum('total_dias_sin_traslape'),
+            'total_monto_acumulado' => (float) $totalsQuery->orderBy('id')->get()->last()?->monto_acumulado ?? 0,
+        ];
+
         return Inertia::render('ProveedorBienes/Index', [
-            'bienes' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
+            'bienes' => $bienes,
+            'experienceTotals' => $experienceTotals,
             'filters' => $request->only(['search', 'tipo', 'user_id', 'folder_id']),
             'userRole' => $user->role,
             'operadores' => $operadores,
@@ -106,16 +124,23 @@ class ProveedorBienController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'titulo' => 'required|string|max:255',
-            'entidad' => 'nullable|string|max:255',
-            'estado' => 'nullable|string',
-            'costo' => 'nullable|numeric',
-            'clasificacion' => 'nullable|string|max:500',
+        $request->validate([
+            'cliente' => 'required|string|max:500',
+            'objeto_del_contrato' => 'required|string',
+            'numero_contrato_oc_comprobante' => 'required|string|max:255',
+            'fecha_inicio' => 'required|string',
+            'fecha_culminacion' => 'required|string',
+            'traslape' => 'nullable|numeric|min:0',
+            'monto_neto' => 'required|numeric|min:0.01',
+            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
         ]);
 
-        $data = $validated;
+        $data = $this->prepareExperienciaDataBienes($request, null);
         $data['user_id'] = auth()->id();
+        $data['titulo'] = $data['titulo'] ?? ($data['objeto_del_contrato'] ? \Str::limit($data['objeto_del_contrato'], 100) : 'Bien');
+        $data['entidad'] = $data['entidad'] ?? $data['cliente'];
+        $data['estado'] = $data['estado'] ?? 'En Stock';
 
         if ($request->filled('folder_id')) {
             $folder = Folder::where('module', self::MODULE)->find($request->folder_id);
@@ -132,52 +157,135 @@ class ProveedorBienController extends Controller
         }
 
         $bien = ProveedorBien::create($data);
-        $folderId = $bien->folder_id;
-
-        return redirect()->route('proveedor-bienes.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro creado.');
+        $this->recalculateMontoAcumuladoBienes($bien->folder_id);
+        return redirect()->route('proveedor-bienes.index', $bien->folder_id ? ['folder_id' => $bien->folder_id] : [])->with('success', 'Registro creado.');
     }
 
-    public function edit(ProveedorBien $proveedor_bien)
+    private function prepareExperienciaDataBienes(Request $request, $model): array
+    {
+        $fechaInicio = parse_fecha_dd_mm_yyyy($request->input('fecha_inicio'));
+        $fechaCulminacion = parse_fecha_dd_mm_yyyy($request->input('fecha_culminacion'));
+        $totalDias = null;
+        if ($fechaInicio && $fechaCulminacion) {
+            $totalDias = \Carbon\Carbon::parse($fechaInicio)->diffInDays(\Carbon\Carbon::parse($fechaCulminacion)) + 1;
+        }
+        $totalMeses = $totalDias !== null ? round($totalDias / 30, 2) : null;
+        $traslape = (float) ($request->input('traslape') ?? 0);
+        $totalDiasSinTraslape = $totalDias !== null ? max(0, (int) round($totalDias - $traslape)) : null;
+
+        $data = [
+            'cliente' => $request->input('cliente'),
+            'objeto_del_contrato' => $request->input('objeto_del_contrato'),
+            'numero_contrato_oc_comprobante' => $request->input('numero_contrato_oc_comprobante'),
+            'fecha_inicio' => $fechaInicio,
+            'fecha_culminacion' => $fechaCulminacion,
+            'total_meses' => $totalMeses,
+            'total_dias' => $totalDias,
+            'traslape' => $traslape,
+            'total_dias_sin_traslape' => $totalDiasSinTraslape,
+            'monto_neto' => $request->input('monto_neto') !== null && $request->input('monto_neto') !== '' ? (float) preg_replace('/[^\d.]/', '', $request->input('monto_neto')) : null,
+        ];
+
+        $basePath = 'expedientes/proveedor_bienes/experiencia';
+        $data['tipo_documento_adjunto'] = $request->input('tipo_documento_adjunto');
+        if ($request->hasFile('archivo_contrato')) {
+            $data['archivo_contrato'] = $request->file('archivo_contrato')->store($basePath . '/adjuntos', 'r2');
+        } elseif ($model) {
+            $data['archivo_contrato'] = $model->archivo_contrato;
+        }
+        return $data;
+    }
+
+    private function recalculateMontoAcumuladoBienes($folderId): void
+    {
+        $query = ProveedorBien::query()->where('anulado', false)->orderBy('id');
+        if ($folderId !== null) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $acum = 0;
+        foreach ($query->get() as $item) {
+            $acum += (float) ($item->monto_neto ?? 0);
+            $item->update(['monto_acumulado' => round($acum, 2)]);
+        }
+    }
+
+    public function edit(ProveedorBien $proveedorBien)
     {
         $user = auth()->user();
-        if (!$this->canEdit($proveedor_bien, $user)) {
+        if (!$this->canEdit($proveedorBien, $user)) {
             return redirect()->route('proveedor-bienes.index')->with('error', 'No tienes permiso para editar este registro.');
         }
 
+        $b = $proveedorBien;
+        $bien = [
+            'id' => $b->id,
+            'folder_id' => $b->folder_id,
+            'clasificacion' => $b->clasificacion,
+            'cliente' => $b->cliente,
+            'objeto_del_contrato' => $b->objeto_del_contrato,
+            'numero_contrato_oc_comprobante' => $b->numero_contrato_oc_comprobante,
+            'fecha_inicio' => $b->fecha_inicio?->format('Y-m-d'),
+            'fecha_culminacion' => $b->fecha_culminacion?->format('Y-m-d'),
+            'total_meses' => $b->total_meses,
+            'total_dias' => $b->total_dias,
+            'traslape' => $b->traslape,
+            'total_dias_sin_traslape' => $b->total_dias_sin_traslape,
+            'monto_neto' => $b->monto_neto,
+            'monto_acumulado' => $b->monto_acumulado,
+            'archivo_contrato' => $b->archivo_contrato,
+            'tipo_documento_adjunto' => $b->tipo_documento_adjunto,
+            'archivo_contrato_url' => $b->archivo_contrato_url,
+        ];
         return Inertia::render('ProveedorBienes/Edit', [
-            'bien' => $proveedor_bien
+            'bien' => $bien,
         ]);
     }
 
-    public function update(Request $request, ProveedorBien $proveedor_bien)
+    public function update(Request $request, ProveedorBien $proveedorBien)
     {
         $user = auth()->user();
-        if (!$this->canEdit($proveedor_bien, $user)) {
+        if (!$this->canEdit($proveedorBien, $user)) {
             return redirect()->back()->with('error', 'No tienes permiso para editar este registro.');
         }
 
-        $validated = $request->validate([
-            'titulo' => 'required|string|max:255',
-            'entidad' => 'nullable|string|max:255',
-            'estado' => 'nullable|string',
-            'costo' => 'nullable|numeric',
+        $request->validate([
+            'cliente' => 'required|string|max:500',
+            'objeto_del_contrato' => 'required|string',
+            'numero_contrato_oc_comprobante' => 'required|string|max:255',
+            'fecha_inicio' => 'required|string',
+            'fecha_culminacion' => 'required|string',
+            'traslape' => 'nullable|numeric|min:0',
+            'monto_neto' => 'required|numeric|min:0.01',
+            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'archivo_comprobante_pago' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'archivo_conformidad_servicio' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
-        $proveedor_bien->update(array_merge($validated, [
-            'categoria' => $request->input('categoria', $proveedor_bien->categoria ?? 'Privada'),
-        ]));
-
-        return redirect()->route('proveedor-bienes.index')->with('success', 'Registro actualizado.');
+        $data = $this->prepareExperienciaDataBienes($request, $proveedorBien);
+        $proveedorBien->update($data);
+        $this->recalculateMontoAcumuladoBienes($proveedorBien->folder_id);
+        return redirect()->route('proveedor-bienes.index', $proveedorBien->folder_id ? ['folder_id' => $proveedorBien->folder_id] : [])->with('success', 'Registro actualizado.');
     }
 
-    public function destroy(ProveedorBien $proveedor_bien)
+    public function destroy(ProveedorBien $proveedorBien)
     {
         $user = auth()->user();
-        if (!$this->canDelete($proveedor_bien, $user)) {
+        if (!$this->canDelete($proveedorBien, $user)) {
             return redirect()->back()->with('error', 'No tienes permiso para eliminar este registro.');
         }
 
-        $proveedor_bien->delete();
-        return redirect()->route('proveedor-bienes.index')->with('success', 'Registro eliminado.');
+        $folderId = $proveedorBien->folder_id;
+        foreach (['archivo_contrato'] as $field) {
+            $path = $proveedorBien->$field ?? null;
+            if ($path) {
+                Storage::disk(storage_disk_for_path($path))->delete($path);
+            }
+        }
+        $proveedorBien->delete();
+        $this->recalculateMontoAcumuladoBienes($folderId);
+        return redirect()->route('proveedor-bienes.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
     }
 }
+

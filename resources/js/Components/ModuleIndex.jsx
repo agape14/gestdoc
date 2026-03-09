@@ -12,7 +12,7 @@ const getIconClass = (iconName) => {
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [] }) {
+export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null }) {
     const { auth, flash } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
@@ -155,6 +155,8 @@ export default function ModuleIndex({ title, description, items, columns, create
                     <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                 </div>
             )}
+
+            {renderHeader && <div className="mb-4">{renderHeader}</div>}
 
             {hasFolders && breadcrumb && breadcrumb.length > 0 && (
                 <nav aria-label="breadcrumb" className="mb-3">
@@ -305,7 +307,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                     <tr key={item.id || idx} className="table-secondary">
                                         {columns.map((col, i) => (
                                             <td key={i} className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''} text-break`} style={{ maxWidth: i === columns.length - 1 ? '1%' : undefined }}>
-                                                {col.header === 'ACCIONES' ? <span className="badge bg-secondary">Anulado</span> : (col.render ? col.render(item) : (item[col.accessor] ?? '-'))}
+                                                {col.header === 'ACCIONES' ? <span className="badge bg-secondary">Anulado</span> : (col.render ? col.render(item, idx) : (item[col.accessor] ?? '-'))}
                                             </td>
                                         ))}
                                     </tr>
@@ -387,7 +389,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                             }
                                             return (
                                                 <td key={i} className={`${i === 0 ? 'ps-4 fw-medium text-body' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''} text-break`} style={{ maxWidth: i === columns.length - 1 ? '1%' : undefined }}>
-                                                    {col.render ? col.render(item) : (item[col.accessor] || '-')}
+                                                    {col.render ? col.render(item, idx) : (item[col.accessor] || '-')}
                                                 </td>
                                             );
                                         })}
@@ -429,6 +431,8 @@ export default function ModuleIndex({ title, description, items, columns, create
                     </div>
                 )}
             </div>
+
+            {renderFooter && <div className="mt-3">{renderFooter}</div>}
 
             {hasFolders && canCreateFolder && showFolderModal && (
                 <ModuleFolderModal
