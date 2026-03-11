@@ -241,7 +241,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', opciones
                             {errors.monto_o && <div className="invalid-feedback">{errors.monto_o}</div>}
                         </div>
                         <div className="col-md-4 col-lg">
-                            <label className="form-label fw-medium">EVAL. (S/)</label>
+                            <label className="form-label fw-medium">EVALUACION (S/)</label>
                             <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_p ? 'is-invalid' : ''}`} value={data.monto_p} onChange={e => setData('monto_p', e.target.value)} />
                             {errors.monto_p && <div className="invalid-feedback">{errors.monto_p}</div>}
                         </div>

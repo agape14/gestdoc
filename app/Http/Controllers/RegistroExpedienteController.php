@@ -24,6 +24,12 @@ class RegistroExpedienteController extends Controller
         if ($folderId) {
             $currentFolder = Folder::visibleForModuleUser(self::MODULE, $user)->findOrFail($folderId);
             $currentFolder->load(['parent']);
+            // Cargar cadena completa de padres para path y moveTargetFolders
+            $p = $currentFolder->parent;
+            while ($p) {
+                $p->load(['parent']);
+                $p = $p->parent;
+            }
             $folders = $currentFolder->children()->visibleForModuleUser(self::MODULE, $user)->orderBy('name')->get();
             $breadcrumb = $currentFolder->path;
         } else {
@@ -65,11 +71,20 @@ class RegistroExpedienteController extends Controller
 
         $expedientes = $query->latest()->paginate(15)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
 
+        // Todas las carpetas del módulo visibles para el usuario, como destinos posibles al mover
+        $moveTargetFolders = Folder::visibleForModuleUser(self::MODULE, $user)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($f) => ['id' => $f->id, 'name' => $f->name])
+            ->values()
+            ->all();
+
         return Inertia::render('RegistroExpedientes/Index', [
             'expedientes' => $expedientes,
             'filters' => $request->only(['search', 'folder_id', 'user_id']),
             'userRole' => $user->role,
             'folders' => $folders,
+            'moveTargetFolders' => $moveTargetFolders,
             'currentFolder' => $currentFolder,
             'breadcrumb' => $breadcrumb,
             'operadores' => $operadores,

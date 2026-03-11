@@ -5,7 +5,7 @@ import ModuleIndex from '@/Components/ModuleIndex';
 import ModuleIndexRowDetail from '@/Components/ModuleIndexRowDetail';
 import { formatDateDisplay, formatMonedaPeruana } from '@/Utils/experienciaCalculations';
 
-export default function Index({ expedientes, filters = {}, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [] }) {
+export default function Index({ expedientes, filters = {}, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], operadores = [] }) {
     const handleDelete = (item) => {
         Swal.fire({
             title: '¿Estás seguro?',
@@ -72,6 +72,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             routeParams={filters}
             userRole={userRole}
             folders={folders}
+            moveTargetFolders={moveTargetFolders}
             currentFolder={currentFolder}
             breadcrumb={breadcrumb}
             storeFolderRoute="registro-expedientes.folders.store"

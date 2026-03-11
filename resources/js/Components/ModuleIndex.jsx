@@ -12,7 +12,7 @@ const getIconClass = (iconName) => {
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null, moveRouteName = null, moveBulkRouteName = null }) {
+export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null, moveRouteName = null, moveBulkRouteName = null }) {
     const { auth, flash } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
@@ -595,7 +595,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                 <label className="form-label fw-semibold">Carpeta de destino</label>
                                 <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
                                     <option value="">Seleccionar carpeta...</option>
-                                    {(folders || []).filter((f) => {
+                                    {(moveTargetFolders && moveTargetFolders.length > 0 ? moveTargetFolders : (folders || [])).filter((f) => {
                                         const currentId = movingItem ? String(movingItem.folder_id) : (currentFolder?.id ? String(currentFolder.id) : '');
                                         return String(f.id) !== currentId;
                                     }).map((f) => (

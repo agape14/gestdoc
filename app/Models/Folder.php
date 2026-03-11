@@ -90,6 +90,50 @@ class Folder extends Model
     }
 
     /**
+     * Carpetas válidas como destino al mover: misma línea (ancestros + descendientes) o superiores.
+     * Devuelve lista plana [['id' => x, 'name' => y], ...]: primero ancestros (raíz → padre), luego descendientes.
+     *
+     * @param string $module
+     * @param \App\Models\User $user
+     * @param \App\Models\Folder|null $currentFolder
+     * @return \Illuminate\Support\Collection
+     */
+    public static function getMoveTargetFolders(string $module, $user, ?Folder $currentFolder)
+    {
+        if (!$currentFolder) {
+            return collect();
+        }
+
+        $list = collect();
+
+        // Ancestros (línea superior): recorrer parent y cargar cadena completa. Se incluyen todos los de la ruta
+        // (si el usuario ve la carpeta actual, puede mover a cualquier carpeta superior de esa ruta).
+        $ancestorChain = [];
+        $parent = $currentFolder->parent;
+        while ($parent) {
+            $ancestorChain[] = $parent;
+            $parent = $parent->parent;
+        }
+        foreach (array_reverse($ancestorChain) as $p) {
+            $list->push(['id' => $p->id, 'name' => $p->name]);
+        }
+
+        // Descendientes (misma línea hacia abajo)
+        $queue = $currentFolder->children()->visibleForModuleUser($module, $user)->orderBy('name')->get();
+        while ($queue->isNotEmpty()) {
+            foreach ($queue as $f) {
+                $list->push(['id' => $f->id, 'name' => $f->name]);
+            }
+            $queue = static::whereIn('parent_id', $queue->pluck('id'))
+                ->visibleForModuleUser($module, $user)
+                ->orderBy('name')
+                ->get();
+        }
+
+        return $list;
+    }
+
+    /**
      * Obtiene resumen de contratos (completos/totales)
      */
     public function getContractsSummaryAttribute()
