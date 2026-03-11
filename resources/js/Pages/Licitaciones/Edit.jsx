@@ -53,7 +53,7 @@ export default function Edit({ licitacion }) {
         <MainLayout>
             <Head title="Editar Licitación" />
 
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Editar Licitación</h3>
                     <p className="text-secondary small">Modificar detalles de la licitación.</p>

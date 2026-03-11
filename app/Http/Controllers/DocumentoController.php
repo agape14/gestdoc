@@ -15,12 +15,12 @@ class DocumentoController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'archivo' => 'required|file|mimes:pdf|max:10240',
+            'archivo' => 'required|file|mimes:pdf|max:25600',
         ], [
             'archivo.required' => 'Debe adjuntar un archivo PDF.',
             'archivo.file' => 'El campo debe ser un archivo válido.',
             'archivo.mimes' => 'Solo se permiten archivos PDF.',
-            'archivo.max' => 'El archivo no debe superar 10 MB.',
+            'archivo.max' => 'El archivo no debe superar 25 MB.',
         ], [
             'archivo' => 'archivo',
         ]);

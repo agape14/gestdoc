@@ -121,7 +121,7 @@ class TopografiaController extends Controller
         $validated = $request->validate([
             'titulo' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
-            'archivo' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+            'archivo' => 'nullable|file|mimes:pdf,doc,docx|max:25600',
         ]);
 
         $data = $request->except(['archivo']);
@@ -164,7 +164,7 @@ class TopografiaController extends Controller
         $validated = $request->validate([
             'titulo' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
-            'archivo' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+            'archivo' => 'nullable|file|mimes:pdf,doc,docx|max:25600',
         ]);
 
         $data = $request->except(['archivo']);

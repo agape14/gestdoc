@@ -9,7 +9,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
     return (
         <MainLayout>
             <Head title="Nuevo registro - Proveedor de Servicios" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <ExperienciaForm
                     structure={2}
                     initialData={{ folder_id: folderId || '', clasificacion: breadcrumbLabel || '' }}

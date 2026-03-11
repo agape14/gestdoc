@@ -129,7 +129,7 @@ class EspecialistaEjecucionController extends Controller
             'especialidad' => 'nullable|string|max:255',
             'tipo' => 'nullable|string|in:Profesional,Empresa',
             'estado' => 'nullable|string',
-            'documento' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+            'documento' => 'nullable|file|mimes:pdf,doc,docx|max:25600',
             'clasificacion' => 'nullable|string|max:500',
             'cliente' => 'required|string|max:500',
             'objeto_del_contrato' => 'required|string',
@@ -141,7 +141,7 @@ class EspecialistaEjecucionController extends Controller
             'fecha_culminacion' => 'required|string',
             'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
         ];
         $request->validate($rules);
@@ -283,7 +283,7 @@ class EspecialistaEjecucionController extends Controller
             'fecha_culminacion' => 'required|string',
             'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
         ];
         $request->validate($rules);

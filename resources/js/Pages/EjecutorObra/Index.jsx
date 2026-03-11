@@ -182,7 +182,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
     return (
         <MainLayout>
             <Head title="Ejecutor de Obra" />
-            <div className="min-w-0 w-100">
+            <div className="grid-page-wrapper min-w-0 w-100" style={{ maxWidth: '100%' }}>
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
                     {flash.success}

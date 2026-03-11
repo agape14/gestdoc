@@ -31,7 +31,7 @@ export default function Edit({ servicio }) {
     return (
         <MainLayout>
             <Head title="Editar registro - Proveedor de Servicios" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <ExperienciaForm
                     key={servicio?.id ?? 'edit'}
                     structure={2}

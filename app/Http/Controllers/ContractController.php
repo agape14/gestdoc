@@ -70,7 +70,7 @@ class ContractController extends Controller
             'conformity_date' => 'nullable|date',
             'exchange_rate' => 'nullable|numeric|min:0',
             'status' => 'required|in:completo,incompleto',
-            'file' => 'required|file|mimes:pdf|max:10240',
+            'file' => 'required|file|mimes:pdf|max:25600',
         ]);
 
         $path = null;
@@ -125,7 +125,7 @@ class ContractController extends Controller
             'conformity_date' => 'nullable|date',
             'exchange_rate' => 'nullable|numeric|min:0',
             'status' => 'required|in:completo,incompleto',
-            'file' => 'nullable|file|mimes:pdf|max:10240',
+            'file' => 'nullable|file|mimes:pdf|max:25600',
         ]);
 
         // Update Contract File if new one uploaded

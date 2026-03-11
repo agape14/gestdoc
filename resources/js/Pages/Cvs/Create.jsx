@@ -59,7 +59,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
         <MainLayout>
             <Head title="Registrar CV" />
 
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Registrar Nuevo CV</h3>
                     <p className="text-secondary small">Añadir un profesional al banco de talentos.</p>
@@ -107,7 +107,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
                         <label className="form-label fw-semibold">
                             Archivos PDF (nombre + archivo) <span className="text-danger ms-1">* al menos uno</span>
                         </label>
-                        <div className="small text-secondary mb-2">Máx. 10 MB por archivo, formato PDF.</div>
+                        <div className="small text-secondary mb-2">Máx. 25 MB por archivo, formato PDF.</div>
                         {archivos.map((a, i) => (
                             <div key={i} className="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center mb-2">
                                 <input

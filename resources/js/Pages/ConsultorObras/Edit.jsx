@@ -96,7 +96,7 @@ export default function Edit({ consultorObra, folderId = null, canDelete = false
     return (
         <MainLayout>
             <Head title="Editar Consultoría" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Editar Consultoría</h3>
                     <p className="text-secondary small">Modificar detalles del registro.</p>

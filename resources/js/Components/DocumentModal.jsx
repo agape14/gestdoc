@@ -287,7 +287,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                         {isEditing ? 'Añadir más archivos PDF' : 'Archivos PDF (nombre + archivo)'}
                                         {!isEditing && <span className="text-danger ms-1">* al menos uno</span>}
                                     </label>
-                                    <div className="small text-secondary mb-2">Máx. 10 MB por archivo, formato PDF.</div>
+                                    <div className="small text-secondary mb-2">Máx. 25 MB por archivo, formato PDF.</div>
                                     {archivos.map((a, i) => (
                                         <div key={i} className="d-flex gap-2 align-items-center mb-2">
                                             <input

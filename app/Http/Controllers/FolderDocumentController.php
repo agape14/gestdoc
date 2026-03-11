@@ -26,7 +26,7 @@ class FolderDocumentController extends Controller
             'asunto' => 'nullable|string|max:500',
             'remitente' => 'nullable|string|max:255',
             'destinatario' => 'nullable|string|max:255',
-            'referencia' => 'nullable|string|max:255',
+            'referencia' => 'nullable|string|max:5000',
             'observaciones' => 'nullable|string',
             'folios' => 'required|integer|min:0',
         ], [], ['folios' => 'folios']);
@@ -56,8 +56,10 @@ class FolderDocumentController extends Controller
 
         foreach ($archivosData as $index => $item) {
             $request->validate([
-                "archivos.{$index}.file" => 'required|file|mimes:pdf|max:10240',
-            ], [], ["archivos.{$index}.file" => 'archivo PDF']);
+                "archivos.{$index}.file" => 'required|file|mimes:pdf|max:25600',
+            ], [
+                "archivos.{$index}.file.max" => 'Cada archivo PDF no debe superar 25 MB.',
+            ], ["archivos.{$index}.file" => 'archivo PDF']);
             $nombre = \Str::limit($item['nombre_archivo'], 255);
             $path = $item['file']->store('expedientes/documentos', 'r2');
             DocumentFile::create([
@@ -91,12 +93,12 @@ class FolderDocumentController extends Controller
             'asunto' => 'nullable|string|max:500',
             'remitente' => 'nullable|string|max:255',
             'destinatario' => 'nullable|string|max:255',
-            'referencia' => 'nullable|string|max:255',
+            'referencia' => 'nullable|string|max:5000',
             'observaciones' => 'nullable|string',
             'folios' => 'required|integer|min:0',
             'archivos' => 'nullable|array',
             'archivos.*.nombre_archivo' => 'required_with:archivos.*.file|string|max:255',
-            'archivos.*.file' => 'nullable|file|mimes:pdf|max:10240',
+            'archivos.*.file' => 'nullable|file|mimes:pdf|max:25600',
             'archivos_existentes' => 'nullable|array',
             'archivos_existentes.*.id' => 'required|exists:document_files,id',
             'archivos_existentes.*.nombre_archivo' => 'required|string|max:255',

@@ -71,7 +71,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
         <MainLayout>
             <Head title="Nueva Licitación" />
 
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <form onSubmit={submit} className="p-4 bg-white rounded-4 shadow-sm">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h5 className="fw-bold mb-0">Detalle de Licitación</h5>

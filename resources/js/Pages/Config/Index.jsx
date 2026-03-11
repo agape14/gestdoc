@@ -51,7 +51,7 @@ export default function Index({ users, filters, flash }) {
     return (
         <MainLayout>
             <Head title="Configuración - Usuarios" />
-            <div className="min-w-0 w-100">
+            <div className="grid-page-wrapper min-w-0 w-100" style={{ maxWidth: '100%' }}>
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
                     {flash.success}

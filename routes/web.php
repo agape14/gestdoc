@@ -79,6 +79,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('tecnologia', \App\Http\Controllers\TecnologiaController::class);
         Route::post('/plantillas-ing/folders', [\App\Http\Controllers\PlantillaIngController::class, 'storeFolder'])->name('plantillas-ing.folders.store');
         Route::resource('plantillas-ing', \App\Http\Controllers\PlantillaIngController::class);
+        Route::post('/registro-expedientes/folders', [\App\Http\Controllers\RegistroExpedienteController::class, 'storeFolder'])->name('registro-expedientes.folders.store');
+        Route::resource('registro-expedientes', \App\Http\Controllers\RegistroExpedienteController::class)->parameters(['registro-expedientes' => 'registroExpediente']);
         Route::post('/record-share', [\App\Http\Controllers\RecordShareController::class, 'store'])->name('record-share.store');
     });
 

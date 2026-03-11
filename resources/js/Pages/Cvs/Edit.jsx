@@ -65,7 +65,7 @@ export default function Edit({ cv, operadores = [] }) {
         <MainLayout>
             <Head title="Editar CV" />
 
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Editar CV</h3>
                     <p className="text-secondary small">Actualizar información del candidato.</p>
@@ -134,7 +134,7 @@ export default function Edit({ cv, operadores = [] }) {
                             {archivosExistentes.length > 0 ? 'Añadir más archivos PDF' : 'Archivos PDF (nombre + archivo)'}
                             {archivosExistentes.length === 0 && <span className="text-danger ms-1">* al menos uno</span>}
                         </label>
-                        <div className="small text-secondary mb-2">Máx. 10 MB por archivo, formato PDF.</div>
+                        <div className="small text-secondary mb-2">Máx. 25 MB por archivo, formato PDF.</div>
                         {archivos.map((a, i) => (
                             <div key={i} className="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center mb-2">
                                 <input

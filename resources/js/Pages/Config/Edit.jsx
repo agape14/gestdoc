@@ -42,7 +42,7 @@ export default function Edit({ user, menuOptions = [], allowedMenusDefault = [] 
         <MainLayout>
             <Head title="Editar Usuario" />
 
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Editar Usuario</h3>
                     <p className="text-secondary small">Modificar información de acceso.</p>

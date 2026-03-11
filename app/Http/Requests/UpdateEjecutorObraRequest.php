@@ -36,26 +36,26 @@ class UpdateEjecutorObraRequest extends FormRequest
             'fecha_entrega_terreno' => 'nullable|date',
             'fecha_recepcion_obra' => 'nullable|date',
             'fecha_aprobacion_liquidacion' => 'nullable|date',
-            'archivo_contrato' => 'nullable|file|mimes:pdf|max:10240',
-            'archivo_acta_recepcion' => 'nullable|file|mimes:pdf|max:10240',
-            'archivo_acta_inicio' => 'nullable|file|mimes:pdf|max:10240',
-            'archivo_acta_suspension' => 'nullable|file|mimes:pdf|max:10240',
-            'archivo_acta_reinicio' => 'nullable|file|mimes:pdf|max:10240',
-            'archivo_acta_entrega_terreno' => 'nullable|file|mimes:pdf|max:10240',
-            'archivo_resolucion_liquidacion' => 'nullable|file|mimes:pdf|max:10240',
+            'archivo_contrato' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_acta_recepcion' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_acta_inicio' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_acta_suspension' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_acta_reinicio' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_acta_entrega_terreno' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_resolucion_liquidacion' => 'nullable|file|mimes:pdf|max:25600',
         ];
 
         // En edición, archivo_contrato es requerido solo si no hay uno existente
         if (!$obra || !$obra->archivo_contrato) {
-            $rules['archivo_contrato'] = 'required|file|mimes:pdf|max:10240';
+            $rules['archivo_contrato'] = 'required|file|mimes:pdf|max:25600';
         }
 
         $tieneSuspension = $this->input('tiene_suspension');
         if ($tieneSuspension === 'SI' || $tieneSuspension === '1' || $tieneSuspension === true) {
             $rules['fecha_suspension'] = 'required|date';
             $rules['fecha_reinicio'] = 'required|date';
-            $rules['archivo_acta_suspension'] = 'required|file|mimes:pdf|max:10240';
-            $rules['archivo_acta_reinicio'] = 'required|file|mimes:pdf|max:10240';
+            $rules['archivo_acta_suspension'] = 'required|file|mimes:pdf|max:25600';
+            $rules['archivo_acta_reinicio'] = 'required|file|mimes:pdf|max:25600';
         }
 
         return $rules;
@@ -75,7 +75,7 @@ class UpdateEjecutorObraRequest extends FormRequest
             'plazo.required' => 'El plazo (días) es obligatorio.',
             'archivo_contrato.required' => 'Debe subir el archivo del contrato (PDF).',
             'archivo_contrato.mimes' => 'El contrato debe ser un archivo PDF.',
-            'archivo_contrato.max' => 'El archivo del contrato no debe superar 10 MB.',
+            'archivo_contrato.max' => 'El archivo del contrato no debe superar 25 MB.',
             'fecha_suspension.required' => 'Si indicó suspensión, la fecha de suspensión es obligatoria.',
             'fecha_reinicio.required' => 'Si indicó suspensión, la fecha de reinicio es obligatoria.',
             'archivo_acta_suspension.required' => 'Si indicó suspensión, debe subir el acta de suspensión (PDF).',

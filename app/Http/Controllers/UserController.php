@@ -27,6 +27,7 @@ class UserController extends Controller
             ['key' => 'topografia', 'label' => 'Topografía'],
             ['key' => 'tecnologia', 'label' => 'Tecnología'],
             ['key' => 'plantillas-ing', 'label' => 'Plantillas de Ing.'],
+            ['key' => 'registro-expedientes', 'label' => 'Registro de Expedientes'],
             ['key' => 'cvs', 'label' => 'Banco de CVs'],
             ['key' => 'folders', 'label' => 'Gestión Documental'],
         ];
@@ -49,6 +50,7 @@ class UserController extends Controller
             'topografia' => 'Topografía',
             'tecnologia' => 'Tecnología',
             'plantillas-ing' => 'Plantillas de Ing.',
+            'registro-expedientes' => 'Registro de Expedientes',
         ];
     }
 

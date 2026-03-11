@@ -19,7 +19,7 @@ export default function Edit({ item }) {
     return (
         <MainLayout>
             <Head title="Editar Registro de Topografía" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Editar Registro de Topografía</h3>
                 </div>

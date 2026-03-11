@@ -142,7 +142,7 @@ export default function ModuleIndex({ title, description, items, columns, create
     return (
         <MainLayout>
             <Head title={title} />
-            <div className="min-w-0 w-100">
+            <div className="grid-page-wrapper min-w-0 w-100" style={{ maxWidth: '100%' }}>
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show rounded-3 mb-3" role="alert">
                     {flash.success}
@@ -398,7 +398,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                         <tr className="bg-light animate-fade-in">
                                             <td colSpan={columns.length} className="p-0 border-0">
                                                 <div className="p-4 border-bottom border-light shadow-inner">
-                                                    {renderDetail(item)}
+                                                    {typeof renderDetail === 'function' ? renderDetail(item, getDocumentLinks ? { openDocumentsModal } : {}) : renderDetail(item)}
                                                 </div>
                                             </td>
                                         </tr>

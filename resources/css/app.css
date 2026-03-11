@@ -2,11 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Contenedor global: evitar que grids/formularios superen el viewport en móvil */
+.page-content-inner {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+/* Grid/table wrapper: que el scroll quede dentro de .table-responsive */
+.grid-page-wrapper {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+/* Formularios (Create/Edit): en móvil usar todo el ancho disponible */
+@media (max-width: 991.98px) {
+    .form-card-responsive {
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
 /* Responsive: tablas y contenido en móvil */
 @media (max-width: 767.98px) {
     .table-responsive {
         -webkit-overflow-scrolling: touch;
         font-size: 0.875rem;
+        max-width: 100%;
     }
     .modal-dialog {
         margin: 0.5rem;
@@ -16,5 +42,11 @@
     .card-body .row.g-4 .col-md-6 {
         flex: 0 0 100%;
         max-width: 100%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .table-responsive {
+        border-radius: 0;
     }
 }

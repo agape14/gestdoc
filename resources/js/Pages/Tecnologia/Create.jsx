@@ -21,7 +21,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
     return (
         <MainLayout>
             <Head title="Nuevo Registro de Tecnología" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Nuevo Registro de Tecnología</h3>
                 </div>

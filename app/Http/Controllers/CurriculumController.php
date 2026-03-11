@@ -172,7 +172,7 @@ class CurriculumController extends Controller
 
         foreach ($archivos as $index => $item) {
             $request->validate([
-                "archivos.{$index}.file" => 'required|file|mimes:pdf|max:10240',
+                "archivos.{$index}.file" => 'required|file|mimes:pdf|max:25600',
             ], [], ["archivos.{$index}.file" => 'archivo PDF']);
             $nombre = \Str::limit($item['nombre_archivo'], 255);
             $path = $item['file']->store('expedientes/cvs', 'r2');
@@ -211,7 +211,7 @@ class CurriculumController extends Controller
             'archivos_existentes.*.nombre_archivo' => 'required|string|max:255',
             'archivos' => 'nullable|array',
             'archivos.*.nombre_archivo' => 'required_with:archivos.*.file|string|max:255',
-            'archivos.*.file' => 'nullable|file|mimes:pdf|max:10240',
+            'archivos.*.file' => 'nullable|file|mimes:pdf|max:25600',
         ], [], [
             'archivos.*.nombre_archivo' => 'nombre del archivo',
             'archivos.*.file' => 'archivo PDF',

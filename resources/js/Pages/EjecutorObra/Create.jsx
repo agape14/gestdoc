@@ -108,7 +108,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
     return (
         <MainLayout>
             <Head title="Nuevo Ejecutor de Obra" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Nuevo Ejecutor de Obra</h3>
                     <p className="text-secondary small">Complete la información según el formulario de referencia.</p>

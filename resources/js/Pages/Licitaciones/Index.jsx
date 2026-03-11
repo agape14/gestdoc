@@ -349,7 +349,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
     return (
         <MainLayout>
             <Head title="Licitaciones" />
-            <div className="min-w-0 w-100">
+            <div className="grid-page-wrapper min-w-0 w-100" style={{ maxWidth: '100%' }}>
             {flash?.success && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
                     {flash.success}

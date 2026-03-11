@@ -10,7 +10,7 @@ import {
 } from '@/Utils/experienciaCalculations';
 
 const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png';
-const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_MB = 25;
 
 function formatDateForInput(dateStrOrDate) {
     if (!dateStrOrDate) return '';

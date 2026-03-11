@@ -13,6 +13,7 @@ class EnsureMenuAccess
         'licitaciones', 'consultor-obras', 'ejecutor-obra', 'proveedor-servicios',
         'proveedor-bienes', 'especialistas-ejecucion', 'especialistas-consultoria',
         'inmobiliaria', 'topografia', 'tecnologia', 'plantillas-ing', 'cvs', 'folders',
+        'registro-expedientes',
     ];
 
     /**

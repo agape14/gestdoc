@@ -399,7 +399,7 @@ export default function ContractModal({ show, onClose, contract = null, folderId
                                             required={!isEditing}
                                         />
                                         <div className="form-text">
-                                            Máximo 10 MB, formato PDF
+                                            Máximo 25 MB, formato PDF
                                         </div>
                                         {errors.file && (
                                             <div className="invalid-feedback d-block">{errors.file}</div>

@@ -105,6 +105,7 @@ export default function MainLayout({ children }) {
         { key: 'topografia', href: '/topografia', icon: 'bi-map', label: 'TOPOGRAFIA', activePattern: '/topografia' },
         { key: 'tecnologia', href: '/tecnologia', icon: 'bi-pc-display', label: 'TECNOLOGIA', activePattern: '/tecnologia' },
         { key: 'plantillas-ing', href: '/plantillas-ing', icon: 'bi-file-earmark-ruled', label: 'PLANTILLAS DE ING', activePattern: '/plantillas-ing' },
+        { key: 'registro-expedientes', href: '/registro-expedientes', icon: 'bi-journal-text', label: 'REGISTRO DE EXPEDIENTES', activePattern: '/registro-expedientes' },
         { key: 'cvs', href: '/cvs', icon: 'bi-person-lines-fill', label: 'BANCO DE CVs', activePattern: '/cvs' },
         { key: 'folders', href: '/folders', icon: 'bi-folder-fill', label: 'GESTION DOCUMENTAL', activePattern: '/folders' },
     ];
@@ -201,32 +202,37 @@ export default function MainLayout({ children }) {
             <div className="flex-grow-1 d-flex flex-column min-vh-100 transition-all"
                 style={{ marginLeft: '0' }}>
 
-                {/* Desktop Margin Logic injected via style tag to handle responsive behavior cleanly or use a class if configured */}
+                {/* Desktop Margin Logic + móvil: contenido no debe superar el ancho de pantalla */}
                 <style>{`
                     @media (min-width: 992px) {
                         .main-content-wrapper { margin-left: 280px !important; }
                     }
-                    /* Evitar que el contenido desborde en móvil: el contenido principal puede reducirse */
-                    .main-content-wrapper main > * { min-width: 0; max-width: 100%; }
-                 `}</style>
+                    @media (max-width: 991.98px) {
+                        .main-content-wrapper { width: 100%; max-width: 100vw; overflow-x: hidden; }
+                        .main-content-wrapper main { max-width: 100%; padding-left: 0.75rem; padding-right: 0.75rem; }
+                    }
+                    .main-content-wrapper main { overflow-x: hidden; }
+                `}</style>
 
                 <div className="main-content-wrapper flex-grow-1 d-flex flex-column min-vh-100">
                     {/* Topbar Mobile */}
                     <div className="d-lg-none bg-body p-3 d-flex justify-content-between align-items-center shadow-sm sticky-top z-1030">
-                        <div className="d-flex align-items-center">
-                            <div className="bg-primary rounded-3 p-1 me-2 d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>
+                        <div className="d-flex align-items-center min-w-0">
+                            <div className="bg-primary rounded-3 p-1 me-2 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '32px', height: '32px' }}>
                                 <i className="bi bi-building-fill fs-6 text-white"></i>
                             </div>
-                            <span className="fw-bold fs-5" style={{ color: 'var(--bs-body-color)' }}>TECCONING</span>
+                            <span className="fw-bold fs-5 text-truncate" style={{ color: 'var(--bs-body-color)' }}>TECCONING</span>
                         </div>
-                        <button className="btn btn-light btn-sm shadow-sm border" type="button" onClick={toggleSidebar}>
+                        <button className="btn btn-light btn-sm shadow-sm border flex-shrink-0" type="button" onClick={toggleSidebar}>
                             <i className="bi bi-list fs-4"></i>
                         </button>
                     </div>
 
-                    {/* Page Content - container-fluid para responsive en móvil */}
-                    <main className="flex-grow-1 p-3 p-md-4 p-lg-5 overflow-x-hidden container-fluid">
-                        {children}
+                    {/* Page Content - contenedor fluido y responsive; en móvil sin desborde */}
+                    <main className="flex-grow-1 p-3 p-md-4 p-lg-5 overflow-x-hidden container-fluid" style={{ maxWidth: '100%' }}>
+                        <div className="page-content-inner">
+                            {children}
+                        </div>
                     </main>
                 </div>
             </div>

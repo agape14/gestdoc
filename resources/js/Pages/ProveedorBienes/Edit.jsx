@@ -29,7 +29,7 @@ export default function Edit({ bien }) {
     return (
         <MainLayout>
             <Head title="Editar registro - Proveedor de Bienes" />
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <ExperienciaForm
                     key={bien?.id ?? 'edit'}
                     structure={3}

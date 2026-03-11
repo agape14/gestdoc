@@ -135,7 +135,7 @@ class EspecialistaConsultoriaController extends Controller
             'fecha_culminacion' => 'required|string',
             'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
         ]);
 
@@ -279,7 +279,7 @@ class EspecialistaConsultoriaController extends Controller
             'fecha_culminacion' => 'required|string',
             'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
         ]);
 
