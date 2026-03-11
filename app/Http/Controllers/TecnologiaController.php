@@ -9,10 +9,11 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class TecnologiaController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'tecnologia';
 
@@ -198,5 +199,15 @@ class TecnologiaController extends Controller
         }
         DB::table('tecnologias')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
         return redirect()->back()->with('success', 'Registro anulado.');
+    }
+
+    public function move(Request $request, Tecnologia $tecnologia)
+    {
+        return $this->moveItem($request, $tecnologia, self::MODULE, 'tecnologia.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, Tecnologia::class, self::MODULE, 'item_ids', 'tecnologia.index');
     }
 }

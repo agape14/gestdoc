@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\EjecutorObrasExport;
 use App\Http\Requests\StoreEjecutorObraRequest;
@@ -15,7 +16,7 @@ use App\Http\Requests\UpdateEjecutorObraRequest;
 
 class EjecutorObraController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'ejecutor-obra';
 
@@ -278,5 +279,15 @@ class EjecutorObraController extends Controller
         }
         $ejecutorObra->update(['anulado' => true]);
         return redirect()->route('ejecutor-obra.index')->with('success', 'Registro anulado.');
+    }
+
+    public function move(Request $request, EjecutorObra $ejecutorObra)
+    {
+        return $this->moveItem($request, $ejecutorObra, self::MODULE, 'ejecutor-obra.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, EjecutorObra::class, self::MODULE, 'item_ids', 'ejecutor-obra.index');
     }
 }

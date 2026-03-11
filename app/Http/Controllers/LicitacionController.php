@@ -11,10 +11,11 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\LicitacionesExport;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class LicitacionController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'licitaciones';
 
@@ -335,5 +336,15 @@ class LicitacionController extends Controller
 
         $licitacion->update(['anulado' => true]);
         return redirect()->route('licitaciones.index')->with('success', 'Licitación anulada.');
+    }
+
+    public function move(Request $request, Licitacion $licitacion)
+    {
+        return $this->moveItem($request, $licitacion, self::MODULE, 'licitaciones.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, Licitacion::class, self::MODULE, 'item_ids', 'licitaciones.index');
     }
 }

@@ -10,11 +10,12 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 use ZipArchive;
 
 class CurriculumController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'cvs';
 
@@ -268,6 +269,16 @@ class CurriculumController extends Controller
         }
         DB::table('curricula')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
         return redirect()->back()->with('success', 'CV anulado.');
+    }
+
+    public function move(Request $request, Curriculum $cv)
+    {
+        return $this->moveItem($request, $cv, self::MODULE, 'cvs.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, Curriculum::class, self::MODULE, 'item_ids', 'cvs.index');
     }
 
     /**

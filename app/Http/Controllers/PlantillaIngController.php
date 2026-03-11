@@ -9,10 +9,11 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class PlantillaIngController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'plantillas-ing';
 
@@ -198,5 +199,15 @@ class PlantillaIngController extends Controller
         }
         DB::table('plantilla_ings')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
         return redirect()->back()->with('success', 'Registro anulado.');
+    }
+
+    public function move(Request $request, PlantillaIng $plantillaIng)
+    {
+        return $this->moveItem($request, $plantillaIng, self::MODULE, 'plantillas-ing.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, PlantillaIng::class, self::MODULE, 'item_ids', 'plantillas-ing.index');
     }
 }

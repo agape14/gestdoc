@@ -76,6 +76,8 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
             storeFolderRoute="especialistas-consultoria.folders.store"
             indexRoute="especialistas-consultoria.index"
             indexTitle="Especialistas en Consultoría"
+            moveRouteName="especialistas-consultoria.move"
+            moveBulkRouteName="especialistas-consultoria.move-bulk"
             operadores={operadores}
             renderDetail={renderDetail}
         />

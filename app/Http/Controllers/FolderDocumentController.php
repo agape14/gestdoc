@@ -218,6 +218,38 @@ class FolderDocumentController extends Controller
     }
 
     /**
+     * Mover varios documentos a otra carpeta (gestión documental).
+     */
+    public function moveBulk(Request $request)
+    {
+        if ($request->user()->role === 'Visualizador') {
+            abort(403, 'No tienes permiso.');
+        }
+        $validated = $request->validate([
+            'document_ids' => 'required|array',
+            'document_ids.*' => 'required|integer|exists:documents,id',
+            'folder_id' => 'required|exists:folders,id',
+        ]);
+        $folder = Folder::findOrFail($validated['folder_id']);
+        if ($folder->module !== null) {
+            return redirect()->back()->with('error', 'La carpeta de destino debe ser de gestión documental.');
+        }
+        $documents = Document::whereIn('id', $validated['document_ids'])->with('folder')->get();
+        $moved = 0;
+        foreach ($documents as $document) {
+            if ($document->folder->module !== null) {
+                continue;
+            }
+            $document->update(['folder_id' => $folder->id]);
+            $moved++;
+        }
+        if (request()->header('X-Inertia')) {
+            return back()->with('success', $moved > 0 ? "Se movieron {$moved} documento(s) correctamente." : 'No se movió ningún documento.');
+        }
+        return redirect()->back()->with('success', $moved > 0 ? "Se movieron {$moved} documento(s) correctamente." : 'No se movió ningún documento.');
+    }
+
+    /**
      * Download a single document file.
      */
     public function download(Document $document, DocumentFile $file)

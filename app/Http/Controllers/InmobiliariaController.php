@@ -9,10 +9,11 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class InmobiliariaController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'inmobiliaria';
 
@@ -202,5 +203,15 @@ class InmobiliariaController extends Controller
         }
         DB::table('inmobiliarias')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
         return redirect()->back()->with('success', 'Registro anulado.');
+    }
+
+    public function move(Request $request, Inmobiliaria $inmobiliaria)
+    {
+        return $this->moveItem($request, $inmobiliaria, self::MODULE, 'inmobiliaria.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, Inmobiliaria::class, self::MODULE, 'item_ids', 'inmobiliaria.index');
     }
 }

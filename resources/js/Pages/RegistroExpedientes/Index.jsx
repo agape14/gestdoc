@@ -24,7 +24,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
     };
 
     const columns = [
-        { header: 'N°', accessor: 'id', render: (item, rowIndex) => ((expedientes.current_page || 1) - 1) * (expedientes.per_page || 15) + (rowIndex ?? 0) + 1 },
+        { header: 'N°', accessor: 'numero', render: (item) => item.numero ?? '-' },
         { header: 'TIPO INVERSIÓN', accessor: 'tipo_inversion', render: (item) => (item.tipo_inversion ? String(item.tipo_inversion).slice(0, 35) + (String(item.tipo_inversion).length > 35 ? '…' : '') : '-') },
         { header: 'PROYECTO', accessor: 'proyecto', render: (item) => (item.proyecto ? String(item.proyecto).slice(0, 50) + (String(item.proyecto).length > 50 ? '…' : '') : '-') },
         { header: 'CUI', accessor: 'cui' },
@@ -36,12 +36,16 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
     const getDetailFields = (item) => [
         { label: 'N°', value: item.numero },
         { label: 'Etiqueta', value: item.etiqueta },
+        { label: '¿Tiene actualización de precios?', value: item.tiene_actualizacion_precios || '-' },
+        { label: '¿Tiene reformulación?', value: item.tiene_reformulacion || '-' },
         { label: 'Descripción', value: item.descripcion },
         { label: 'N° de folio', value: item.numero_folio },
         { label: 'Tomos', value: item.tomos },
         { label: 'Año', value: item.anio },
         { label: 'Tipo unidad conservación', value: item.tipo_unidad_conservacion },
         { label: 'Resolución', value: item.resolucion },
+        { label: 'Contrato', value: item.contrato ? 'Sí (archivo cargado)' : 'No' },
+        { label: 'Resolución (archivo)', value: item.resolucion_archivo ? 'Sí (archivo cargado)' : 'No' },
         { label: 'Proyecto (completo)', value: item.proyecto },
     ];
 
@@ -73,6 +77,8 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             storeFolderRoute="registro-expedientes.folders.store"
             indexRoute="registro-expedientes.index"
             indexTitle="Registro de Expedientes"
+            moveRouteName="registro-expedientes.move"
+            moveBulkRouteName="registro-expedientes.move-bulk"
             operadores={operadores}
             anulados={null}
             renderDetail={renderDetail}

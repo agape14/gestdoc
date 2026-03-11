@@ -28,6 +28,36 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     const [selectedPdfTitle, setSelectedPdfTitle] = useState('');
     const [selectedCvIds, setSelectedCvIds] = useState([]);
     const [nombreValues, setNombreValues] = useState({});
+    const [movingItem, setMovingItem] = useState(null);
+    const [movingIds, setMovingIds] = useState([]);
+    const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
+    const hasFolders = Boolean(folders && folders.length > 0);
+    const hasMove = hasFolders && currentUserRole !== 'Visualizador';
+
+    const openBulkMoveModal = () => {
+        if (selectedCvIds.length === 0) return;
+        setMovingItem(null);
+        setMovingIds([...selectedCvIds]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+    const openSingleMoveModal = (cv) => {
+        setMovingItem(cv);
+        setMovingIds([]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+    const closeMoveModal = () => {
+        setMovingItem(null);
+        setMovingIds([]);
+        setMoveTargetFolderId('');
+    };
+    const handleMove = () => {
+        if (!moveTargetFolderId) return;
+        if (movingItem) {
+            router.put(route('cvs.move', movingItem.id), { folder_id: moveTargetFolderId }, { preserveScroll: true, onSuccess: () => { closeMoveModal(); } });
+        } else if (movingIds.length > 0) {
+            router.post(route('cvs.move-bulk'), { item_ids: movingIds, folder_id: moveTargetFolderId }, { preserveScroll: true, onSuccess: () => { closeMoveModal(); setSelectedCvIds([]); } });
+        }
+    };
 
     const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (currentFolder?.name || 'Banco de CVs');
     const buildParams = (extra = {}) => ({ ...filters, ...extra });
@@ -198,6 +228,18 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                 <div className="d-flex gap-2 align-items-center">
                     {cvs.data?.length > 0 && (
                         <>
+                            {hasMove && (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-info btn-sm"
+                                    onClick={openBulkMoveModal}
+                                    disabled={selectedCvIds.length === 0}
+                                    title={selectedCvIds.length === 0 ? 'Seleccione al menos un CV' : `Mover ${selectedCvIds.length} CV(s) a otra carpeta`}
+                                >
+                                    <i className="bi bi-folder-symlink me-1"></i>
+                                    Mover seleccionados ({selectedCvIds.length})
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className="btn btn-outline-primary btn-sm"
@@ -428,6 +470,11 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                     <td className="text-end pe-4">
                                         {currentUserRole !== 'Visualizador' && (
                                             <>
+                                                {hasMove && (
+                                                    <button type="button" onClick={() => openSingleMoveModal(cv)} className="btn btn-sm btn-outline-info me-1" title="Mover a otra carpeta">
+                                                        <i className="bi bi-folder-symlink"></i>
+                                                    </button>
+                                                )}
                                                 <Link href={route('cvs.edit', cv.id)} className="btn btn-sm btn-outline-secondary me-1" title="Editar">
                                                     <i className="bi bi-pencil"></i>
                                                 </Link>
@@ -478,6 +525,33 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                 pdfUrl={selectedPdfUrl}
                 title={selectedPdfTitle}
             />
+
+            {(movingItem || movingIds.length > 0) && hasMove && (
+                <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-0">
+                                <h5 className="modal-title fw-bold">{movingItem ? 'Mover a otra carpeta' : `Mover ${movingIds.length} CV(s) a otra carpeta`}</h5>
+                                <button type="button" className="btn-close" onClick={closeMoveModal}></button>
+                            </div>
+                            <div className="modal-body">
+                                {movingItem ? <p className="text-secondary small mb-2">Se moverá el CV a la carpeta que elijas.</p> : <p className="text-secondary small mb-2">Se moverán <strong>{movingIds.length}</strong> CV(s) a la carpeta que elijas.</p>}
+                                <label className="form-label fw-semibold">Carpeta de destino</label>
+                                <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
+                                    <option value="">Seleccionar carpeta...</option>
+                                    {(folders || []).filter((f) => String(f.id) !== (movingItem ? String(movingItem.folder_id) : (currentFolder?.id ? String(currentFolder.id) : ''))).map((f) => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button type="button" className="btn btn-secondary" onClick={closeMoveModal}>Cancelar</button>
+                                <button type="button" className="btn btn-primary" disabled={!moveTargetFolderId} onClick={handleMove}>Mover</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             </div>
         </MainLayout>
     );

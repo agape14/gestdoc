@@ -250,6 +250,45 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
     const [tab, setTab] = useState('activos');
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [editingFolder, setEditingFolder] = useState(null);
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [movingItem, setMovingItem] = useState(null);
+    const [movingIds, setMovingIds] = useState([]);
+    const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
+    const hasFolders = Boolean(folders && folders.length > 0);
+    const hasMove = hasFolders && currentUserRole !== 'Visualizador';
+
+    const toggleSelectOne = (id) => {
+        setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    };
+    const toggleSelectAll = () => {
+        const data = licitaciones.data || [];
+        if (selectedIds.length === data.length) setSelectedIds([]);
+        else setSelectedIds(data.map((item) => item.id));
+    };
+    const openBulkMoveModal = () => {
+        if (selectedIds.length === 0) return;
+        setMovingItem(null);
+        setMovingIds([...selectedIds]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+    const openSingleMoveModal = (item) => {
+        setMovingItem(item);
+        setMovingIds([]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+    const closeMoveModal = () => {
+        setMovingItem(null);
+        setMovingIds([]);
+        setMoveTargetFolderId('');
+    };
+    const handleMove = () => {
+        if (!moveTargetFolderId) return;
+        if (movingItem) {
+            router.put(route('licitaciones.move', movingItem.id), { folder_id: moveTargetFolderId }, { preserveScroll: true, onSuccess: closeMoveModal });
+        } else if (movingIds.length > 0) {
+            router.post(route('licitaciones.move-bulk'), { item_ids: movingIds, folder_id: moveTargetFolderId }, { preserveScroll: true, onSuccess: () => { closeMoveModal(); setSelectedIds([]); } });
+        }
+    };
 
     const canEdit = (item) => {
         if (currentUserRole === 'Administrador') return true;
@@ -410,6 +449,17 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                     <p className="text-secondary mb-0">Gestión de licitaciones</p>
                 </div>
                 <div className="d-flex gap-2 flex-wrap">
+                    {hasMove && (
+                        <button
+                            type="button"
+                            className="btn btn-outline-info rounded-pill px-4"
+                            onClick={openBulkMoveModal}
+                            disabled={selectedIds.length === 0}
+                            title={selectedIds.length === 0 ? 'Seleccione al menos un registro' : `Mover ${selectedIds.length} registro(s) a otra carpeta`}
+                        >
+                            <i className="bi bi-folder-symlink me-2"></i> Mover seleccionados ({selectedIds.length})
+                        </button>
+                    )}
                     {currentUserRole !== 'Visualizador' && (
                         <>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
@@ -510,7 +560,14 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                     <table className="table table-hover align-middle mb-0" style={{ minWidth: '640px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
-                                <th scope="col" className="ps-4 py-3">PROYECTO</th>
+                                {hasMove && (
+                                    <th scope="col" className="ps-4 py-3" style={{ width: '40px' }}>
+                                        {!showGrouped && tab === 'activos' && (licitaciones.data || []).length > 0 && (
+                                            <input type="checkbox" className="form-check-input" checked={selectedIds.length === (licitaciones.data || []).length} onChange={toggleSelectAll} title="Seleccionar todos" />
+                                        )}
+                                    </th>
+                                )}
+                                <th scope="col" className="py-3">PROYECTO</th>
                                 <th scope="col" className="py-3">ENTIDAD</th>
                                 <th scope="col" className="py-3">ESPECIALIDAD</th>
                                 <th scope="col" className="py-3">PRESUPUESTO</th>
@@ -523,6 +580,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 anulados.length > 0 ? (
                                     anulados.map(licitacion => (
                                         <tr key={licitacion.id}>
+                                            {hasMove && <td className="ps-4 py-3"></td>}
                                             <td className="ps-4 py-3 fw-medium text-body">{licitacion.titulo}</td>
                                             <td className="text-secondary">{licitacion.entidad}</td>
                                             <td className="text-secondary">{licitacion.especialidad || '-'}</td>
@@ -545,14 +603,14 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" className="text-center py-5 text-muted">No hay registros anulados.</td>
+                                        <td colSpan={hasMove ? 7 : 6} className="text-center py-5 text-muted">No hay registros anulados.</td>
                                     </tr>
                                 )
                             ) : showGrouped && Object.keys(grouped).length > 0 ? (
                                 Object.entries(grouped).map(([especialidad, items]) => (
                                     <React.Fragment key={especialidad}>
                                         <tr className="bg-light">
-                                            <td colSpan="6" className="ps-4 py-2 fw-bold text-primary">
+                                            <td colSpan={hasMove ? 7 : 6} className="ps-4 py-2 fw-bold text-primary">
                                                 <i className="bi bi-folder-fill me-2"></i>
                                                 {especialidad || 'Sin Especialidad'} ({items.length} {items.length === 1 ? 'registro' : 'registros'})
                                             </td>
@@ -564,6 +622,11 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                     onClick={() => setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id)}
                                                     style={{ backgroundColor: expandedRow === licitacion.id ? 'var(--bs-light)' : 'transparent' }}
                                                 >
+                                                    {hasMove && (
+                                                        <td className="ps-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                            <input type="checkbox" className="form-check-input" checked={selectedIds.includes(licitacion.id)} onChange={() => toggleSelectOne(licitacion.id)} title="Seleccionar" />
+                                                        </td>
+                                                    )}
                                                     <td className="ps-4 py-3 fw-medium text-body">{licitacion.titulo}</td>
                                                     <td className="text-secondary">{licitacion.entidad}</td>
                                                     <td className="text-secondary">{licitacion.especialidad || '-'}</td>
@@ -582,6 +645,9 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                             </button>
                                                         ) : (
                                                             <>
+                                                                {hasMove && (
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); openSingleMoveModal(licitacion); }} className="btn btn-sm btn-outline-info me-1" title="Mover a otra carpeta"><i className="bi bi-folder-symlink"></i></button>
+                                                                )}
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
@@ -619,7 +685,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                 </tr>
                                                 {expandedRow === licitacion.id && (
                                                     <tr>
-                                                        <td colSpan="6" className="p-0 border-0">
+                                                        <td colSpan={hasMove ? 7 : 6} className="p-0 border-0">
                                                             <div className="p-3 bg-light">
                                                                 <DetailForm item={licitacion} onClose={() => setExpandedRow(null)} />
                                                             </div>
@@ -638,6 +704,11 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                             onClick={() => setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id)}
                                             style={{ backgroundColor: expandedRow === licitacion.id ? 'var(--bs-light)' : 'transparent' }}
                                         >
+                                            {hasMove && (
+                                                <td className="ps-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                    <input type="checkbox" className="form-check-input" checked={selectedIds.includes(licitacion.id)} onChange={() => toggleSelectOne(licitacion.id)} title="Seleccionar" />
+                                                </td>
+                                            )}
                                             <td className="ps-4 py-3 fw-medium text-body">{licitacion.titulo}</td>
                                             <td className="text-secondary">{licitacion.entidad}</td>
                                             <td className="text-secondary">{licitacion.especialidad || '-'}</td>
@@ -656,6 +727,9 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                     </button>
                                                 ) : (
                                                     <>
+                                                        {hasMove && (
+                                                            <button type="button" onClick={(e) => { e.stopPropagation(); openSingleMoveModal(licitacion); }} className="btn btn-sm btn-outline-info me-1" title="Mover a otra carpeta"><i className="bi bi-folder-symlink"></i></button>
+                                                        )}
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -693,7 +767,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                         </tr>
                                         {expandedRow === licitacion.id && (
                                             <tr>
-                                                <td colSpan="6" className="p-0 border-0">
+                                                <td colSpan={hasMove ? 7 : 6} className="p-0 border-0">
                                                     <div className="p-3 bg-light">
                                                         <DetailForm item={licitacion} onClose={() => setExpandedRow(null)} />
                                                     </div>
@@ -704,7 +778,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="text-center py-5 text-muted">No se encontraron licitaciones.</td>
+                                    <td colSpan={hasMove ? 7 : 6} className="text-center py-5 text-muted">No se encontraron licitaciones.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -742,6 +816,33 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                     onClose={() => setEditingFolder(null)}
                     folder={editingFolder}
                 />
+            )}
+
+            {(movingItem || movingIds.length > 0) && hasMove && (
+                <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-0">
+                                <h5 className="modal-title fw-bold">{movingItem ? 'Mover a otra carpeta' : `Mover ${movingIds.length} registro(s) a otra carpeta`}</h5>
+                                <button type="button" className="btn-close" onClick={closeMoveModal}></button>
+                            </div>
+                            <div className="modal-body">
+                                {movingItem ? <p className="text-secondary small mb-2">Se moverá el registro a la carpeta que elijas.</p> : <p className="text-secondary small mb-2">Se moverán <strong>{movingIds.length}</strong> registro(s) a la carpeta que elijas.</p>}
+                                <label className="form-label fw-semibold">Carpeta de destino</label>
+                                <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
+                                    <option value="">Seleccionar carpeta...</option>
+                                    {(folders || []).filter((f) => String(f.id) !== (movingItem ? String(movingItem.folder_id) : (currentFolder?.id ? String(currentFolder.id) : ''))).map((f) => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button type="button" className="btn btn-secondary" onClick={closeMoveModal}>Cancelar</button>
+                                <button type="button" className="btn btn-primary" disabled={!moveTargetFolderId} onClick={handleMove}>Mover</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
             </div>
         </MainLayout>

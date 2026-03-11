@@ -78,6 +78,38 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [pdfModalUrl, setPdfModalUrl] = useState('');
     const [pdfModalTitle, setPdfModalTitle] = useState('');
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [movingItem, setMovingItem] = useState(null);
+    const [movingIds, setMovingIds] = useState([]);
+    const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
+    const hasFolders = Boolean(folders && folders.length > 0);
+    const hasMove = hasFolders && currentUserRole !== 'Visualizador';
+    const toggleSelectOne = (id) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    const toggleSelectAll = () => {
+        const data = obras.data || [];
+        if (selectedIds.length === data.length) setSelectedIds([]);
+        else setSelectedIds(data.map((item) => item.id));
+    };
+    const openBulkMoveModal = () => {
+        if (selectedIds.length === 0) return;
+        setMovingItem(null);
+        setMovingIds([...selectedIds]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+    const openSingleMoveModal = (item) => {
+        setMovingItem(item);
+        setMovingIds([]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+    const closeMoveModal = () => { setMovingItem(null); setMovingIds([]); setMoveTargetFolderId(''); };
+    const handleMove = () => {
+        if (!moveTargetFolderId) return;
+        if (movingItem) {
+            router.put(route('ejecutor-obra.move', movingItem.id), { folder_id: moveTargetFolderId }, { preserveScroll: true, onSuccess: closeMoveModal });
+        } else if (movingIds.length > 0) {
+            router.post(route('ejecutor-obra.move-bulk'), { item_ids: movingIds, folder_id: moveTargetFolderId }, { preserveScroll: true, onSuccess: () => { closeMoveModal(); setSelectedIds([]); } });
+        }
+    };
 
     const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (currentFolder?.name || 'Ejecutor de Obra');
 
@@ -238,6 +270,11 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                     <p className="text-secondary mb-0">Gestión de ejecución de obras</p>
                 </div>
                 <div className="d-flex gap-2 flex-wrap">
+                    {hasMove && (
+                        <button type="button" className="btn btn-outline-info rounded-pill px-4" onClick={openBulkMoveModal} disabled={selectedIds.length === 0} title={selectedIds.length === 0 ? 'Seleccione al menos un registro' : `Mover ${selectedIds.length} registro(s)`}>
+                            <i className="bi bi-folder-symlink me-2"></i> Mover seleccionados ({selectedIds.length})
+                        </button>
+                    )}
                     {currentUserRole !== 'Visualizador' && (
                         <>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
@@ -285,7 +322,14 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                     <table className="table table-hover align-middle mb-0" style={{ minWidth: '720px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
-                                <th scope="col" className="ps-4 py-3">ENTIDAD</th>
+                                {hasMove && (
+                                    <th scope="col" className="ps-4 py-3" style={{ width: '40px' }}>
+                                        {(obras.data || []).length > 0 && (
+                                            <input type="checkbox" className="form-check-input" checked={(obras.data || []).length > 0 && selectedIds.length === (obras.data || []).length} onChange={toggleSelectAll} title="Seleccionar todos" />
+                                        )}
+                                    </th>
+                                )}
+                                <th scope="col" className="py-3">ENTIDAD</th>
                                 <th scope="col" className="py-3">NOMENCLATURA</th>
                                 <th scope="col" className="py-3">CUI</th>
                                 <th scope="col" className="py-3"># CONTRATO</th>
@@ -303,6 +347,11 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                             onClick={() => setExpandedRow(expandedRow === obra.id ? null : obra.id)}
                                             style={{ backgroundColor: expandedRow === obra.id ? 'var(--bs-light)' : 'transparent' }}
                                         >
+                                            {hasMove && (
+                                                <td className="ps-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                    <input type="checkbox" className="form-check-input" checked={selectedIds.includes(obra.id)} onChange={() => toggleSelectOne(obra.id)} title="Seleccionar" />
+                                                </td>
+                                            )}
                                             <td className="ps-4 py-3 fw-medium text-body">{(obra.nombre_sigla_entidad || obra.titulo || '-').substring(0, 40)}{(obra.nombre_sigla_entidad || obra.titulo || '').length > 40 ? '…' : ''}</td>
                                             <td className="text-secondary">{(obra.nomenclatura || '-').substring(0, 25)}{(obra.nomenclatura || '').length > 25 ? '…' : ''}</td>
                                             <td className="text-secondary">{obra.cui || '-'}</td>
@@ -328,6 +377,9 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                                     </button>
                                                 ) : (
                                                     <>
+                                                        {hasMove && (
+                                                            <button type="button" onClick={(e) => { e.stopPropagation(); openSingleMoveModal(obra); }} className="btn btn-sm btn-outline-info me-1" title="Mover a otra carpeta"><i className="bi bi-folder-symlink"></i></button>
+                                                        )}
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -372,7 +424,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                         </tr>
                                         {expandedRow === obra.id && (
                                             <tr>
-                                                <td colSpan="7" className="p-0 border-0">
+                                                <td colSpan={hasMove ? 8 : 7} className="p-0 border-0">
                                                     <div className="p-3 bg-light">
                                                         <DetailForm item={obra} onClose={() => setExpandedRow(null)} />
                                                     </div>
@@ -383,7 +435,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="7" className="text-center py-5 text-muted">No se encontraron registros.</td>
+                                    <td colSpan={hasMove ? 8 : 7} className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -419,6 +471,33 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
 
             {editingFolder && (
                 <ModuleFolderEditModal show={!!editingFolder} onClose={() => setEditingFolder(null)} folder={editingFolder} />
+            )}
+
+            {(movingItem || movingIds.length > 0) && hasMove && (
+                <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-0">
+                                <h5 className="modal-title fw-bold">{movingItem ? 'Mover a otra carpeta' : `Mover ${movingIds.length} registro(s) a otra carpeta`}</h5>
+                                <button type="button" className="btn-close" onClick={closeMoveModal}></button>
+                            </div>
+                            <div className="modal-body">
+                                {movingItem ? <p className="text-secondary small mb-2">Se moverá el registro a la carpeta que elijas.</p> : <p className="text-secondary small mb-2">Se moverán <strong>{movingIds.length}</strong> registro(s) a la carpeta que elijas.</p>}
+                                <label className="form-label fw-semibold">Carpeta de destino</label>
+                                <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
+                                    <option value="">Seleccionar carpeta...</option>
+                                    {(folders || []).filter((f) => String(f.id) !== (movingItem ? String(movingItem.folder_id) : (currentFolder?.id ? String(currentFolder.id) : ''))).map((f) => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button type="button" className="btn btn-secondary" onClick={closeMoveModal}>Cancelar</button>
+                                <button type="button" className="btn btn-primary" disabled={!moveTargetFolderId} onClick={handleMove}>Mover</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {showDocumentsModal && (

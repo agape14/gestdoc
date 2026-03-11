@@ -6,11 +6,13 @@ use App\Models\RegistroExpediente;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class RegistroExpedienteController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'registro-expedientes';
 
@@ -105,11 +107,68 @@ class RegistroExpedienteController extends Controller
                 $breadcrumbLabel = is_array($path) ? implode(' / ', array_column($path, 'name')) : $folder->name;
             }
         }
+        $queryCount = RegistroExpediente::query();
+        if ($folderId) {
+            $queryCount->where('folder_id', $folderId);
+        } else {
+            $queryCount->whereNull('folder_id');
+        }
+        $nextNumero = (string) ($queryCount->count() + 1);
+
         return Inertia::render('RegistroExpedientes/Create', [
             'folderId' => $folderId,
             'breadcrumbLabel' => $breadcrumbLabel,
             'opcionesTipoUnidad' => RegistroExpediente::opcionesTipoUnidadConservacion(),
+            'opcionesTipoInversion' => RegistroExpediente::opcionesTipoInversion(),
+            'nextNumero' => $nextNumero,
         ]);
+    }
+
+    public function listarPorTipo(Request $request)
+    {
+        $validated = $request->validate([
+            'tipo_inversion' => 'required|string|max:255',
+            'folder_id' => 'nullable|integer|exists:folders,id',
+        ]);
+
+        $user = auth()->user();
+        $query = RegistroExpediente::query();
+        $query = $this->applyRoleBasedFilter($query, $user);
+        $query->where('tipo_inversion', $validated['tipo_inversion']);
+
+        if (!empty($validated['folder_id'])) {
+            $query->where('folder_id', $validated['folder_id']);
+        } else {
+            $query->whereNull('folder_id');
+        }
+
+        $expedientes = $query->orderBy('numero')->limit(100)->get();
+
+        $list = $expedientes->map(function ($e) {
+            return [
+                'id' => $e->id,
+                'numero' => $e->numero,
+                'etiqueta' => $e->etiqueta,
+                'proyecto' => $e->proyecto,
+                'cui' => $e->cui,
+                'descripcion' => $e->descripcion,
+                'numero_folio' => $e->numero_folio,
+                'tomos' => $e->tomos,
+                'anio' => $e->anio,
+                'tipo_unidad_conservacion' => $e->tipo_unidad_conservacion,
+                'resolucion' => $e->resolucion,
+                'fecha_aprobacion' => $e->fecha_aprobacion?->format('Y-m-d'),
+                'tiene_actualizacion_precios' => $e->tiene_actualizacion_precios,
+                'tiene_reformulacion' => $e->tiene_reformulacion,
+                'monto_o' => $e->monto_o !== null ? (float) $e->monto_o : null,
+                'monto_p' => $e->monto_p !== null ? (float) $e->monto_p : null,
+                'monto_r' => $e->monto_r !== null ? (float) $e->monto_r : null,
+                'monto_s' => $e->monto_s !== null ? (float) $e->monto_s : null,
+                'monto_supervision' => $e->monto_supervision !== null ? (float) $e->monto_supervision : null,
+            ];
+        })->values()->all();
+
+        return response()->json(['expedientes' => $list]);
     }
 
     public function store(Request $request)
@@ -127,20 +186,37 @@ class RegistroExpedienteController extends Controller
             'tipo_unidad_conservacion' => 'nullable|string|max:255',
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
+            'tiene_actualizacion_precios' => 'nullable|string|in:SI,NO',
+            'tiene_reformulacion' => 'nullable|string|in:SI,NO',
             'monto_o' => 'nullable|numeric|min:0',
             'monto_p' => 'nullable|numeric|min:0',
             'monto_r' => 'nullable|numeric|min:0',
             'monto_s' => 'nullable|numeric|min:0',
-        ]);
+            'monto_supervision' => 'nullable|numeric|min:0',
+            'contrato' => 'nullable|file|max:25600',
+            'resolucion_archivo' => 'nullable|file|max:25600',
+        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
 
         $data = $this->prepareData($validated, $request);
         $data['user_id'] = auth()->id();
 
+        $folderId = null;
         if ($request->filled('folder_id')) {
             $folder = Folder::where('module', self::MODULE)->find($request->folder_id);
             if ($folder) {
                 $data['folder_id'] = $folder->id;
+                $folderId = $folder->id;
             }
+        }
+
+        $queryCount = RegistroExpediente::query()->when($data['folder_id'] ?? null, fn ($q) => $q->where('folder_id', $data['folder_id']), fn ($q) => $q->whereNull('folder_id'));
+        $data['numero'] = (string) ($queryCount->count() + 1);
+
+        if ($request->hasFile('contrato')) {
+            $data['contrato'] = $request->file('contrato')->store('expedientes/registro_expedientes', 'r2');
+        }
+        if ($request->hasFile('resolucion_archivo')) {
+            $data['resolucion_archivo'] = $request->file('resolucion_archivo')->store('expedientes/registro_expedientes', 'r2');
         }
 
         $expediente = RegistroExpediente::create($data);
@@ -173,15 +249,21 @@ class RegistroExpedienteController extends Controller
             'tipo_unidad_conservacion' => $e->tipo_unidad_conservacion,
             'resolucion' => $e->resolucion,
             'fecha_aprobacion' => $e->fecha_aprobacion?->format('Y-m-d'),
+            'tiene_actualizacion_precios' => $e->tiene_actualizacion_precios,
+            'tiene_reformulacion' => $e->tiene_reformulacion,
             'monto_o' => $e->monto_o !== null ? (float) $e->monto_o : null,
             'monto_p' => $e->monto_p !== null ? (float) $e->monto_p : null,
             'monto_r' => $e->monto_r !== null ? (float) $e->monto_r : null,
             'monto_s' => $e->monto_s !== null ? (float) $e->monto_s : null,
+            'monto_supervision' => $e->monto_supervision !== null ? (float) $e->monto_supervision : null,
+            'contrato' => $e->contrato,
+            'resolucion_archivo' => $e->resolucion_archivo,
         ];
 
         return Inertia::render('RegistroExpedientes/Edit', [
             'expediente' => $expediente,
             'opcionesTipoUnidad' => RegistroExpediente::opcionesTipoUnidadConservacion(),
+            'opcionesTipoInversion' => RegistroExpediente::opcionesTipoInversion(),
         ]);
     }
 
@@ -205,13 +287,30 @@ class RegistroExpedienteController extends Controller
             'tipo_unidad_conservacion' => 'nullable|string|max:255',
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
+            'tiene_actualizacion_precios' => 'nullable|string|in:SI,NO',
+            'tiene_reformulacion' => 'nullable|string|in:SI,NO',
             'monto_o' => 'nullable|numeric|min:0',
             'monto_p' => 'nullable|numeric|min:0',
             'monto_r' => 'nullable|numeric|min:0',
             'monto_s' => 'nullable|numeric|min:0',
-        ]);
+            'monto_supervision' => 'nullable|numeric|min:0',
+            'contrato' => 'nullable|file|max:25600',
+            'resolucion_archivo' => 'nullable|file|max:25600',
+        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
 
         $data = $this->prepareData($validated, $request);
+        if ($request->hasFile('contrato')) {
+            if ($registroExpediente->contrato) {
+                Storage::disk(storage_disk_for_path($registroExpediente->contrato))->delete($registroExpediente->contrato);
+            }
+            $data['contrato'] = $request->file('contrato')->store('expedientes/registro_expedientes', 'r2');
+        }
+        if ($request->hasFile('resolucion_archivo')) {
+            if ($registroExpediente->resolucion_archivo) {
+                Storage::disk(storage_disk_for_path($registroExpediente->resolucion_archivo))->delete($registroExpediente->resolucion_archivo);
+            }
+            $data['resolucion_archivo'] = $request->file('resolucion_archivo')->store('expedientes/registro_expedientes', 'r2');
+        }
         $registroExpediente->update($data);
 
         $folderId = $registroExpediente->folder_id;
@@ -233,6 +332,16 @@ class RegistroExpedienteController extends Controller
             ->with('success', 'Expediente eliminado.');
     }
 
+    public function move(Request $request, RegistroExpediente $registroExpediente)
+    {
+        return $this->moveItem($request, $registroExpediente, self::MODULE, 'registro-expedientes.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, RegistroExpediente::class, self::MODULE, 'item_ids', 'registro-expedientes.index');
+    }
+
     private function prepareData(array $validated, Request $request): array
     {
         $data = $validated;
@@ -246,7 +355,7 @@ class RegistroExpedienteController extends Controller
             $data['fecha_aprobacion'] = null;
         }
 
-        foreach (['monto_o', 'monto_p', 'monto_r', 'monto_s'] as $key) {
+        foreach (['monto_o', 'monto_p', 'monto_r', 'monto_s', 'monto_supervision'] as $key) {
             $val = $request->input($key);
             if ($val !== null && $val !== '') {
                 $data[$key] = (float) preg_replace('/[^\d.]/', '', str_replace(',', '.', (string) $val));

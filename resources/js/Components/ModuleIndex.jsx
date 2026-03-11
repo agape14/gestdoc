@@ -12,7 +12,7 @@ const getIconClass = (iconName) => {
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null }) {
+export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null, moveRouteName = null, moveBulkRouteName = null }) {
     const { auth, flash } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
@@ -28,6 +28,10 @@ export default function ModuleIndex({ title, description, items, columns, create
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [pdfModalUrl, setPdfModalUrl] = useState('');
     const [pdfModalTitle, setPdfModalTitle] = useState('');
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [movingItem, setMovingItem] = useState(null);
+    const [movingIds, setMovingIds] = useState([]);
+    const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
 
     const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (indexTitle || title);
     const buildIndexParams = (extra = {}) => ({ ...currentFilters, ...extra });
@@ -139,6 +143,46 @@ export default function ModuleIndex({ title, description, items, columns, create
         setShowPdfModal(true);
     };
 
+    const hasMove = Boolean(hasFolders && (moveRouteName || moveBulkRouteName) && currentUserRole !== 'Visualizador');
+    const toggleSelectOne = (id) => {
+        setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    };
+    const toggleSelectAll = () => {
+        const data = items?.data ?? [];
+        if (selectedIds.length === data.length) setSelectedIds([]);
+        else setSelectedIds(data.map((item) => item.id));
+    };
+    const openBulkMoveModal = () => {
+        if (selectedIds.length === 0) return;
+        setMovingItem(null);
+        setMovingIds([...selectedIds]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+    const closeMoveModal = () => {
+        setMovingItem(null);
+        setMovingIds([]);
+        setMoveTargetFolderId('');
+    };
+    const handleMove = () => {
+        if (!moveTargetFolderId) return;
+        if (movingItem) {
+            router.put(route(moveRouteName, movingItem.id), { folder_id: moveTargetFolderId }, {
+                preserveScroll: true,
+                onSuccess: () => { closeMoveModal(); },
+            });
+        } else if (movingIds.length > 0 && moveBulkRouteName) {
+            router.post(route(moveBulkRouteName), { item_ids: movingIds, folder_id: moveTargetFolderId }, {
+                preserveScroll: true,
+                onSuccess: () => { closeMoveModal(); setSelectedIds([]); },
+            });
+        }
+    };
+    const openSingleMoveModal = (item) => {
+        setMovingItem(item);
+        setMovingIds([]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+
     return (
         <MainLayout>
             <Head title={title} />
@@ -236,7 +280,19 @@ export default function ModuleIndex({ title, description, items, columns, create
                 )
             }
 
-            <div className="d-flex justify-content-end mb-4">
+            <div className="d-flex justify-content-end mb-4 flex-wrap gap-2">
+                {hasMove && moveBulkRouteName && (
+                    <button
+                        type="button"
+                        className="btn btn-outline-info shadow-sm rounded-pill px-4"
+                        onClick={openBulkMoveModal}
+                        disabled={selectedIds.length === 0}
+                        title={selectedIds.length === 0 ? 'Seleccione al menos un registro' : `Mover ${selectedIds.length} registro(s) a otra carpeta`}
+                    >
+                        <i className="bi bi-folder-symlink me-2"></i>
+                        Mover seleccionados ({selectedIds.length})
+                    </button>
+                )}
                 {(createRoute || onCreate) && currentUserRole !== 'Visualizador' && (
                     <button
                         onClick={() => onCreate ? onCreate() : router.visit(createRoute)}
@@ -320,6 +376,17 @@ export default function ModuleIndex({ title, description, items, columns, create
                     <table className="table table-hover align-middle mb-0 table-responsive-grid" style={{ minWidth: '560px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
+                                {hasMove && moveBulkRouteName && (
+                                    <th scope="col" className="ps-4 py-3" style={{ width: '40px' }}>
+                                        <input
+                                            type="checkbox"
+                                            className="form-check-input"
+                                            checked={items.data.length > 0 && selectedIds.length === items.data.length}
+                                            onChange={toggleSelectAll}
+                                            title="Seleccionar todos"
+                                        />
+                                    </th>
+                                )}
                                 {columns.map((col, i) => (
                                     <th key={i} scope="col" className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''}`}>
                                         {col.header}
@@ -335,9 +402,20 @@ export default function ModuleIndex({ title, description, items, columns, create
                                         onClick={() => renderDetail && handleRowClick(item.id)}
                                         style={{ backgroundColor: expandedRow === item.id ? 'var(--bs-light)' : 'transparent' }}
                                     >
+                                        {hasMove && moveBulkRouteName && (
+                                            <td className="ps-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="form-check-input"
+                                                    checked={selectedIds.includes(item.id)}
+                                                    onChange={() => toggleSelectOne(item.id)}
+                                                    title="Seleccionar para mover"
+                                                />
+                                            </td>
+                                        )}
                                         {columns.map((col, i) => {
                                             // Si es la columna de acciones y no tiene render personalizado, usar el render por defecto
-                                            if (col.header === 'ACCIONES' && !col.render && (editRoute || deleteRoute || getDocumentLinks)) {
+                                            if (col.header === 'ACCIONES' && !col.render && (editRoute || deleteRoute || getDocumentLinks || moveRouteName)) {
                                                 const docLinks = getDocumentLinks ? (getDocumentLinks(item) || []).filter(d => d.path) : [];
                                                 const hasDocs = docLinks.length > 0;
                                                 return (
@@ -351,6 +429,16 @@ export default function ModuleIndex({ title, description, items, columns, create
                                                                     title="Ver documentos"
                                                                 >
                                                                     <i className="bi bi-file-earmark-pdf"></i>
+                                                                </button>
+                                                            )}
+                                                            {moveRouteName && hasMove && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.stopPropagation(); openSingleMoveModal(item); }}
+                                                                    className="btn btn-sm btn-outline-info me-1"
+                                                                    title="Mover a otra carpeta"
+                                                                >
+                                                                    <i className="bi bi-folder-symlink"></i>
                                                                 </button>
                                                             )}
                                                             {currentUserRole === 'Visualizador' ? (
@@ -387,8 +475,19 @@ export default function ModuleIndex({ title, description, items, columns, create
                                                     </td>
                                                 );
                                             }
-                                            return (
+                                            const isExpandCol = i === columns.length - 1 && (col.header === '' || col.accessor === '_expand');
+                                                return (
                                                 <td key={i} className={`${i === 0 ? 'ps-4 fw-medium text-body' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''} text-break`} style={{ maxWidth: i === columns.length - 1 ? '1%' : undefined }}>
+                                                    {isExpandCol && moveRouteName && hasMove && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); openSingleMoveModal(item); }}
+                                                            className="btn btn-sm btn-outline-info me-1"
+                                                            title="Mover a otra carpeta"
+                                                        >
+                                                            <i className="bi bi-folder-symlink"></i>
+                                                        </button>
+                                                    )}
                                                     {col.render ? col.render(item, idx) : (item[col.accessor] || '-')}
                                                 </td>
                                             );
@@ -396,7 +495,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                     </tr>
                                     {renderDetail && expandedRow === item.id && (
                                         <tr className="bg-light animate-fade-in">
-                                            <td colSpan={columns.length} className="p-0 border-0">
+                                            <td colSpan={columns.length + (hasMove && moveBulkRouteName ? 1 : 0)} className="p-0 border-0">
                                                 <div className="p-4 border-bottom border-light shadow-inner">
                                                     {typeof renderDetail === 'function' ? renderDetail(item, getDocumentLinks ? { openDocumentsModal } : {}) : renderDetail(item)}
                                                 </div>
@@ -406,7 +505,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                 </React.Fragment>
                             )) : (
                                 <tr>
-                                    <td colSpan={columns.length} className="text-center py-5 text-muted">No se encontraron registros.</td>
+                                    <td colSpan={columns.length + (hasMove && moveBulkRouteName ? 1 : 0)} className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -476,6 +575,42 @@ export default function ModuleIndex({ title, description, items, columns, create
             )}
 
             <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} />
+
+            {(movingItem || movingIds.length > 0) && hasMove && (
+                <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg rounded-4">
+                            <div className="modal-header border-0">
+                                <h5 className="modal-title fw-bold">
+                                    {movingItem ? 'Mover a otra carpeta' : `Mover ${movingIds.length} registro(s) a otra carpeta`}
+                                </h5>
+                                <button type="button" className="btn-close" onClick={closeMoveModal}></button>
+                            </div>
+                            <div className="modal-body">
+                                {movingItem ? (
+                                    <p className="text-secondary small mb-2">Se moverá el registro a la carpeta que elijas.</p>
+                                ) : (
+                                    <p className="text-secondary small mb-2">Se moverán <strong>{movingIds.length}</strong> registro(s) a la carpeta que elijas.</p>
+                                )}
+                                <label className="form-label fw-semibold">Carpeta de destino</label>
+                                <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
+                                    <option value="">Seleccionar carpeta...</option>
+                                    {(folders || []).filter((f) => {
+                                        const currentId = movingItem ? String(movingItem.folder_id) : (currentFolder?.id ? String(currentFolder.id) : '');
+                                        return String(f.id) !== currentId;
+                                    }).map((f) => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button type="button" className="btn btn-secondary" onClick={closeMoveModal}>Cancelar</button>
+                                <button type="button" className="btn btn-primary" disabled={!moveTargetFolderId} onClick={handleMove}>Mover</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             </div>
         </MainLayout >
     );

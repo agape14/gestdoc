@@ -73,6 +73,8 @@ export default function Index({ bienes, experienceTotals = {}, filters, userRole
             storeFolderRoute="proveedor-bienes.folders.store"
             indexRoute="proveedor-bienes.index"
             indexTitle="Proveedor de Bienes"
+            moveRouteName="proveedor-bienes.move"
+            moveBulkRouteName="proveedor-bienes.move-bulk"
             operadores={operadores}
             renderDetail={renderDetail}
         />

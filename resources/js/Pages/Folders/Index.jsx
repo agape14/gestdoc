@@ -27,6 +27,7 @@ export default function Index({
     const [viewingFile, setViewingFile] = useState(null);
     const [viewingDocument, setViewingDocument] = useState(null);
     const [movingDocument, setMovingDocument] = useState(null);
+    const [movingDocumentIds, setMovingDocumentIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
 
     const [search, setSearch] = useState(filters.search || '');
@@ -129,11 +130,31 @@ export default function Index({
     };
 
     const handleMoveDocument = () => {
-        if (!movingDocument || !moveTargetFolderId) return;
-        router.put(route('folders.documents.move', movingDocument.id), { folder_id: moveTargetFolderId }, {
-            preserveScroll: true,
-            onSuccess: () => { setMovingDocument(null); setMoveTargetFolderId(''); },
-        });
+        if (!moveTargetFolderId) return;
+        if (movingDocument) {
+            router.put(route('folders.documents.move', movingDocument.id), { folder_id: moveTargetFolderId }, {
+                preserveScroll: true,
+                onSuccess: () => { setMovingDocument(null); setMovingDocumentIds([]); setMoveTargetFolderId(''); },
+            });
+        } else if (movingDocumentIds.length > 0) {
+            router.post(route('folders.documents.move-bulk'), { document_ids: movingDocumentIds, folder_id: moveTargetFolderId }, {
+                preserveScroll: true,
+                onSuccess: () => { setMovingDocument(null); setMovingDocumentIds([]); setMoveTargetFolderId(''); setSelectedDocIds([]); },
+            });
+        }
+    };
+
+    const openBulkMoveModal = () => {
+        if (selectedDocIds.length === 0) return;
+        setMovingDocument(null);
+        setMovingDocumentIds([...selectedDocIds]);
+        setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
+    };
+
+    const closeMoveModal = () => {
+        setMovingDocument(null);
+        setMovingDocumentIds([]);
+        setMoveTargetFolderId('');
     };
 
     const toggleDocSelection = (docId) => {
@@ -450,6 +471,16 @@ export default function Index({
                                     </a>
                                     <button
                                         type="button"
+                                        className="btn btn-outline-info btn-sm"
+                                        onClick={openBulkMoveModal}
+                                        disabled={selectedDocIds.length === 0}
+                                        title={selectedDocIds.length === 0 ? 'Seleccione al menos un documento' : `Mover ${selectedDocIds.length} documento(s) a otra carpeta`}
+                                    >
+                                        <i className="bi bi-folder-symlink me-1"></i>
+                                        Mover seleccionados ({selectedDocIds.length})
+                                    </button>
+                                    <button
+                                        type="button"
                                         className="btn btn-outline-primary btn-sm"
                                         onClick={() => handleDownloadZip(false)}
                                         disabled={selectedDocIds.length === 0}
@@ -540,7 +571,7 @@ export default function Index({
                                                                 <i className="bi bi-pencil"></i>
                                                             </button>
                                                             <button
-                                                                onClick={() => { setMovingDocument(doc); setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : ''); }}
+                                                                onClick={() => { setMovingDocument(doc); setMovingDocumentIds([]); setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : ''); }}
                                                                 className="btn btn-sm btn-outline-info me-1"
                                                                 title="Mover a otra carpeta"
                                                             >
@@ -753,26 +784,35 @@ export default function Index({
                 file={viewingFile}
             />
 
-            {movingDocument && (
+            {(movingDocument || movingDocumentIds.length > 0) && (
                 <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <div className="modal-dialog modal-dialog-centered">
                         <div className="modal-content border-0 shadow-lg rounded-4">
                             <div className="modal-header border-0">
-                                <h5 className="modal-title fw-bold">Mover a otra carpeta</h5>
-                                <button type="button" className="btn-close" onClick={() => { setMovingDocument(null); setMoveTargetFolderId(''); }}></button>
+                                <h5 className="modal-title fw-bold">
+                                    {movingDocument ? 'Mover a otra carpeta' : `Mover ${movingDocumentIds.length} documento(s) a otra carpeta`}
+                                </h5>
+                                <button type="button" className="btn-close" onClick={closeMoveModal}></button>
                             </div>
                             <div className="modal-body">
-                                <p className="text-secondary small mb-2">Documento: <strong>{movingDocument.numero || movingDocument.asunto || 'Sin número'}</strong></p>
+                                {movingDocument ? (
+                                    <p className="text-secondary small mb-2">Documento: <strong>{movingDocument.numero || movingDocument.asunto || 'Sin número'}</strong></p>
+                                ) : (
+                                    <p className="text-secondary small mb-2">Se moverán <strong>{movingDocumentIds.length}</strong> documento(s) a la carpeta que elijas.</p>
+                                )}
                                 <label className="form-label fw-semibold">Carpeta de destino</label>
                                 <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
                                     <option value="">Seleccionar carpeta...</option>
-                                    {(folders || []).filter((f) => String(f.id) !== String(movingDocument.folder_id)).map((f) => (
+                                    {(folders || []).filter((f) => {
+                                        const currentId = movingDocument ? String(movingDocument.folder_id) : (currentFolder?.id ? String(currentFolder.id) : '');
+                                        return String(f.id) !== currentId;
+                                    }).map((f) => (
                                         <option key={f.id} value={f.id}>{f.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="modal-footer border-0">
-                                <button type="button" className="btn btn-secondary" onClick={() => { setMovingDocument(null); setMoveTargetFolderId(''); }}>Cancelar</button>
+                                <button type="button" className="btn btn-secondary" onClick={closeMoveModal}>Cancelar</button>
                                 <button type="button" className="btn btn-primary" disabled={!moveTargetFolderId} onClick={handleMoveDocument}>Mover</button>
                             </div>
                         </div>

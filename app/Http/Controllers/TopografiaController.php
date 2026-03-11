@@ -9,10 +9,11 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class TopografiaController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'topografia';
 
@@ -197,5 +198,15 @@ class TopografiaController extends Controller
         }
         DB::table('topografias')->where('id', $id)->update(['anulado' => 1, 'updated_at' => now()]);
         return redirect()->back()->with('success', 'Registro anulado.');
+    }
+
+    public function move(Request $request, Topografia $topografia)
+    {
+        return $this->moveItem($request, $topografia, self::MODULE, 'topografia.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, Topografia::class, self::MODULE, 'item_ids', 'topografia.index');
     }
 }

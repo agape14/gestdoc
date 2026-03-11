@@ -23,10 +23,15 @@ class RegistroExpediente extends Model
         'tipo_unidad_conservacion',
         'resolucion',
         'fecha_aprobacion',
+        'tiene_actualizacion_precios',
+        'tiene_reformulacion',
         'monto_o',
         'monto_p',
         'monto_r',
         'monto_s',
+        'monto_supervision',
+        'contrato',
+        'resolucion_archivo',
     ];
 
     protected $casts = [
@@ -35,6 +40,7 @@ class RegistroExpediente extends Model
         'monto_p' => 'decimal:2',
         'monto_r' => 'decimal:2',
         'monto_s' => 'decimal:2',
+        'monto_supervision' => 'decimal:2',
         'anio' => 'integer',
     ];
 
@@ -51,7 +57,7 @@ class RegistroExpediente extends Model
     }
 
     /**
-     * Total de montos = monto_o + monto_p + monto_r + monto_s (según fórmula =R4+S4+O4+P4).
+     * Total de montos = EXPEDIENTE TECNICO + EVAL. + REFORMULACION + PPTO DE OBRA + SUPERVISION.
      */
     public function getMontoTotalAttribute(): float
     {
@@ -59,7 +65,21 @@ class RegistroExpediente extends Model
         $p = (float) ($this->attributes['monto_p'] ?? 0);
         $r = (float) ($this->attributes['monto_r'] ?? 0);
         $s = (float) ($this->attributes['monto_s'] ?? 0);
-        return round($o + $p + $r + $s, 2);
+        $sup = (float) ($this->attributes['monto_supervision'] ?? 0);
+        return round($o + $p + $r + $s + $sup, 2);
+    }
+
+    /**
+     * Opciones para tipo de inversión.
+     */
+    public static function opcionesTipoInversion(): array
+    {
+        return [
+            'PERFIL Y/O FICHA',
+            'IOARR',
+            'PROYECTO DE INVERSION',
+            'ACTIVIDAD',
+        ];
     }
 
     /**

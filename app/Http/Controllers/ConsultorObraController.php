@@ -13,10 +13,11 @@ use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ConsultorObrasExport;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class ConsultorObraController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'consultor-obras';
 
@@ -450,5 +451,15 @@ class ConsultorObraController extends Controller
         $consultor_obra->update($data);
         $query = $consultor_obra->folder_id ? ['folder_id' => $consultor_obra->folder_id] : [];
         return redirect()->route('consultor-obras.index', $query)->with('success', 'Registro reactivado.');
+    }
+
+    public function move(Request $request, ConsultorObra $consultorObra)
+    {
+        return $this->moveItem($request, $consultorObra, self::MODULE, 'consultor-obras.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, ConsultorObra::class, self::MODULE, 'item_ids', 'consultor-obras.index');
     }
 }

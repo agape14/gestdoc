@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
@@ -10,6 +10,8 @@ const ALL_MENU_KEYS = [
 ];
 
 export default function Edit({ user, menuOptions = [], allowedMenusDefault = [] }) {
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
     const { data, setData, put, processing, errors } = useForm({
         name: user.name || '',
         email: user.email || '',
@@ -126,25 +128,49 @@ export default function Edit({ user, menuOptions = [], allowedMenusDefault = [] 
                     <div className="row g-4">
                         <div className="col-md-6 mb-3">
                             <label className="form-label fw-medium">Nueva Contraseña</label>
-                            <input
-                                type="password"
-                                className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                                value={data.password}
-                                onChange={e => setData('password', e.target.value)}
-                                autoComplete="new-password"
-                            />
-                            {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+                            <div className="position-relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    className={`form-control pe-5 ${errors.password ? 'is-invalid' : ''}`}
+                                    value={data.password}
+                                    onChange={e => setData('password', e.target.value)}
+                                    autoComplete="new-password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((prev) => !prev)}
+                                    className="position-absolute end-0 top-50 translate-middle-y btn btn-link text-secondary border-0 p-2 me-2"
+                                    style={{ zIndex: 5 }}
+                                    title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                >
+                                    <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`} aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            {errors.password && <div className="invalid-feedback d-block">{errors.password}</div>}
                         </div>
                         <div className="col-md-6 mb-3">
                             <label className="form-label fw-medium">Confirmar Contraseña</label>
-                            <input
-                                type="password"
-                                className={`form-control ${errors.password_confirmation ? 'is-invalid' : ''}`}
-                                value={data.password_confirmation}
-                                onChange={e => setData('password_confirmation', e.target.value)}
-                                autoComplete="new-password"
-                            />
-                            {errors.password_confirmation && <div className="invalid-feedback">{errors.password_confirmation}</div>}
+                            <div className="position-relative">
+                                <input
+                                    type={showPasswordConfirm ? 'text' : 'password'}
+                                    className={`form-control pe-5 ${errors.password_confirmation ? 'is-invalid' : ''}`}
+                                    value={data.password_confirmation}
+                                    onChange={e => setData('password_confirmation', e.target.value)}
+                                    autoComplete="new-password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPasswordConfirm((prev) => !prev)}
+                                    className="position-absolute end-0 top-50 translate-middle-y btn btn-link text-secondary border-0 p-2 me-2"
+                                    style={{ zIndex: 5 }}
+                                    title={showPasswordConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                    aria-label={showPasswordConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                >
+                                    <i className={`bi ${showPasswordConfirm ? 'bi-eye-slash' : 'bi-eye'}`} aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            {errors.password_confirmation && <div className="invalid-feedback d-block">{errors.password_confirmation}</div>}
                         </div>
                     </div>
 

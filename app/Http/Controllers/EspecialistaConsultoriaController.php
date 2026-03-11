@@ -8,10 +8,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class EspecialistaConsultoriaController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'especialistas-consultoria';
 
@@ -315,5 +316,15 @@ class EspecialistaConsultoriaController extends Controller
         $especialistaConsultoria->delete();
         $this->recalculateMontoAcumulado(EspecialistaConsultoria::class, $folderId);
         return redirect()->route('especialistas-consultoria.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
+    }
+
+    public function move(Request $request, EspecialistaConsultoria $especialistaConsultoria)
+    {
+        return $this->moveItem($request, $especialistaConsultoria, self::MODULE, 'especialistas-consultoria.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, EspecialistaConsultoria::class, self::MODULE, 'item_ids', 'especialistas-consultoria.index');
     }
 }

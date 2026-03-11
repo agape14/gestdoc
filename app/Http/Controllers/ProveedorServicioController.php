@@ -8,12 +8,13 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProveedorServiciosExport;
 
 class ProveedorServicioController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'proveedor-servicios';
 
@@ -327,5 +328,15 @@ class ProveedorServicioController extends Controller
         $proveedorServicio->delete();
         $this->recalculateMontoAcumuladoServicios($folderId);
         return redirect()->route('proveedor-servicios.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
+    }
+
+    public function move(Request $request, ProveedorServicio $proveedorServicio)
+    {
+        return $this->moveItem($request, $proveedorServicio, self::MODULE, 'proveedor-servicios.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, ProveedorServicio::class, self::MODULE, 'item_ids', 'proveedor-servicios.index');
     }
 }

@@ -8,10 +8,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\HasRoleBasedAccess;
+use App\Traits\MovesToFolder;
 
 class ProveedorBienController extends Controller
 {
-    use HasRoleBasedAccess;
+    use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'proveedor-bienes';
 
@@ -286,6 +287,16 @@ class ProveedorBienController extends Controller
         $proveedorBien->delete();
         $this->recalculateMontoAcumuladoBienes($folderId);
         return redirect()->route('proveedor-bienes.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro eliminado.');
+    }
+
+    public function move(Request $request, ProveedorBien $proveedorBien)
+    {
+        return $this->moveItem($request, $proveedorBien, self::MODULE, 'proveedor-bienes.index');
+    }
+
+    public function moveBulk(Request $request)
+    {
+        return $this->moveBulkItems($request, ProveedorBien::class, self::MODULE, 'item_ids', 'proveedor-bienes.index');
     }
 }
 

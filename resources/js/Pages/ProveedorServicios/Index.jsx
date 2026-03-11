@@ -75,6 +75,8 @@ export default function Index({ servicios, experienceTotals = {}, filters, userR
             storeFolderRoute="proveedor-servicios.folders.store"
             indexRoute="proveedor-servicios.index"
             indexTitle="Proveedor de Servicios"
+            moveRouteName="proveedor-servicios.move"
+            moveBulkRouteName="proveedor-servicios.move-bulk"
             operadores={operadores}
             renderDetail={renderDetail}
         />
