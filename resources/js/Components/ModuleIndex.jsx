@@ -595,7 +595,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                 <label className="form-label fw-semibold">Carpeta de destino</label>
                                 <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
                                     <option value="">Seleccionar carpeta...</option>
-                                    {(moveTargetFolders && moveTargetFolders.length > 0 ? moveTargetFolders : (folders || [])).filter((f) => {
+                                    {(Array.isArray(moveTargetFolders) ? moveTargetFolders : (folders || [])).filter((f) => {
                                         const currentId = movingItem ? String(movingItem.folder_id) : (currentFolder?.id ? String(currentFolder.id) : '');
                                         return String(f.id) !== currentId;
                                     }).map((f) => (

@@ -105,6 +105,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/plantillas-ing/move-bulk', [\App\Http\Controllers\PlantillaIngController::class, 'moveBulk'])->name('plantillas-ing.move-bulk');
         Route::resource('plantillas-ing', \App\Http\Controllers\PlantillaIngController::class);
         Route::post('/registro-expedientes/folders', [\App\Http\Controllers\RegistroExpedienteController::class, 'storeFolder'])->name('registro-expedientes.folders.store');
+        Route::get('/registro-expedientes/export', [\App\Http\Controllers\RegistroExpedienteController::class, 'export'])->name('registro-expedientes.export');
         Route::get('/registro-expedientes/listar-por-tipo', [\App\Http\Controllers\RegistroExpedienteController::class, 'listarPorTipo'])->name('registro-expedientes.listar-por-tipo');
         Route::put('/registro-expedientes/{registroExpediente}/move', [\App\Http\Controllers\RegistroExpedienteController::class, 'move'])->name('registro-expedientes.move');
         Route::post('/registro-expedientes/move-bulk', [\App\Http\Controllers\RegistroExpedienteController::class, 'moveBulk'])->name('registro-expedientes.move-bulk');

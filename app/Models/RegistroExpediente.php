@@ -32,10 +32,17 @@ class RegistroExpediente extends Model
         'monto_supervision',
         'contrato',
         'resolucion_archivo',
+        'tuvo_suspension',
+        'fecha_suspension',
+        'acta_suspension',
+        'fecha_reinicio',
+        'acta_reinicio',
     ];
 
     protected $casts = [
         'fecha_aprobacion' => 'date',
+        'fecha_suspension' => 'date',
+        'fecha_reinicio' => 'date',
         'monto_o' => 'decimal:2',
         'monto_p' => 'decimal:2',
         'monto_r' => 'decimal:2',
@@ -57,16 +64,15 @@ class RegistroExpediente extends Model
     }
 
     /**
-     * Total de montos = EXPEDIENTE TECNICO + EVAL. + REFORMULACION + PPTO DE OBRA + SUPERVISION.
+     * Total de montos = EXPEDIENTE TECNICO + EVAL. + PPTO DE OBRA + SUPERVISION (sin REFORMULACION).
      */
     public function getMontoTotalAttribute(): float
     {
         $o = (float) ($this->attributes['monto_o'] ?? 0);
         $p = (float) ($this->attributes['monto_p'] ?? 0);
-        $r = (float) ($this->attributes['monto_r'] ?? 0);
         $s = (float) ($this->attributes['monto_s'] ?? 0);
         $sup = (float) ($this->attributes['monto_supervision'] ?? 0);
-        return round($o + $p + $r + $s + $sup, 2);
+        return round($o + $p + $s + $sup, 2);
     }
 
     /**

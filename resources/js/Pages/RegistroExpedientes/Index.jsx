@@ -24,7 +24,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
     };
 
     const columns = [
-        { header: 'N°', accessor: 'numero', render: (item) => item.numero ?? '-' },
+        { header: 'ETIQUETA', accessor: 'etiqueta', render: (item) => item.etiqueta ?? '-' },
         { header: 'TIPO INVERSIÓN', accessor: 'tipo_inversion', render: (item) => (item.tipo_inversion ? String(item.tipo_inversion).slice(0, 35) + (String(item.tipo_inversion).length > 35 ? '…' : '') : '-') },
         { header: 'PROYECTO', accessor: 'proyecto', render: (item) => (item.proyecto ? String(item.proyecto).slice(0, 50) + (String(item.proyecto).length > 50 ? '…' : '') : '-') },
         { header: 'CUI', accessor: 'cui' },
@@ -34,10 +34,10 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
     ];
 
     const getDetailFields = (item) => [
-        { label: 'N°', value: item.numero },
         { label: 'Etiqueta', value: item.etiqueta },
         { label: '¿Tiene actualización de precios?', value: item.tiene_actualizacion_precios || '-' },
         { label: '¿Tiene reformulación?', value: item.tiene_reformulacion || '-' },
+        { label: '¿Tuvo suspensión?', value: item.tuvo_suspension || '-' },
         { label: 'Descripción', value: item.descripcion },
         { label: 'N° de folio', value: item.numero_folio },
         { label: 'Tomos', value: item.tomos },
@@ -57,6 +57,23 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             editHref={`/registro-expedientes/${item.id}/edit`}
             onDelete={handleDelete}
         />
+    );
+
+    const exportExcelUrl = () => {
+        const params = new URLSearchParams();
+        if (currentFolder?.id) params.set('folder_id', currentFolder.id);
+        if (filters?.user_id) params.set('user_id', filters.user_id);
+        if (filters?.search) params.set('search', filters.search);
+        const qs = params.toString();
+        return route('registro-expedientes.export') + (qs ? '?' + qs : '');
+    };
+
+    const renderHeader = (
+        <div className="d-flex justify-content-end mb-2">
+            <a href={exportExcelUrl()} className="btn btn-success shadow-sm rounded-pill px-4" target="_blank" rel="noopener noreferrer">
+                <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
+            </a>
+        </div>
     );
 
     return (
@@ -83,6 +100,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             operadores={operadores}
             anulados={null}
             renderDetail={renderDetail}
+            renderHeader={renderHeader}
         />
     );
 }

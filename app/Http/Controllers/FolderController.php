@@ -36,6 +36,8 @@ class FolderController extends Controller
 
         $folders = $query->withCount('documents')->orderBy('name')->get();
 
+        $allFoldersForMove = $this->getAllFoldersForMove($user, $request->filled('user_id') ? (int) $request->user_id : null);
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
@@ -46,6 +48,7 @@ class FolderController extends Controller
             'currentFolder' => null,
             'breadcrumb' => [],
             'documents' => [],
+            'allFoldersForMove' => $allFoldersForMove,
             'operadores' => $operadores,
             'filters' => $request->only(['user_id']),
         ]);
@@ -102,6 +105,8 @@ class FolderController extends Controller
         }
         $subfolders = $subfoldersQuery->withCount('documents')->orderBy('name')->get();
 
+        $allFoldersForMove = $this->getAllFoldersForMove($user, $request->filled('user_id') ? (int) $request->user_id : null);
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
@@ -112,9 +117,31 @@ class FolderController extends Controller
             'currentFolder' => $folder,
             'breadcrumb' => $folder->path,
             'documents' => $documents,
+            'allFoldersForMove' => $allFoldersForMove,
             'operadores' => $operadores,
             'filters' => $request->only(['search', 'date_start', 'date_end', 'user_id']),
         ]);
+    }
+
+    /**
+     * Lista plana de todas las carpetas y subcarpetas de gestión documental para el selector "Mover a carpeta".
+     */
+    private function getAllFoldersForMove($user, $filterUserId = null)
+    {
+        $query = Folder::whereNull('module');
+        if ($user->role === 'Administrador' && $filterUserId !== null) {
+            $query->where('user_id', $filterUserId);
+        } else {
+            $query->visibleForGestionDocumental($user);
+        }
+        $all = $query->orderBy('name')->get();
+        $result = [];
+        foreach ($all as $f) {
+            $path = $f->path;
+            $name = is_array($path) ? implode(' / ', array_column($path, 'name')) : $f->name;
+            $result[] = ['id' => $f->id, 'name' => $name];
+        }
+        return $result;
     }
 
     /**

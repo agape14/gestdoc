@@ -15,6 +15,7 @@ export default function Index({
     flash,
     filters = {},
     operadores = [],
+    allFoldersForMove = [],
 }) {
     const { auth } = usePage().props;
     const isAdmin = auth?.user?.role === 'Administrador';
@@ -803,7 +804,7 @@ export default function Index({
                                 <label className="form-label fw-semibold">Carpeta de destino</label>
                                 <select className="form-select" value={moveTargetFolderId} onChange={(e) => setMoveTargetFolderId(e.target.value)}>
                                     <option value="">Seleccionar carpeta...</option>
-                                    {(folders || []).filter((f) => {
+                                    {(allFoldersForMove && allFoldersForMove.length > 0 ? allFoldersForMove : (folders || [])).filter((f) => {
                                         const currentId = movingDocument ? String(movingDocument.folder_id) : (currentFolder?.id ? String(currentFolder.id) : '');
                                         return String(f.id) !== currentId;
                                     }).map((f) => (

@@ -48,16 +48,19 @@ const TIPOS_DOCUMENTO = [
     { value: 'CONTRATO', label: 'CONTRATO' },
     { value: 'COMPROBANTE_DE_PAGO', label: 'COMPROBANTE DE PAGO' },
     { value: 'CONFORMIDAD_DE_SERVICIO', label: 'CONFORMIDAD DE SERVICIO' },
+    { value: 'OTROS', label: 'Otros' },
 ];
 
 export default function ExperienciaForm({
     structure,
+    variant,
     initialData = {},
     submitRoute,
     method = 'POST',
     cancelUrl,
     title,
 }) {
+    const isEspecialistasEjecucion = variant === 'especialistas-ejecucion';
     const hasCUI = structure === 1;
     const hasSuspensionReinicio = structure === 1 || structure === 2;
     const numeroContratoLabel = structure === 3
@@ -77,6 +80,11 @@ export default function ExperienciaForm({
             tipo_documento_adjunto: initialData.tipo_documento_adjunto ?? '',
             archivo_contrato: null,
         };
+        if (isEspecialistasEjecucion) {
+            base.documentos = Array.isArray(initialData.documentos) && initialData.documentos.length > 0
+                ? initialData.documentos.map(d => ({ tipo_documento_adjunto: d.tipo_documento_adjunto ?? '', nombre_otro: d.nombre_otro ?? '', archivo: null }))
+                : [{ tipo_documento_adjunto: '', nombre_otro: '', archivo: null }];
+        }
         if (hasCUI) base.cui = initialData.cui ?? '';
         if (structure === 3) base.numero_contrato_oc_comprobante = initialData.numero_contrato_oc_comprobante ?? '';
         else base.numero_contrato_os_comprobante = initialData.numero_contrato_os_comprobante ?? '';
@@ -94,15 +102,32 @@ export default function ExperienciaForm({
     const { data, setData, post, put, processing, errors } = useForm(initial);
 
     const totalDias = useMemo(() => {
+        if (isEspecialistasEjecucion) return null;
         const d = calcTotalDias(data.fecha_inicio, data.fecha_culminacion);
         return d;
-    }, [data.fecha_inicio, data.fecha_culminacion]);
+    }, [data.fecha_inicio, data.fecha_culminacion, isEspecialistasEjecucion]);
 
     const totalMeses = useMemo(() => calcTotalMeses(totalDias), [totalDias]);
     const totalDiasSinTraslape = useMemo(
-        () => calcTotalDiasSinTraslape(totalDias, data.traslape),
-        [totalDias, data.traslape]
+        () => (isEspecialistasEjecucion ? null : calcTotalDiasSinTraslape(totalDias, data.traslape)),
+        [totalDias, data.traslape, isEspecialistasEjecucion]
     );
+
+    const addDocumentoRow = () => {
+        setData('documentos', [...(data.documentos || []), { tipo_documento_adjunto: '', nombre_otro: '', archivo: null }]);
+    };
+
+    const updateDocumento = (index, field, value) => {
+        const next = [...(data.documentos || [])];
+        if (!next[index]) next[index] = { tipo_documento_adjunto: '', nombre_otro: '', archivo: null };
+        next[index] = { ...next[index], [field]: value };
+        setData('documentos', next);
+    };
+
+    const removeDocumentoRow = (index) => {
+        const next = (data.documentos || []).filter((_, i) => i !== index);
+        setData('documentos', next.length ? next : [{ tipo_documento_adjunto: '', nombre_otro: '', archivo: null }]);
+    };
 
     const handleFechaChange = (field, value) => {
         setData(field, value);
@@ -256,53 +281,57 @@ export default function ExperienciaForm({
                         </div>
                     </>
                 )}
-                <div className="col-md-6">
-                    <label className="form-label fw-medium">FECHA DE INICIO *</label>
-                    <input
-                        type="date"
-                        className={`form-control ${errors.fecha_inicio ? 'is-invalid' : ''}`}
-                        value={toInputDate(data.fecha_inicio)}
-                        onChange={e => handleFechaChange('fecha_inicio', toDDMMYYYY(e.target.value))}
-                        required
-                    />
-                    {errors.fecha_inicio && <div className="invalid-feedback">{errors.fecha_inicio}</div>}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-medium">FECHA DE CULMINACION *</label>
-                    <input
-                        type="date"
-                        className={`form-control ${errors.fecha_culminacion ? 'is-invalid' : ''}`}
-                        value={toInputDate(data.fecha_culminacion)}
-                        onChange={e => handleFechaChange('fecha_culminacion', toDDMMYYYY(e.target.value))}
-                        required
-                    />
-                    {errors.fecha_culminacion && <div className="invalid-feedback">{errors.fecha_culminacion}</div>}
-                </div>
-                <div className="col-md-4">
-                    <label className="form-label fw-medium">TOTAL DE MESES</label>
-                    <input type="text" className="form-control bg-light" value={totalMeses != null ? Number(totalMeses).toFixed(2) : ''} readOnly />
-                </div>
-                <div className="col-md-4">
-                    <label className="form-label fw-medium">TOTAL DE DIAS</label>
-                    <input type="text" className="form-control bg-light" value={totalDias ?? ''} readOnly />
-                </div>
-                <div className="col-md-4">
-                    <label className="form-label fw-medium">TRASLAPE</label>
-                    <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="form-control"
-                        value={data.traslape}
-                        onChange={e => handleTraslapeChange(e.target.value)}
-                    />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-medium">TOTAL DE DIAS SIN TRASLAPE</label>
-                    <input type="text" className="form-control bg-light" value={totalDiasSinTraslape != null ? `${totalDiasSinTraslape} Dias Calendario` : ''} readOnly />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-medium">Monto Neto *</label>
+                {!isEspecialistasEjecucion && (
+                    <>
+                        <div className="col-md-6">
+                            <label className="form-label fw-medium">FECHA DE INICIO *</label>
+                            <input
+                                type="date"
+                                className={`form-control ${errors.fecha_inicio ? 'is-invalid' : ''}`}
+                                value={toInputDate(data.fecha_inicio)}
+                                onChange={e => handleFechaChange('fecha_inicio', toDDMMYYYY(e.target.value))}
+                                required
+                            />
+                            {errors.fecha_inicio && <div className="invalid-feedback">{errors.fecha_inicio}</div>}
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-medium">FECHA DE CULMINACION *</label>
+                            <input
+                                type="date"
+                                className={`form-control ${errors.fecha_culminacion ? 'is-invalid' : ''}`}
+                                value={toInputDate(data.fecha_culminacion)}
+                                onChange={e => handleFechaChange('fecha_culminacion', toDDMMYYYY(e.target.value))}
+                                required
+                            />
+                            {errors.fecha_culminacion && <div className="invalid-feedback">{errors.fecha_culminacion}</div>}
+                        </div>
+                        <div className="col-md-4">
+                            <label className="form-label fw-medium">TOTAL DE MESES</label>
+                            <input type="text" className="form-control bg-light" value={totalMeses != null ? Number(totalMeses).toFixed(2) : ''} readOnly />
+                        </div>
+                        <div className="col-md-4">
+                            <label className="form-label fw-medium">TOTAL DE DIAS</label>
+                            <input type="text" className="form-control bg-light" value={totalDias ?? ''} readOnly />
+                        </div>
+                        <div className="col-md-4">
+                            <label className="form-label fw-medium">TRASLAPE</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="form-control"
+                                value={data.traslape}
+                                onChange={e => handleTraslapeChange(e.target.value)}
+                            />
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-medium">TOTAL DE DIAS SIN TRASLAPE</label>
+                            <input type="text" className="form-control bg-light" value={totalDiasSinTraslape != null ? `${totalDiasSinTraslape} Dias Calendario` : ''} readOnly />
+                        </div>
+                    </>
+                )}
+                <div className={!isEspecialistasEjecucion ? 'col-md-6' : 'col-12'}>
+                    <label className="form-label fw-medium">{isEspecialistasEjecucion ? 'Monto Contratado *' : 'Monto Neto *'}</label>
                     <input
                         type="text"
                         placeholder="S/. 1,000.00"
@@ -315,46 +344,111 @@ export default function ExperienciaForm({
                 </div>
             </div>
 
-            <div className="row g-3 mt-2">
-                <div className="col-md-6">
-                    <label className="form-label fw-medium">Tipo de documento *</label>
-                    <select
-                        className={`form-select ${errors.tipo_documento_adjunto ? 'is-invalid' : ''}`}
-                        value={data.tipo_documento_adjunto}
-                        onChange={e => setData('tipo_documento_adjunto', e.target.value)}
-                        required
-                    >
-                        <option value="">Seleccione...</option>
-                        {TIPOS_DOCUMENTO.map(t => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                    </select>
-                    {errors.tipo_documento_adjunto && <div className="invalid-feedback">{errors.tipo_documento_adjunto}</div>}
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label fw-medium">Adjuntar archivo {method !== 'PUT' ? '*' : ''}</label>
-                    {method === 'PUT' && initialData.archivo_contrato_url && (
-                        <div className="mb-2 p-2 rounded bg-light border border-opacity-25">
-                            <span className="small fw-medium text-muted d-block mb-1">Archivo actual:</span>
-                            <a href={initialData.archivo_contrato_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
-                                {(TIPOS_DOCUMENTO.find(t => t.value === initialData.tipo_documento_adjunto)?.label) || 'Documento adjunto'}
-                                <i className="bi bi-box-arrow-up-right ms-1 small"></i>
-                            </a>
+            {isEspecialistasEjecucion ? (
+                <div className="row g-3 mt-2">
+                    <div className="col-12">
+                        <label className="form-label fw-medium">Documentos</label>
+                        <p className="small text-secondary mb-2">Agregue uno o más documentos. Si el tipo es &quot;Otros&quot;, indique el nombre.</p>
+                    </div>
+                    {(data.documentos || []).map((doc, index) => (
+                        <div key={index} className="col-12 border rounded-3 p-3 bg-light bg-opacity-50">
+                            <div className="row g-2 align-items-end">
+                                <div className="col-md-4">
+                                    <label className="form-label small mb-1">Tipo de documento *</label>
+                                    <select
+                                        className={`form-select form-select-sm ${errors[`documentos.${index}.tipo_documento_adjunto`] ? 'is-invalid' : ''}`}
+                                        value={doc.tipo_documento_adjunto}
+                                        onChange={e => updateDocumento(index, 'tipo_documento_adjunto', e.target.value)}
+                                        required
+                                    >
+                                        <option value="">Seleccione...</option>
+                                        {TIPOS_DOCUMENTO.map(t => (
+                                            <option key={t.value} value={t.value}>{t.label}</option>
+                                        ))}
+                                    </select>
+                                    {errors[`documentos.${index}.tipo_documento_adjunto`] && <div className="invalid-feedback d-block">{errors[`documentos.${index}.tipo_documento_adjunto`]}</div>}
+                                </div>
+                                {doc.tipo_documento_adjunto === 'OTROS' && (
+                                    <div className="col-md-3">
+                                        <label className="form-label small mb-1">Nombre del documento *</label>
+                                        <input
+                                            type="text"
+                                            className={`form-control form-control-sm ${errors[`documentos.${index}.nombre_otro`] ? 'is-invalid' : ''}`}
+                                            placeholder="Ej. Acta de entrega"
+                                            value={doc.nombre_otro}
+                                            onChange={e => updateDocumento(index, 'nombre_otro', e.target.value)}
+                                            required={doc.tipo_documento_adjunto === 'OTROS'}
+                                        />
+                                        {errors[`documentos.${index}.nombre_otro`] && <div className="invalid-feedback d-block">{errors[`documentos.${index}.nombre_otro`]}</div>}
+                                    </div>
+                                )}
+                                <div className="col-md-4">
+                                    <label className="form-label small mb-1">Adjuntar archivo *</label>
+                                    <input
+                                        type="file"
+                                        accept={FILE_ACCEPT}
+                                        className={`form-control form-control-sm ${errors[`documentos.${index}.archivo`] ? 'is-invalid' : ''}`}
+                                        onChange={e => updateDocumento(index, 'archivo', e.target.files[0] || null)}
+                                        required
+                                    />
+                                    {errors[`documentos.${index}.archivo`] && <div className="invalid-feedback d-block">{errors[`documentos.${index}.archivo`]}</div>}
+                                </div>
+                                <div className="col-md-1 text-end">
+                                    <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeDocumentoRow(index)} title="Quitar" disabled={(data.documentos || []).length <= 1}>
+                                        <i className="bi bi-dash-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                    <input
-                        type="file"
-                        accept={FILE_ACCEPT}
-                        className={`form-control ${errors.archivo_contrato ? 'is-invalid' : ''}`}
-                        onChange={e => setData('archivo_contrato', e.target.files[0] || null)}
-                        required={method !== 'PUT'}
-                    />
-                    {method === 'PUT' && initialData.archivo_contrato_url && (
-                        <div className="form-text">Dejar vacío para mantener el archivo actual, o elegir otro para reemplazarlo.</div>
-                    )}
-                    {errors.archivo_contrato && <div className="invalid-feedback">{errors.archivo_contrato}</div>}
+                    ))}
+                    <div className="col-12">
+                        <button type="button" className="btn btn-outline-primary btn-sm rounded-pill" onClick={addDocumentoRow}>
+                            <i className="bi bi-plus-lg me-1"></i> Agregar documento
+                        </button>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="row g-3 mt-2">
+                    <div className="col-md-6">
+                        <label className="form-label fw-medium">Tipo de documento *</label>
+                        <select
+                            className={`form-select ${errors.tipo_documento_adjunto ? 'is-invalid' : ''}`}
+                            value={data.tipo_documento_adjunto}
+                            onChange={e => setData('tipo_documento_adjunto', e.target.value)}
+                            required
+                        >
+                            <option value="">Seleccione...</option>
+                            {TIPOS_DOCUMENTO.map(t => (
+                                <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
+                        </select>
+                        {errors.tipo_documento_adjunto && <div className="invalid-feedback">{errors.tipo_documento_adjunto}</div>}
+                    </div>
+                    <div className="col-md-6">
+                        <label className="form-label fw-medium">Adjuntar archivo {method !== 'PUT' ? '*' : ''}</label>
+                        {method === 'PUT' && initialData.archivo_contrato_url && (
+                            <div className="mb-2 p-2 rounded bg-light border border-opacity-25">
+                                <span className="small fw-medium text-muted d-block mb-1">Archivo actual:</span>
+                                <a href={initialData.archivo_contrato_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                                    {(TIPOS_DOCUMENTO.find(t => t.value === initialData.tipo_documento_adjunto)?.label) || 'Documento adjunto'}
+                                    <i className="bi bi-box-arrow-up-right ms-1 small"></i>
+                                </a>
+                            </div>
+                        )}
+                        <input
+                            type="file"
+                            accept={FILE_ACCEPT}
+                            className={`form-control ${errors.archivo_contrato ? 'is-invalid' : ''}`}
+                            onChange={e => setData('archivo_contrato', e.target.files[0] || null)}
+                            required={method !== 'PUT'}
+                        />
+                        {method === 'PUT' && initialData.archivo_contrato_url && (
+                            <div className="form-text">Dejar vacío para mantener el archivo actual, o elegir otro para reemplazarlo.</div>
+                        )}
+                        {errors.archivo_contrato && <div className="invalid-feedback">{errors.archivo_contrato}</div>}
+                    </div>
+                </div>
+            )}
 
             <div className="d-flex justify-content-end mt-4 pt-3 border-top gap-2">
                 <a href={cancelUrl} className="btn btn-outline-secondary px-4 rounded-pill">Cancelar</a>

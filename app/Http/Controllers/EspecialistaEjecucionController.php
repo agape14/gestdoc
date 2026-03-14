@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EspecialistaEjecucion;
+use App\Models\EspecialistaEjecucionDocumento;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -125,29 +126,56 @@ class EspecialistaEjecucionController extends Controller
 
     public function store(Request $request)
     {
-        $rules = [
-            'nombre' => 'nullable|string|max:255',
-            'especialidad' => 'nullable|string|max:255',
-            'tipo' => 'nullable|string|in:Profesional,Empresa',
-            'estado' => 'nullable|string',
-            'documento' => 'nullable|file|mimes:pdf,doc,docx|max:25600',
-            'clasificacion' => 'nullable|string|max:500',
-            'cliente' => 'required|string|max:500',
-            'objeto_del_contrato' => 'required|string',
-            'cui' => 'nullable|string|max:100',
-            'numero_contrato_os_comprobante' => 'required|string|max:255',
-            'fecha_inicio' => 'required|string',
-            'fecha_suspension' => 'nullable|string',
-            'fecha_reinicio' => 'nullable|string',
-            'fecha_culminacion' => 'required|string',
-            'traslape' => 'nullable|numeric|min:0',
-            'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
-        ];
-        $request->validate($rules);
+        $documentosArray = $request->input('documentos');
+        $useDocumentosArray = is_array($documentosArray) && count($documentosArray) > 0;
 
-        $data = $this->prepareExperienciaData($request, null);
+        if ($useDocumentosArray) {
+            $rules = [
+                'cliente' => 'required|string|max:500',
+                'objeto_del_contrato' => 'required|string',
+                'cui' => 'nullable|string|max:100',
+                'numero_contrato_os_comprobante' => 'required|string|max:255',
+                'fecha_suspension' => 'nullable|string',
+                'fecha_reinicio' => 'nullable|string',
+                'monto_neto' => 'required|numeric|min:0.01',
+                'documentos' => 'required|array|min:1',
+                'documentos.*.tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+                'documentos.*.nombre_otro' => 'nullable|string|max:255',
+                'documentos.*.archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            ];
+            $request->validate($rules);
+            foreach ($documentosArray as $i => $doc) {
+                if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && empty(trim($doc['nombre_otro'] ?? ''))) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        "documentos.{$i}.nombre_otro" => ['El nombre del documento es obligatorio cuando el tipo es Otros.'],
+                    ]);
+                }
+            }
+        } else {
+            $rules = [
+                'nombre' => 'nullable|string|max:255',
+                'especialidad' => 'nullable|string|max:255',
+                'tipo' => 'nullable|string|in:Profesional,Empresa',
+                'estado' => 'nullable|string',
+                'documento' => 'nullable|file|mimes:pdf,doc,docx|max:25600',
+                'clasificacion' => 'nullable|string|max:500',
+                'cliente' => 'required|string|max:500',
+                'objeto_del_contrato' => 'required|string',
+                'cui' => 'nullable|string|max:100',
+                'numero_contrato_os_comprobante' => 'required|string|max:255',
+                'fecha_inicio' => 'required|string',
+                'fecha_suspension' => 'nullable|string',
+                'fecha_reinicio' => 'nullable|string',
+                'fecha_culminacion' => 'required|string',
+                'traslape' => 'nullable|numeric|min:0',
+                'monto_neto' => 'required|numeric|min:0.01',
+                'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
+                'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            ];
+            $request->validate($rules);
+        }
+
+        $data = $this->prepareExperienciaData($request, null, $useDocumentosArray);
         $data['user_id'] = auth()->id();
         $data['nombre'] = $data['nombre'] ?? $data['cliente'];
         $data['tipo'] = $data['tipo'] ?? 'Profesional';
@@ -168,25 +196,63 @@ class EspecialistaEjecucionController extends Controller
         }
 
         $especialista = EspecialistaEjecucion::create($data);
+
+        if ($useDocumentosArray) {
+            $basePath = 'expedientes/especialistas_ejecucion/adjuntos';
+            $tiposLabels = [
+                'CONTRATO' => 'CONTRATO',
+                'COMPROBANTE_DE_PAGO' => 'COMPROBANTE DE PAGO',
+                'CONFORMIDAD_DE_SERVICIO' => 'CONFORMIDAD DE SERVICIO',
+                'OTROS' => null,
+            ];
+            $documentosList = array_values($request->input('documentos', []));
+            foreach ($documentosList as $index => $doc) {
+                $tipo = $doc['tipo_documento_adjunto'] ?? '';
+                $nombreDoc = ($tipo === 'OTROS' && !empty(trim($doc['nombre_otro'] ?? '')))
+                    ? trim($doc['nombre_otro'])
+                    : ($tiposLabels[$tipo] ?? $tipo);
+                $file = $request->file("documentos.{$index}.archivo");
+                if ($file) {
+                    $path = $file->store($basePath, 'r2');
+                    EspecialistaEjecucionDocumento::create([
+                        'especialista_ejecucion_id' => $especialista->id,
+                        'nombre' => $nombreDoc,
+                        'file_path' => $path,
+                    ]);
+                    if ($index === 0) {
+                        $especialista->update(['archivo_contrato' => $path, 'tipo_documento_adjunto' => $tipo]);
+                    }
+                }
+            }
+        }
+
         $this->recalculateMontoAcumulado(EspecialistaEjecucion::class, $especialista->folder_id);
         $folderId = $especialista->folder_id;
 
         return redirect()->route('especialistas-ejecucion.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro creado.');
     }
 
-    private function prepareExperienciaData(Request $request, $model): array
+    private function prepareExperienciaData(Request $request, $model, bool $skipFechasTraslape = false): array
     {
-        $fechaInicio = parse_fecha_dd_mm_yyyy($request->input('fecha_inicio'));
-        $fechaCulminacion = parse_fecha_dd_mm_yyyy($request->input('fecha_culminacion'));
+        $fechaInicio = null;
+        $fechaCulminacion = null;
         $totalDias = null;
-        if ($fechaInicio && $fechaCulminacion) {
-            $start = \Carbon\Carbon::parse($fechaInicio);
-            $end = \Carbon\Carbon::parse($fechaCulminacion);
-            $totalDias = $start->diffInDays($end) + 1;
+        $totalMeses = null;
+        $traslape = 0;
+        $totalDiasSinTraslape = null;
+
+        if (!$skipFechasTraslape) {
+            $fechaInicio = parse_fecha_dd_mm_yyyy($request->input('fecha_inicio'));
+            $fechaCulminacion = parse_fecha_dd_mm_yyyy($request->input('fecha_culminacion'));
+            if ($fechaInicio && $fechaCulminacion) {
+                $start = \Carbon\Carbon::parse($fechaInicio);
+                $end = \Carbon\Carbon::parse($fechaCulminacion);
+                $totalDias = $start->diffInDays($end) + 1;
+            }
+            $totalMeses = $totalDias !== null ? round($totalDias / 30, 2) : null;
+            $traslape = (float) ($request->input('traslape') ?? 0);
+            $totalDiasSinTraslape = $totalDias !== null ? max(0, (int) round($totalDias - $traslape)) : null;
         }
-        $totalMeses = $totalDias !== null ? round($totalDias / 30, 2) : null;
-        $traslape = (float) ($request->input('traslape') ?? 0);
-        $totalDiasSinTraslape = $totalDias !== null ? max(0, (int) round($totalDias - $traslape)) : null;
 
         $data = [
             'cliente' => $request->input('cliente'),

@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\RegistroExpediente;
 use App\Models\Folder;
+use App\Exports\RegistroExpedientesExport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 
@@ -69,7 +71,7 @@ class RegistroExpedienteController extends Controller
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
-        $expedientes = $query->latest()->paginate(15)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $expedientes = $query->orderByRaw('COALESCE(etiqueta, "") ASC')->orderBy('id')->paginate(15)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
 
         // Todas las carpetas del módulo visibles para el usuario, como destinos posibles al mover
         $moveTargetFolders = Folder::visibleForModuleUser(self::MODULE, $user)
@@ -89,6 +91,37 @@ class RegistroExpedienteController extends Controller
             'breadcrumb' => $breadcrumb,
             'operadores' => $operadores,
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $user = auth()->user();
+        $query = RegistroExpediente::query();
+        $query = $this->applyRoleBasedFilter($query, $user);
+
+        if ($request->filled('folder_id')) {
+            $query->where('folder_id', (int) $request->folder_id);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        if ($request->filled('user_id') && $user->role === 'Administrador') {
+            $query->where('user_id', $request->user_id);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('proyecto', 'like', '%' . $search . '%')
+                    ->orWhere('cui', 'like', '%' . $search . '%')
+                    ->orWhere('numero_folio', 'like', '%' . $search . '%')
+                    ->orWhere('resolucion', 'like', '%' . $search . '%')
+                    ->orWhere('tipo_inversion', 'like', '%' . $search . '%');
+            });
+        }
+
+        $expedientes = $query->orderByRaw('COALESCE(etiqueta, "") ASC')->orderBy('id')->get();
+        $filename = 'registro-expedientes_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+        return Excel::download(new RegistroExpedientesExport($expedientes), $filename);
     }
 
     public function storeFolder(Request $request)
@@ -129,6 +162,8 @@ class RegistroExpedienteController extends Controller
             $queryCount->whereNull('folder_id');
         }
         $nextNumero = (string) ($queryCount->count() + 1);
+        $prefillProyecto = $request->get('prefill_proyecto');
+        $prefillCui = $request->get('prefill_cui');
 
         return Inertia::render('RegistroExpedientes/Create', [
             'folderId' => $folderId,
@@ -136,6 +171,8 @@ class RegistroExpedienteController extends Controller
             'opcionesTipoUnidad' => RegistroExpediente::opcionesTipoUnidadConservacion(),
             'opcionesTipoInversion' => RegistroExpediente::opcionesTipoInversion(),
             'nextNumero' => $nextNumero,
+            'prefillProyecto' => $prefillProyecto,
+            'prefillCui' => $prefillCui,
         ]);
     }
 
@@ -157,7 +194,7 @@ class RegistroExpedienteController extends Controller
             $query->whereNull('folder_id');
         }
 
-        $expedientes = $query->orderBy('numero')->limit(100)->get();
+        $expedientes = $query->orderByRaw('COALESCE(etiqueta, "") ASC')->orderBy('id')->limit(100)->get();
 
         $list = $expedientes->map(function ($e) {
             return [
@@ -210,7 +247,12 @@ class RegistroExpedienteController extends Controller
             'monto_supervision' => 'nullable|numeric|min:0',
             'contrato' => 'nullable|file|max:25600',
             'resolucion_archivo' => 'nullable|file|max:25600',
-        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
+            'tuvo_suspension' => 'nullable|string|in:SI,NO',
+            'fecha_suspension' => 'nullable|required_if:tuvo_suspension,SI|string',
+            'acta_suspension' => 'nullable|required_if:tuvo_suspension,SI|file|max:25600',
+            'fecha_reinicio' => 'nullable|required_if:tuvo_suspension,SI|string',
+            'acta_reinicio' => 'nullable|required_if:tuvo_suspension,SI|file|max:25600',
+        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato', 'acta_suspension' => 'Acta de Suspensión', 'acta_reinicio' => 'Acta de Reinicio']);
 
         $data = $this->prepareData($validated, $request);
         $data['user_id'] = auth()->id();
@@ -232,6 +274,12 @@ class RegistroExpedienteController extends Controller
         }
         if ($request->hasFile('resolucion_archivo')) {
             $data['resolucion_archivo'] = $request->file('resolucion_archivo')->store('expedientes/registro_expedientes', 'r2');
+        }
+        if ($request->hasFile('acta_suspension')) {
+            $data['acta_suspension'] = $request->file('acta_suspension')->store('expedientes/registro_expedientes', 'r2');
+        }
+        if ($request->hasFile('acta_reinicio')) {
+            $data['acta_reinicio'] = $request->file('acta_reinicio')->store('expedientes/registro_expedientes', 'r2');
         }
 
         $expediente = RegistroExpediente::create($data);
@@ -273,6 +321,11 @@ class RegistroExpedienteController extends Controller
             'monto_supervision' => $e->monto_supervision !== null ? (float) $e->monto_supervision : null,
             'contrato' => $e->contrato,
             'resolucion_archivo' => $e->resolucion_archivo,
+            'tuvo_suspension' => $e->tuvo_suspension,
+            'fecha_suspension' => $e->fecha_suspension?->format('Y-m-d'),
+            'acta_suspension' => $e->acta_suspension,
+            'fecha_reinicio' => $e->fecha_reinicio?->format('Y-m-d'),
+            'acta_reinicio' => $e->acta_reinicio,
         ];
 
         return Inertia::render('RegistroExpedientes/Edit', [
@@ -311,7 +364,12 @@ class RegistroExpedienteController extends Controller
             'monto_supervision' => 'nullable|numeric|min:0',
             'contrato' => 'nullable|file|max:25600',
             'resolucion_archivo' => 'nullable|file|max:25600',
-        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
+            'tuvo_suspension' => 'nullable|string|in:SI,NO',
+            'fecha_suspension' => 'nullable|required_if:tuvo_suspension,SI|string',
+            'acta_suspension' => 'nullable|file|max:25600',
+            'fecha_reinicio' => 'nullable|required_if:tuvo_suspension,SI|string',
+            'acta_reinicio' => 'nullable|file|max:25600',
+        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato', 'acta_suspension' => 'Acta de Suspensión', 'acta_reinicio' => 'Acta de Reinicio']);
 
         $data = $this->prepareData($validated, $request);
         if ($request->hasFile('contrato')) {
@@ -325,6 +383,18 @@ class RegistroExpedienteController extends Controller
                 Storage::disk(storage_disk_for_path($registroExpediente->resolucion_archivo))->delete($registroExpediente->resolucion_archivo);
             }
             $data['resolucion_archivo'] = $request->file('resolucion_archivo')->store('expedientes/registro_expedientes', 'r2');
+        }
+        if ($request->hasFile('acta_suspension')) {
+            if ($registroExpediente->acta_suspension) {
+                Storage::disk(storage_disk_for_path($registroExpediente->acta_suspension))->delete($registroExpediente->acta_suspension);
+            }
+            $data['acta_suspension'] = $request->file('acta_suspension')->store('expedientes/registro_expedientes', 'r2');
+        }
+        if ($request->hasFile('acta_reinicio')) {
+            if ($registroExpediente->acta_reinicio) {
+                Storage::disk(storage_disk_for_path($registroExpediente->acta_reinicio))->delete($registroExpediente->acta_reinicio);
+            }
+            $data['acta_reinicio'] = $request->file('acta_reinicio')->store('expedientes/registro_expedientes', 'r2');
         }
         $registroExpediente->update($data);
 
@@ -368,6 +438,26 @@ class RegistroExpedienteController extends Controller
                 : parse_fecha_dd_mm_yyyy($fecha);
         } else {
             $data['fecha_aprobacion'] = null;
+        }
+
+        foreach (['fecha_suspension', 'fecha_reinicio'] as $key) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+            $val = $request->input($key);
+            if ($val && is_string($val)) {
+                $data[$key] = preg_match('/^\d{4}-\d{2}-\d{2}/', trim($val))
+                    ? trim(substr($val, 0, 10))
+                    : parse_fecha_dd_mm_yyyy($val);
+            } else {
+                $data[$key] = null;
+            }
+        }
+        if (($data['tuvo_suspension'] ?? '') !== 'SI') {
+            $data['fecha_suspension'] = null;
+            $data['fecha_reinicio'] = null;
+            $data['acta_suspension'] = null;
+            $data['acta_reinicio'] = null;
         }
 
         foreach (['monto_o', 'monto_p', 'monto_r', 'monto_s', 'monto_supervision'] as $key) {
