@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
  * Panel desplegable reutilizable para ModuleIndex: muestra campos adicionales y botones Editar / Eliminar.
  * Clic en la fila para expandir. Responsive: datos principales en tabla, resto + acciones aquí.
  */
-export default function ModuleIndexRowDetail({ item, userRole, fields, editHref, deleteRouteName, onDelete, documentButton = null }) {
+export default function ModuleIndexRowDetail({ item, userRole, fields, editHref, deleteRouteName, onDelete, documentButton = null, extraActions = null }) {
     const auth = usePage().props?.auth;
 
     const canEdit = () => {
@@ -55,12 +55,19 @@ export default function ModuleIndexRowDetail({ item, userRole, fields, editHref,
                     ))}
                 </div>
             </div>
-            <div className="col-12 col-lg-4 d-flex flex-wrap align-items-center gap-2 justify-content-lg-end">
+            <div className="col-12 col-lg-4 d-flex flex-wrap align-items-center gap-1 justify-content-lg-end">
                 {userRole === 'Visualizador' ? (
                     <span className="badge bg-secondary">Solo lectura</span>
                 ) : (
                     <>
                         {documentButton}
+                        {canEdit() && Array.isArray(extraActions) && extraActions.map((a, idx) => (
+                            a.href ? (
+                                <Link key={idx} href={a.href} className={`btn btn-sm text-nowrap px-2 py-1 shadow-sm ${a.btnClass || 'btn-outline-secondary'}`} style={{ fontSize: '0.72rem', fontWeight: 600 }} onClick={(e) => e.stopPropagation()} title={a.title || a.label}>
+                                    {a.label}
+                                </Link>
+                            ) : null
+                        ))}
                         {canEdit() && editHref && (
                             <Link href={editHref} className="btn btn-sm btn-outline-primary" onClick={(e) => e.stopPropagation()}>
                                 <i className="bi bi-pencil me-1"></i> Editar

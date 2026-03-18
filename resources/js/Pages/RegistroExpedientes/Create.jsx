@@ -4,36 +4,49 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 import { formatMonedaPeruana } from '@/Utils/experienciaCalculations';
 
-const OPCIONES_SI_NO = [{ value: 'SI', label: 'SI' }, { value: 'NO', label: 'NO' }];
+const TIPO_ACCION_LABEL = {
+    ADICIONAL: 'ADICIONAL',
+    ADICIONAL_CON_DEDUCTIVO: 'ADICIONAL CON DEDUCTIVO',
+    DEDUCTIVO: 'DEDUCTIVO',
+    ACTUALIZACION_PRECIOS: 'ACTUALIZACIÓN DE PRECIOS',
+    REFORMULACION: 'REFORMULACIÓN',
+};
 
-export default function Create({ folderId = null, breadcrumbLabel = '', opcionesTipoUnidad = [], opcionesTipoInversion = [], nextNumero = '1', prefillProyecto = '', prefillCui = '' }) {
+export default function Create({
+    folderId = null,
+    breadcrumbLabel = '',
+    opcionesTipoUnidad = [],
+    opcionesTipoInversion = [],
+    nextNumero = '1',
+    prefillProyecto = '',
+    prefillCui = '',
+    prefillTipoInversion = '',
+    prefillEtiqueta = '',
+    prefillDescripcion = '',
+    tipoAccion = null,
+    lockPrefill = false,
+}) {
     const { data, setData, post, processing, errors } = useForm({
         folder_id: folderId || '',
-        tipo_inversion: '',
+        tipo_inversion: prefillTipoInversion || '',
         numero: nextNumero,
-        etiqueta: '',
+        etiqueta: prefillEtiqueta || '',
         proyecto: prefillProyecto || '',
         cui: prefillCui || '',
-        descripcion: '',
+        descripcion: prefillDescripcion || '',
+        tipo_accion: tipoAccion || '',
         numero_folio: '',
         tomos: '',
         anio: '',
         tipo_unidad_conservacion: '',
         resolucion: '',
         fecha_aprobacion: '',
-        tiene_actualizacion_precios: '',
-        tiene_reformulacion: '',
         monto_o: '',
         monto_p: '',
         monto_s: '',
         monto_supervision: '',
         contrato: null,
         resolucion_archivo: null,
-        tuvo_suspension: '',
-        fecha_suspension: '',
-        acta_suspension: null,
-        fecha_reinicio: '',
-        acta_reinicio: null,
     });
 
     const totalMontos = useMemo(() => {
@@ -51,6 +64,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', opciones
         const payload = { ...data };
         if (payload.folder_id === '') payload.folder_id = null;
         payload.numero = nextNumero;
+        if (!payload.tipo_accion) delete payload.tipo_accion;
         ['monto_o', 'monto_p', 'monto_s', 'monto_supervision'].forEach(k => {
             if (payload[k] === '' || payload[k] == null) payload[k] = null;
             else payload[k] = Number(payload[k]) || 0;
@@ -59,10 +73,10 @@ export default function Create({ folderId = null, breadcrumbLabel = '', opciones
         else payload.anio = parseInt(payload.anio, 10) || null;
         if (!payload.contrato || !(payload.contrato instanceof File)) delete payload.contrato;
         if (!payload.resolucion_archivo || !(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
-        if (!payload.acta_suspension || !(payload.acta_suspension instanceof File)) delete payload.acta_suspension;
-        if (!payload.acta_reinicio || !(payload.acta_reinicio instanceof File)) delete payload.acta_reinicio;
         post(route('registro-expedientes.store'), payload);
     };
+
+    const ro = lockPrefill;
 
     return (
         <MainLayout>
@@ -70,13 +84,18 @@ export default function Create({ folderId = null, breadcrumbLabel = '', opciones
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Nuevo Registro de Expediente</h3>
-                    <p className="text-secondary small mb-0">Complete los campos. El total de montos se calcula automáticamente (O + P + S + Supervisión). Si marca «¿TUVO ACTUALIZACIÓN DE PRECIOS?» = SI, al guardar podrá agregar otro registro con el mismo proyecto y CUI.</p>
+                    {tipoAccion && (
+                        <div className="alert alert-info py-2 mb-2">
+                            <strong>Acción:</strong> {TIPO_ACCION_LABEL[tipoAccion] || tipoAccion}. Los datos de inversión/proyecto están fijados al registro de origen.
+                        </div>
+                    )}
+                    <p className="text-secondary small mb-0">Complete los demás campos. El total de montos se calcula automáticamente (O + P + S + Supervisión).</p>
                 </div>
                 <form onSubmit={submit}>
                     <div className="row g-3 mb-4">
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Tipo de inversión</label>
-                            <select className={`form-select ${errors.tipo_inversion ? 'is-invalid' : ''}`} value={data.tipo_inversion} onChange={e => setData('tipo_inversion', e.target.value)}>
+                            <select className={`form-select ${errors.tipo_inversion ? 'is-invalid' : ''}`} value={data.tipo_inversion} onChange={e => setData('tipo_inversion', e.target.value)} disabled={ro} required={!ro}>
                                 <option value="">Seleccione...</option>
                                 {opcionesTipoInversion.map((opt, i) => (
                                     <option key={i} value={opt}>{opt}</option>
@@ -86,22 +105,22 @@ export default function Create({ folderId = null, breadcrumbLabel = '', opciones
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Etiqueta</label>
-                            <input type="text" className={`form-control ${errors.etiqueta ? 'is-invalid' : ''}`} value={data.etiqueta} onChange={e => setData('etiqueta', e.target.value)} placeholder="Orden de listado por etiqueta" />
+                            <input type="text" className={`form-control ${errors.etiqueta ? 'is-invalid' : ''}`} value={data.etiqueta} onChange={e => setData('etiqueta', e.target.value)} readOnly={ro} placeholder="Orden de listado por etiqueta" />
                             {errors.etiqueta && <div className="invalid-feedback">{errors.etiqueta}</div>}
                         </div>
                         <div className="col-12">
                             <label className="form-label fw-medium">Proyecto</label>
-                            <textarea className={`form-control ${errors.proyecto ? 'is-invalid' : ''}`} rows={3} value={data.proyecto} onChange={e => setData('proyecto', e.target.value)} placeholder="Descripción del proyecto" />
+                            <textarea className={`form-control ${errors.proyecto ? 'is-invalid' : ''}`} rows={3} value={data.proyecto} onChange={e => setData('proyecto', e.target.value)} readOnly={ro} placeholder="Descripción del proyecto" />
                             {errors.proyecto && <div className="invalid-feedback">{errors.proyecto}</div>}
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">CUI</label>
-                            <input type="text" className={`form-control ${errors.cui ? 'is-invalid' : ''}`} value={data.cui} onChange={e => setData('cui', e.target.value)} />
+                            <input type="text" className={`form-control ${errors.cui ? 'is-invalid' : ''}`} value={data.cui} onChange={e => setData('cui', e.target.value)} readOnly={ro} />
                             {errors.cui && <div className="invalid-feedback">{errors.cui}</div>}
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">Descripción</label>
-                            <input type="text" className={`form-control ${errors.descripcion ? 'is-invalid' : ''}`} value={data.descripcion} onChange={e => setData('descripcion', e.target.value)} placeholder="Ej. EXPEDIENTE TECNICO" />
+                            <input type="text" className={`form-control ${errors.descripcion ? 'is-invalid' : ''}`} value={data.descripcion} onChange={e => setData('descripcion', e.target.value)} readOnly={ro} placeholder="Ej. EXPEDIENTE TECNICO" />
                             {errors.descripcion && <div className="invalid-feedback">{errors.descripcion}</div>}
                         </div>
                         <div className="col-md-4">
@@ -140,26 +159,6 @@ export default function Create({ folderId = null, breadcrumbLabel = '', opciones
                             <input type="date" className={`form-control ${errors.fecha_aprobacion ? 'is-invalid' : ''}`} value={data.fecha_aprobacion} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                             {errors.fecha_aprobacion && <div className="invalid-feedback">{errors.fecha_aprobacion}</div>}
                         </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">¿TUVO ACTUALIZACIÓN DE PRECIOS?</label>
-                            <select className={`form-select ${errors.tiene_actualizacion_precios ? 'is-invalid' : ''}`} value={data.tiene_actualizacion_precios} onChange={e => setData('tiene_actualizacion_precios', e.target.value)}>
-                                <option value="">Seleccione...</option>
-                                {OPCIONES_SI_NO.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                            {errors.tiene_actualizacion_precios && <div className="invalid-feedback">{errors.tiene_actualizacion_precios}</div>}
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">¿TUVO REFORMULACIÓN?</label>
-                            <select className={`form-select ${errors.tiene_reformulacion ? 'is-invalid' : ''}`} value={data.tiene_reformulacion} onChange={e => setData('tiene_reformulacion', e.target.value)}>
-                                <option value="">Seleccione...</option>
-                                {OPCIONES_SI_NO.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                            {errors.tiene_reformulacion && <div className="invalid-feedback">{errors.tiene_reformulacion}</div>}
-                        </div>
 
                         <div className="col-12 mt-3">
                             <h6 className="fw-bold text-body mb-2">Documentos</h6>
@@ -193,64 +192,28 @@ export default function Create({ folderId = null, breadcrumbLabel = '', opciones
                             </div>
                         </div>
 
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">¿Tuvo suspensión?</label>
-                            <select className={`form-select ${errors.tuvo_suspension ? 'is-invalid' : ''}`} value={data.tuvo_suspension} onChange={e => setData('tuvo_suspension', e.target.value)}>
-                                <option value="">Seleccione...</option>
-                                {OPCIONES_SI_NO.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                            {errors.tuvo_suspension && <div className="invalid-feedback">{errors.tuvo_suspension}</div>}
-                        </div>
-
-                        {data.tuvo_suspension === 'SI' && (
-                            <>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">FECHA DE SUSPENSIÓN *</label>
-                                    <input type="date" className={`form-control ${errors.fecha_suspension ? 'is-invalid' : ''}`} value={data.fecha_suspension} onChange={e => setData('fecha_suspension', e.target.value)} />
-                                    {errors.fecha_suspension && <div className="invalid-feedback">{errors.fecha_suspension}</div>}
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">Subir Acta de Suspensión de Obra (PDF) *</label>
-                                    <input type="file" className={`form-control ${errors.acta_suspension ? 'is-invalid' : ''}`} accept=".pdf" onChange={e => setData('acta_suspension', e.target.files?.[0] || null)} />
-                                    {errors.acta_suspension && <div className="invalid-feedback">{errors.acta_suspension}</div>}
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">FECHA DE REINICIO *</label>
-                                    <input type="date" className={`form-control ${errors.fecha_reinicio ? 'is-invalid' : ''}`} value={data.fecha_reinicio} onChange={e => setData('fecha_reinicio', e.target.value)} />
-                                    {errors.fecha_reinicio && <div className="invalid-feedback">{errors.fecha_reinicio}</div>}
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">Subir Acta de Reinicio de Obra (PDF) *</label>
-                                    <input type="file" className={`form-control ${errors.acta_reinicio ? 'is-invalid' : ''}`} accept=".pdf" onChange={e => setData('acta_reinicio', e.target.files?.[0] || null)} />
-                                    {errors.acta_reinicio && <div className="invalid-feedback">{errors.acta_reinicio}</div>}
-                                </div>
-                            </>
-                        )}
-
                         <div className="col-12 mt-3">
                             <h6 className="fw-bold text-body mb-2">Montos (componentes)</h6>
-                            <p className="small text-secondary mb-2">Ingrese los componentes. El total se calcula automáticamente (sin REFORMULACIÓN).</p>
+                            <p className="small text-secondary mb-2">Puede usar valores negativos en deducciones. Total = O + P + S + Supervisión.</p>
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">EXPEDIENTE TECNICO (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_o ? 'is-invalid' : ''}`} value={data.monto_o} onChange={e => setData('monto_o', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_o ? 'is-invalid' : ''}`} value={data.monto_o} onChange={e => setData('monto_o', e.target.value)} />
                             {errors.monto_o && <div className="invalid-feedback">{errors.monto_o}</div>}
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">EVALUACION (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_p ? 'is-invalid' : ''}`} value={data.monto_p} onChange={e => setData('monto_p', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_p ? 'is-invalid' : ''}`} value={data.monto_p} onChange={e => setData('monto_p', e.target.value)} />
                             {errors.monto_p && <div className="invalid-feedback">{errors.monto_p}</div>}
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">PPTO DE OBRA (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_s ? 'is-invalid' : ''}`} value={data.monto_s} onChange={e => setData('monto_s', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_s ? 'is-invalid' : ''}`} value={data.monto_s} onChange={e => setData('monto_s', e.target.value)} />
                             {errors.monto_s && <div className="invalid-feedback">{errors.monto_s}</div>}
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">SUPERVISION (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_supervision ? 'is-invalid' : ''}`} value={data.monto_supervision} onChange={e => setData('monto_supervision', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_supervision ? 'is-invalid' : ''}`} value={data.monto_supervision} onChange={e => setData('monto_supervision', e.target.value)} />
                             {errors.monto_supervision && <div className="invalid-feedback">{errors.monto_supervision}</div>}
                         </div>
                         <div className="col-12">

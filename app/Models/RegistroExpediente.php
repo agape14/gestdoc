@@ -37,6 +37,7 @@ class RegistroExpediente extends Model
         'acta_suspension',
         'fecha_reinicio',
         'acta_reinicio',
+        'tipo_accion',
     ];
 
     protected $casts = [
@@ -64,7 +65,7 @@ class RegistroExpediente extends Model
     }
 
     /**
-     * Total de montos = EXPEDIENTE TECNICO + EVAL. + PPTO DE OBRA + SUPERVISION (sin REFORMULACION).
+     * Total = EXPEDIENTE TECNICO + EVAL. + PPTO DE OBRA + SUPERVISIÓN (sin columna reformulación en formulario).
      */
     public function getMontoTotalAttribute(): float
     {

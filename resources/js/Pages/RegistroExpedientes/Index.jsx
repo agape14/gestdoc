@@ -5,6 +5,22 @@ import ModuleIndex from '@/Components/ModuleIndex';
 import ModuleIndexRowDetail from '@/Components/ModuleIndexRowDetail';
 import { formatDateDisplay, formatMonedaPeruana } from '@/Utils/experienciaCalculations';
 
+const TIPO_ACCION_LABEL = {
+    ADICIONAL: 'ADICIONAL',
+    ADICIONAL_CON_DEDUCTIVO: 'ADICIONAL CON DEDUCTIVO',
+    DEDUCTIVO: 'DEDUCTIVO',
+    ACTUALIZACION_PRECIOS: 'ACTUALIZACIÓN DE PRECIOS',
+    REFORMULACION: 'REFORMULACIÓN',
+};
+
+const ACCIONES_CREAR = [
+    { key: 'ADICIONAL', label: 'ADICIONAL', title: 'Nuevo registro: ADICIONAL', btnClass: 'btn-success' },
+    { key: 'ADICIONAL_CON_DEDUCTIVO', label: 'ADIC. + DED.', title: 'Nuevo registro: ADICIONAL CON DEDUCTIVO', btnClass: 'btn-warning text-dark' },
+    { key: 'DEDUCTIVO', label: 'DEDUCTIVO', title: 'Nuevo registro: DEDUCTIVO', btnClass: 'btn-danger' },
+    { key: 'ACTUALIZACION_PRECIOS', label: 'ACT. PRECIOS', title: 'Nuevo registro: ACTUALIZACIÓN DE PRECIOS', btnClass: 'btn-info text-dark' },
+    { key: 'REFORMULACION', label: 'REFORMULACIÓN', title: 'Nuevo registro: REFORMULACIÓN', btnClass: 'btn-dark' },
+];
+
 export default function Index({ expedientes, filters = {}, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], operadores = [] }) {
     const handleDelete = (item) => {
         Swal.fire({
@@ -23,6 +39,14 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         });
     };
 
+    const hrefCrearDesdeFila = (item, tipoAccion) => {
+        const p = new URLSearchParams();
+        if (currentFolder?.id) p.set('folder_id', String(currentFolder.id));
+        p.set('prefill_from', String(item.id));
+        p.set('tipo_accion', tipoAccion);
+        return route('registro-expedientes.create') + (p.toString() ? `?${p.toString()}` : '');
+    };
+
     const columns = [
         { header: 'ETIQUETA', accessor: 'etiqueta', render: (item) => item.etiqueta ?? '-' },
         { header: 'TIPO INVERSIÓN', accessor: 'tipo_inversion', render: (item) => (item.tipo_inversion ? String(item.tipo_inversion).slice(0, 35) + (String(item.tipo_inversion).length > 35 ? '…' : '') : '-') },
@@ -33,21 +57,30 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
-    const getDetailFields = (item) => [
-        { label: 'Etiqueta', value: item.etiqueta },
-        { label: '¿Tiene actualización de precios?', value: item.tiene_actualizacion_precios || '-' },
-        { label: '¿Tiene reformulación?', value: item.tiene_reformulacion || '-' },
-        { label: '¿Tuvo suspensión?', value: item.tuvo_suspension || '-' },
-        { label: 'Descripción', value: item.descripcion },
-        { label: 'N° de folio', value: item.numero_folio },
-        { label: 'Tomos', value: item.tomos },
-        { label: 'Año', value: item.anio },
-        { label: 'Tipo unidad conservación', value: item.tipo_unidad_conservacion },
-        { label: 'Resolución', value: item.resolucion },
-        { label: 'Contrato', value: item.contrato ? 'Sí (archivo cargado)' : 'No' },
-        { label: 'Resolución (archivo)', value: item.resolucion_archivo ? 'Sí (archivo cargado)' : 'No' },
-        { label: 'Proyecto (completo)', value: item.proyecto },
-    ];
+    const getDetailFields = (item) => {
+        const accion = item.tipo_accion ? (TIPO_ACCION_LABEL[item.tipo_accion] || item.tipo_accion) : null;
+        const fields = [
+            { label: 'Tipo de acción', value: accion },
+            { label: 'Descripción', value: item.descripcion },
+            { label: 'N° de folio', value: item.numero_folio },
+            { label: 'Tomos', value: item.tomos },
+            { label: 'Año', value: item.anio },
+            { label: 'Tipo unidad conservación', value: item.tipo_unidad_conservacion },
+            { label: 'Resolución', value: item.resolucion },
+            { label: 'Contrato', value: item.contrato ? 'Sí (archivo cargado)' : 'No' },
+            { label: 'Resolución (archivo)', value: item.resolucion_archivo ? 'Sí (archivo cargado)' : 'No' },
+            { label: 'Proyecto (completo)', value: item.proyecto },
+        ];
+        return fields.filter((f) => f.value != null && f.value !== '');
+    };
+
+    const extraActionsFor = (item) =>
+        ACCIONES_CREAR.map((a) => ({
+            href: hrefCrearDesdeFila(item, a.key),
+            label: a.label,
+            title: a.title,
+            btnClass: a.btnClass,
+        }));
 
     const renderDetail = (item) => (
         <ModuleIndexRowDetail
@@ -56,6 +89,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             fields={getDetailFields(item)}
             editHref={`/registro-expedientes/${item.id}/edit`}
             onDelete={handleDelete}
+            extraActions={extraActionsFor(item)}
         />
     );
 

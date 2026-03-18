@@ -18,6 +18,15 @@ class RegistroExpedienteController extends Controller
 
     const MODULE = 'registro-expedientes';
 
+    /** Acciones al crear registro derivado desde el grid */
+    public const TIPOS_ACCION = [
+        'ADICIONAL',
+        'ADICIONAL_CON_DEDUCTIVO',
+        'DEDUCTIVO',
+        'ACTUALIZACION_PRECIOS',
+        'REFORMULACION',
+    ];
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -164,6 +173,30 @@ class RegistroExpedienteController extends Controller
         $nextNumero = (string) ($queryCount->count() + 1);
         $prefillProyecto = $request->get('prefill_proyecto');
         $prefillCui = $request->get('prefill_cui');
+        $tipoAccion = in_array($request->get('tipo_accion'), self::TIPOS_ACCION, true) ? $request->get('tipo_accion') : null;
+
+        $prefillTipoInversion = '';
+        $prefillEtiqueta = '';
+        $prefillDescripcion = '';
+        $lockPrefill = false;
+
+        if ($request->filled('prefill_from')) {
+            $q = RegistroExpediente::query();
+            $q = $this->applyRoleBasedFilter($q, auth()->user());
+            $src = $q->find((int) $request->prefill_from);
+            if ($src) {
+                $sameFolder = ($folderId && (int) $src->folder_id === $folderId)
+                    || (!$folderId && $src->folder_id === null);
+                if ($sameFolder) {
+                    $prefillTipoInversion = $src->tipo_inversion ?? '';
+                    $prefillEtiqueta = $src->etiqueta ?? '';
+                    $prefillProyecto = $src->proyecto ?? $prefillProyecto;
+                    $prefillCui = $src->cui ?? $prefillCui;
+                    $prefillDescripcion = $src->descripcion ?? '';
+                    $lockPrefill = $tipoAccion !== null;
+                }
+            }
+        }
 
         return Inertia::render('RegistroExpedientes/Create', [
             'folderId' => $folderId,
@@ -171,8 +204,13 @@ class RegistroExpedienteController extends Controller
             'opcionesTipoUnidad' => RegistroExpediente::opcionesTipoUnidadConservacion(),
             'opcionesTipoInversion' => RegistroExpediente::opcionesTipoInversion(),
             'nextNumero' => $nextNumero,
-            'prefillProyecto' => $prefillProyecto,
-            'prefillCui' => $prefillCui,
+            'prefillProyecto' => $prefillProyecto ?? '',
+            'prefillCui' => $prefillCui ?? '',
+            'prefillTipoInversion' => $prefillTipoInversion,
+            'prefillEtiqueta' => $prefillEtiqueta,
+            'prefillDescripcion' => $prefillDescripcion,
+            'tipoAccion' => $tipoAccion,
+            'lockPrefill' => $lockPrefill,
         ]);
     }
 
@@ -238,23 +276,24 @@ class RegistroExpedienteController extends Controller
             'tipo_unidad_conservacion' => 'nullable|string|max:255',
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
-            'tiene_actualizacion_precios' => 'nullable|string|in:SI,NO',
-            'tiene_reformulacion' => 'nullable|string|in:SI,NO',
-            'monto_o' => 'nullable|numeric|min:0',
-            'monto_p' => 'nullable|numeric|min:0',
-            'monto_r' => 'nullable|numeric|min:0',
-            'monto_s' => 'nullable|numeric|min:0',
-            'monto_supervision' => 'nullable|numeric|min:0',
+            'tipo_accion' => 'nullable|string|in:' . implode(',', self::TIPOS_ACCION),
+            'monto_o' => 'nullable|numeric',
+            'monto_p' => 'nullable|numeric',
+            'monto_r' => 'nullable|numeric',
+            'monto_s' => 'nullable|numeric',
+            'monto_supervision' => 'nullable|numeric',
             'contrato' => 'nullable|file|max:25600',
             'resolucion_archivo' => 'nullable|file|max:25600',
-            'tuvo_suspension' => 'nullable|string|in:SI,NO',
-            'fecha_suspension' => 'nullable|required_if:tuvo_suspension,SI|string',
-            'acta_suspension' => 'nullable|required_if:tuvo_suspension,SI|file|max:25600',
-            'fecha_reinicio' => 'nullable|required_if:tuvo_suspension,SI|string',
-            'acta_reinicio' => 'nullable|required_if:tuvo_suspension,SI|file|max:25600',
-        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato', 'acta_suspension' => 'Acta de Suspensión', 'acta_reinicio' => 'Acta de Reinicio']);
+        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
 
         $data = $this->prepareData($validated, $request);
+        $data['tiene_actualizacion_precios'] = null;
+        $data['tiene_reformulacion'] = null;
+        $data['tuvo_suspension'] = null;
+        $data['fecha_suspension'] = null;
+        $data['fecha_reinicio'] = null;
+        $data['acta_suspension'] = null;
+        $data['acta_reinicio'] = null;
         $data['user_id'] = auth()->id();
 
         $folderId = null;
@@ -275,13 +314,6 @@ class RegistroExpedienteController extends Controller
         if ($request->hasFile('resolucion_archivo')) {
             $data['resolucion_archivo'] = $request->file('resolucion_archivo')->store('expedientes/registro_expedientes', 'r2');
         }
-        if ($request->hasFile('acta_suspension')) {
-            $data['acta_suspension'] = $request->file('acta_suspension')->store('expedientes/registro_expedientes', 'r2');
-        }
-        if ($request->hasFile('acta_reinicio')) {
-            $data['acta_reinicio'] = $request->file('acta_reinicio')->store('expedientes/registro_expedientes', 'r2');
-        }
-
         $expediente = RegistroExpediente::create($data);
         $folderId = $expediente->folder_id;
 
@@ -326,6 +358,7 @@ class RegistroExpedienteController extends Controller
             'acta_suspension' => $e->acta_suspension,
             'fecha_reinicio' => $e->fecha_reinicio?->format('Y-m-d'),
             'acta_reinicio' => $e->acta_reinicio,
+            'tipo_accion' => $e->tipo_accion,
         ];
 
         return Inertia::render('RegistroExpedientes/Edit', [
@@ -355,23 +388,29 @@ class RegistroExpedienteController extends Controller
             'tipo_unidad_conservacion' => 'nullable|string|max:255',
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
-            'tiene_actualizacion_precios' => 'nullable|string|in:SI,NO',
-            'tiene_reformulacion' => 'nullable|string|in:SI,NO',
-            'monto_o' => 'nullable|numeric|min:0',
-            'monto_p' => 'nullable|numeric|min:0',
-            'monto_r' => 'nullable|numeric|min:0',
-            'monto_s' => 'nullable|numeric|min:0',
-            'monto_supervision' => 'nullable|numeric|min:0',
+            'tipo_accion' => 'nullable|string|in:' . implode(',', self::TIPOS_ACCION),
+            'monto_o' => 'nullable|numeric',
+            'monto_p' => 'nullable|numeric',
+            'monto_r' => 'nullable|numeric',
+            'monto_s' => 'nullable|numeric',
+            'monto_supervision' => 'nullable|numeric',
             'contrato' => 'nullable|file|max:25600',
             'resolucion_archivo' => 'nullable|file|max:25600',
-            'tuvo_suspension' => 'nullable|string|in:SI,NO',
-            'fecha_suspension' => 'nullable|required_if:tuvo_suspension,SI|string',
-            'acta_suspension' => 'nullable|file|max:25600',
-            'fecha_reinicio' => 'nullable|required_if:tuvo_suspension,SI|string',
-            'acta_reinicio' => 'nullable|file|max:25600',
-        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato', 'acta_suspension' => 'Acta de Suspensión', 'acta_reinicio' => 'Acta de Reinicio']);
+        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
 
         $data = $this->prepareData($validated, $request);
+        $data['tiene_actualizacion_precios'] = null;
+        $data['tiene_reformulacion'] = null;
+        $data['tuvo_suspension'] = null;
+        $data['fecha_suspension'] = null;
+        $data['fecha_reinicio'] = null;
+        $data['acta_suspension'] = null;
+        $data['acta_reinicio'] = null;
+        foreach (['acta_suspension', 'acta_reinicio'] as $f) {
+            if ($registroExpediente->$f) {
+                Storage::disk(storage_disk_for_path($registroExpediente->$f))->delete($registroExpediente->$f);
+            }
+        }
         if ($request->hasFile('contrato')) {
             if ($registroExpediente->contrato) {
                 Storage::disk(storage_disk_for_path($registroExpediente->contrato))->delete($registroExpediente->contrato);
@@ -383,18 +422,6 @@ class RegistroExpedienteController extends Controller
                 Storage::disk(storage_disk_for_path($registroExpediente->resolucion_archivo))->delete($registroExpediente->resolucion_archivo);
             }
             $data['resolucion_archivo'] = $request->file('resolucion_archivo')->store('expedientes/registro_expedientes', 'r2');
-        }
-        if ($request->hasFile('acta_suspension')) {
-            if ($registroExpediente->acta_suspension) {
-                Storage::disk(storage_disk_for_path($registroExpediente->acta_suspension))->delete($registroExpediente->acta_suspension);
-            }
-            $data['acta_suspension'] = $request->file('acta_suspension')->store('expedientes/registro_expedientes', 'r2');
-        }
-        if ($request->hasFile('acta_reinicio')) {
-            if ($registroExpediente->acta_reinicio) {
-                Storage::disk(storage_disk_for_path($registroExpediente->acta_reinicio))->delete($registroExpediente->acta_reinicio);
-            }
-            $data['acta_reinicio'] = $request->file('acta_reinicio')->store('expedientes/registro_expedientes', 'r2');
         }
         $registroExpediente->update($data);
 
@@ -440,33 +467,22 @@ class RegistroExpedienteController extends Controller
             $data['fecha_aprobacion'] = null;
         }
 
-        foreach (['fecha_suspension', 'fecha_reinicio'] as $key) {
-            if (! array_key_exists($key, $data)) {
-                continue;
-            }
-            $val = $request->input($key);
-            if ($val && is_string($val)) {
-                $data[$key] = preg_match('/^\d{4}-\d{2}-\d{2}/', trim($val))
-                    ? trim(substr($val, 0, 10))
-                    : parse_fecha_dd_mm_yyyy($val);
-            } else {
-                $data[$key] = null;
-            }
-        }
-        if (($data['tuvo_suspension'] ?? '') !== 'SI') {
-            $data['fecha_suspension'] = null;
-            $data['fecha_reinicio'] = null;
-            $data['acta_suspension'] = null;
-            $data['acta_reinicio'] = null;
-        }
-
-        foreach (['monto_o', 'monto_p', 'monto_r', 'monto_s', 'monto_supervision'] as $key) {
+        foreach (['monto_o', 'monto_p', 'monto_s', 'monto_supervision'] as $key) {
             $val = $request->input($key);
             if ($val !== null && $val !== '') {
                 $data[$key] = (float) preg_replace('/[^\d.]/', '', str_replace(',', '.', (string) $val));
             } else {
                 $data[$key] = null;
             }
+        }
+        // monto_r: solo actualizar si el cliente lo envía (ya no está en crear/editar)
+        if ($request->exists('monto_r')) {
+            $val = $request->input('monto_r');
+            $data['monto_r'] = ($val !== null && $val !== '')
+                ? (float) preg_replace('/[^\d.]/', '', str_replace(',', '.', (string) $val))
+                : null;
+        } else {
+            unset($data['monto_r']);
         }
 
         return $data;

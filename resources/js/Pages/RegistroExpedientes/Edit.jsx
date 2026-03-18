@@ -4,7 +4,14 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 import { formatMonedaPeruana } from '@/Utils/experienciaCalculations';
 
-const OPCIONES_SI_NO = [{ value: 'SI', label: 'SI' }, { value: 'NO', label: 'NO' }];
+const OPCIONES_TIPO_ACCION = [
+    { value: '', label: '— Sin clasificar —' },
+    { value: 'ADICIONAL', label: 'ADICIONAL' },
+    { value: 'ADICIONAL_CON_DEDUCTIVO', label: 'ADICIONAL CON DEDUCTIVO' },
+    { value: 'DEDUCTIVO', label: 'DEDUCTIVO' },
+    { value: 'ACTUALIZACION_PRECIOS', label: 'ACTUALIZACIÓN DE PRECIOS' },
+    { value: 'REFORMULACION', label: 'REFORMULACIÓN' },
+];
 
 function toInputDate(val) {
     if (!val) return '';
@@ -27,25 +34,19 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
         proyecto: expediente?.proyecto ?? '',
         cui: expediente?.cui ?? '',
         descripcion: expediente?.descripcion ?? '',
+        tipo_accion: expediente?.tipo_accion ?? '',
         numero_folio: expediente?.numero_folio ?? '',
         tomos: expediente?.tomos ?? '',
         anio: expediente?.anio ?? '',
         tipo_unidad_conservacion: expediente?.tipo_unidad_conservacion ?? '',
         resolucion: expediente?.resolucion ?? '',
         fecha_aprobacion: toInputDate(expediente?.fecha_aprobacion) ?? '',
-        tiene_actualizacion_precios: expediente?.tiene_actualizacion_precios ?? '',
-        tiene_reformulacion: expediente?.tiene_reformulacion ?? '',
         monto_o: expediente?.monto_o ?? '',
         monto_p: expediente?.monto_p ?? '',
         monto_s: expediente?.monto_s ?? '',
         monto_supervision: expediente?.monto_supervision ?? '',
         contrato: null,
         resolucion_archivo: null,
-        tuvo_suspension: expediente?.tuvo_suspension ?? '',
-        fecha_suspension: expediente?.fecha_suspension ? (typeof expediente.fecha_suspension === 'string' ? expediente.fecha_suspension : expediente.fecha_suspension?.slice(0, 10)) : '',
-        acta_suspension: null,
-        fecha_reinicio: expediente?.fecha_reinicio ? (typeof expediente.fecha_reinicio === 'string' ? expediente.fecha_reinicio : expediente.fecha_reinicio?.slice(0, 10)) : '',
-        acta_reinicio: null,
     });
 
     const totalMontos = useMemo(() => {
@@ -64,6 +65,7 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
         e.preventDefault();
         const payload = { ...data };
         payload.numero = expediente?.numero ?? '';
+        if (payload.tipo_accion === '') payload.tipo_accion = null;
         ['monto_o', 'monto_p', 'monto_s', 'monto_supervision'].forEach(k => {
             if (payload[k] === '' || payload[k] == null) payload[k] = null;
             else payload[k] = Number(payload[k]) || 0;
@@ -72,8 +74,6 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
         else payload.anio = parseInt(payload.anio, 10) || null;
         if (!payload.contrato || !(payload.contrato instanceof File)) delete payload.contrato;
         if (!payload.resolucion_archivo || !(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
-        if (!payload.acta_suspension || !(payload.acta_suspension instanceof File)) delete payload.acta_suspension;
-        if (!payload.acta_reinicio || !(payload.acta_reinicio instanceof File)) delete payload.acta_reinicio;
         put(route('registro-expedientes.update', expediente.id), payload);
     };
 
@@ -83,7 +83,7 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <div className="mb-4">
                     <h3 className="fw-bold mb-1">Editar Registro de Expediente</h3>
-                    <p className="text-secondary small mb-0">El total de montos se calcula automáticamente (O + P + S + Supervisión).</p>
+                    <p className="text-secondary small mb-0">Total = Expediente + Evaluación + Ppto obra + Supervisión.</p>
                 </div>
                 <form onSubmit={submit}>
                     <div className="row g-3 mb-4">
@@ -116,6 +116,15 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                             <label className="form-label fw-medium">Descripción</label>
                             <input type="text" className={`form-control ${errors.descripcion ? 'is-invalid' : ''}`} value={data.descripcion} onChange={e => setData('descripcion', e.target.value)} />
                             {errors.descripcion && <div className="invalid-feedback">{errors.descripcion}</div>}
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-medium">Tipo de acción / trámite</label>
+                            <select className={`form-select ${errors.tipo_accion ? 'is-invalid' : ''}`} value={data.tipo_accion} onChange={e => setData('tipo_accion', e.target.value)}>
+                                {OPCIONES_TIPO_ACCION.map((opt) => (
+                                    <option key={opt.value || 'empty'} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                            {errors.tipo_accion && <div className="invalid-feedback">{errors.tipo_accion}</div>}
                         </div>
                         <div className="col-md-4">
                             <label className="form-label fw-medium">N° de folio</label>
@@ -152,103 +161,61 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                             <input type="date" className={`form-control ${errors.fecha_aprobacion ? 'is-invalid' : ''}`} value={data.fecha_aprobacion} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                             {errors.fecha_aprobacion && <div className="invalid-feedback">{errors.fecha_aprobacion}</div>}
                         </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">¿TUVO ACTUALIZACIÓN DE PRECIOS?</label>
-                            <select className={`form-select ${errors.tiene_actualizacion_precios ? 'is-invalid' : ''}`} value={data.tiene_actualizacion_precios} onChange={e => setData('tiene_actualizacion_precios', e.target.value)}>
-                                <option value="">Seleccione...</option>
-                                {OPCIONES_SI_NO.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                            {errors.tiene_actualizacion_precios && <div className="invalid-feedback">{errors.tiene_actualizacion_precios}</div>}
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">¿TUVO REFORMULACIÓN?</label>
-                            <select className={`form-select ${errors.tiene_reformulacion ? 'is-invalid' : ''}`} value={data.tiene_reformulacion} onChange={e => setData('tiene_reformulacion', e.target.value)}>
-                                <option value="">Seleccione...</option>
-                                {OPCIONES_SI_NO.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                            {errors.tiene_reformulacion && <div className="invalid-feedback">{errors.tiene_reformulacion}</div>}
-                        </div>
 
-                        {data.tiene_reformulacion === 'SI' && (
-                            <>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">SUBIR CONTRATO</label>
-                                    <input type="file" className={`form-control ${errors.contrato ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('contrato', e.target.files?.[0] || null)} />
-                                    {expediente?.contrato && <small className="text-muted d-block">Archivo actual cargado. Suba otro para reemplazar.</small>}
-                                    {errors.contrato && <div className="invalid-feedback">{errors.contrato}</div>}
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">SUBIR RESOLUCIÓN</label>
-                                    <input type="file" className={`form-control ${errors.resolucion_archivo ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('resolucion_archivo', e.target.files?.[0] || null)} />
-                                    {expediente?.resolucion_archivo && <small className="text-muted d-block">Archivo actual cargado. Suba otro para reemplazar.</small>}
-                                    {errors.resolucion_archivo && <div className="invalid-feedback">{errors.resolucion_archivo}</div>}
-                                </div>
-                            </>
-                        )}
-
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">¿Tuvo suspensión?</label>
-                            <select className={`form-select ${errors.tuvo_suspension ? 'is-invalid' : ''}`} value={data.tuvo_suspension} onChange={e => setData('tuvo_suspension', e.target.value)}>
-                                <option value="">Seleccione...</option>
-                                {OPCIONES_SI_NO.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                            {errors.tuvo_suspension && <div className="invalid-feedback">{errors.tuvo_suspension}</div>}
+                        <div className="col-12 mt-3">
+                            <h6 className="fw-bold text-body mb-2">Documentos</h6>
+                            <div className="table-responsive">
+                                <table className="table table-bordered bg-body mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th className="fw-medium">Tipo de documento</th>
+                                            <th className="fw-medium">Adjuntar archivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td className="align-middle">Contrato</td>
+                                            <td>
+                                                <input type="file" className={`form-control form-control-sm ${errors.contrato ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('contrato', e.target.files?.[0] || null)} />
+                                                {expediente?.contrato && <small className="text-muted d-block">Archivo cargado. Suba otro para reemplazar.</small>}
+                                                {errors.contrato && <div className="invalid-feedback d-block">{errors.contrato}</div>}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="align-middle">Resolución</td>
+                                            <td>
+                                                <input type="file" className={`form-control form-control-sm ${errors.resolucion_archivo ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('resolucion_archivo', e.target.files?.[0] || null)} />
+                                                {expediente?.resolucion_archivo && <small className="text-muted d-block">Archivo cargado. Suba otro para reemplazar.</small>}
+                                                {errors.resolucion_archivo && <div className="invalid-feedback d-block">{errors.resolucion_archivo}</div>}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-
-                        {data.tuvo_suspension === 'SI' && (
-                            <>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">FECHA DE SUSPENSIÓN *</label>
-                                    <input type="date" className={`form-control ${errors.fecha_suspension ? 'is-invalid' : ''}`} value={data.fecha_suspension} onChange={e => setData('fecha_suspension', e.target.value)} />
-                                    {errors.fecha_suspension && <div className="invalid-feedback">{errors.fecha_suspension}</div>}
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">Subir Acta de Suspensión de Obra (PDF) *</label>
-                                    <input type="file" className={`form-control ${errors.acta_suspension ? 'is-invalid' : ''}`} accept=".pdf" onChange={e => setData('acta_suspension', e.target.files?.[0] || null)} />
-                                    {expediente?.acta_suspension && <small className="text-muted d-block">Archivo actual cargado. Suba otro para reemplazar.</small>}
-                                    {errors.acta_suspension && <div className="invalid-feedback">{errors.acta_suspension}</div>}
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">FECHA DE REINICIO *</label>
-                                    <input type="date" className={`form-control ${errors.fecha_reinicio ? 'is-invalid' : ''}`} value={data.fecha_reinicio} onChange={e => setData('fecha_reinicio', e.target.value)} />
-                                    {errors.fecha_reinicio && <div className="invalid-feedback">{errors.fecha_reinicio}</div>}
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-medium">Subir Acta de Reinicio de Obra (PDF) *</label>
-                                    <input type="file" className={`form-control ${errors.acta_reinicio ? 'is-invalid' : ''}`} accept=".pdf" onChange={e => setData('acta_reinicio', e.target.files?.[0] || null)} />
-                                    {expediente?.acta_reinicio && <small className="text-muted d-block">Archivo actual cargado. Suba otro para reemplazar.</small>}
-                                    {errors.acta_reinicio && <div className="invalid-feedback">{errors.acta_reinicio}</div>}
-                                </div>
-                            </>
-                        )}
 
                         <div className="col-12 mt-3">
                             <h6 className="fw-bold text-body mb-2">Montos (componentes)</h6>
+                            <p className="small text-secondary mb-2">Valores negativos permitidos (deductivos).</p>
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">EXPEDIENTE TECNICO (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_o ? 'is-invalid' : ''}`} value={data.monto_o} onChange={e => setData('monto_o', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_o ? 'is-invalid' : ''}`} value={data.monto_o} onChange={e => setData('monto_o', e.target.value)} />
                             {errors.monto_o && <div className="invalid-feedback">{errors.monto_o}</div>}
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">EVALUACION (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_p ? 'is-invalid' : ''}`} value={data.monto_p} onChange={e => setData('monto_p', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_p ? 'is-invalid' : ''}`} value={data.monto_p} onChange={e => setData('monto_p', e.target.value)} />
                             {errors.monto_p && <div className="invalid-feedback">{errors.monto_p}</div>}
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">PPTO DE OBRA (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_s ? 'is-invalid' : ''}`} value={data.monto_s} onChange={e => setData('monto_s', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_s ? 'is-invalid' : ''}`} value={data.monto_s} onChange={e => setData('monto_s', e.target.value)} />
                             {errors.monto_s && <div className="invalid-feedback">{errors.monto_s}</div>}
                         </div>
                         <div className="col-md-4 col-lg">
                             <label className="form-label fw-medium">SUPERVISION (S/)</label>
-                            <input type="number" step="0.01" min="0" className={`form-control ${errors.monto_supervision ? 'is-invalid' : ''}`} value={data.monto_supervision} onChange={e => setData('monto_supervision', e.target.value)} />
+                            <input type="number" step="0.01" className={`form-control ${errors.monto_supervision ? 'is-invalid' : ''}`} value={data.monto_supervision} onChange={e => setData('monto_supervision', e.target.value)} />
                             {errors.monto_supervision && <div className="invalid-feedback">{errors.monto_supervision}</div>}
                         </div>
                         <div className="col-12">
