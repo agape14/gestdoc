@@ -23,6 +23,7 @@ use App\Models\Tecnologia;
 use App\Models\PlantillaIng;
 use App\Models\Folder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
 
 class DashboardController extends Controller
 {
@@ -183,14 +184,26 @@ class DashboardController extends Controller
         }
 
         $r2StorageUsedBytes = $isAdmin ? Cache::get('r2_storage_used_bytes') : null;
+        $r2StorageUpdatedAt = $isAdmin ? Cache::get('r2_storage_updated_at') : null;
         $r2StorageLimitBytes = 2 * 1024 * 1024 * 1024 * 1024; // 2 TB
 
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'image360' => $image360,
             'r2StorageUsedBytes' => $r2StorageUsedBytes,
+            'r2StorageUpdatedAt' => $r2StorageUpdatedAt,
             'r2StorageLimitBytes' => $r2StorageLimitBytes,
         ]);
+    }
+
+    /** Recalcula uso del bucket R2 (mismo comando que el scheduler). Solo administradores. */
+    public function refreshR2Storage()
+    {
+        $code = Artisan::call('r2:cache-storage-usage');
+        if ($code !== 0) {
+            return redirect()->route('dashboard')->with('error', 'No se pudo actualizar el uso de R2. Revise la configuración del disco R2 en .env.');
+        }
+        return redirect()->route('dashboard')->with('success', 'Uso de almacenamiento R2 actualizado correctamente.');
     }
 }
 

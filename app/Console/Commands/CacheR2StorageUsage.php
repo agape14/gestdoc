@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Config;
 
 class CacheR2StorageUsage extends Command
 {
-    protected $signature = 'r2:cache-storage-usage {--ttl=60}';
-    protected $description = 'Calcula el espacio usado en el bucket R2 y lo guarda en caché (TTL en minutos).';
+    protected $signature = 'r2:cache-storage-usage {--ttl=1500 : Minutos que vive la caché (por defecto 1500 ≈ 25 h; el scheduler la renueva cada hora)}';
+    protected $description = 'Calcula el espacio usado en el bucket R2 y lo guarda en caché. Tras expirar el TTL el dashboard muestra vacío hasta la próxima ejecución (programar: php artisan schedule:run en cron).';
 
     public function handle(): int
     {
         $ttl = (int) $this->option('ttl');
         if ($ttl < 1) {
-            $ttl = 60;
+            $ttl = 1500;
         }
 
         $config = Config::get('filesystems.disks.r2', []);
@@ -24,6 +24,7 @@ class CacheR2StorageUsage extends Command
         if (empty($bucket)) {
             $this->error('Configuración R2 incompleta: falta AWS_BUCKET en .env');
             Cache::forget('r2_storage_used_bytes');
+            Cache::forget('r2_storage_updated_at');
             return self::FAILURE;
         }
 
@@ -55,12 +56,15 @@ class CacheR2StorageUsage extends Command
                 $continuationToken = $result->get('NextContinuationToken');
             } while ($continuationToken);
 
-            Cache::put('r2_storage_used_bytes', $totalBytes, now()->addMinutes($ttl));
-            $this->info('R2 almacenamiento usado: ' . round($totalBytes / 1024 / 1024 / 1024, 2) . ' GB (cacheado ' . $ttl . ' min).');
+            $expiresAt = now()->addMinutes($ttl);
+            Cache::put('r2_storage_used_bytes', $totalBytes, $expiresAt);
+            Cache::put('r2_storage_updated_at', now()->timestamp, $expiresAt);
+            $this->info('R2 almacenamiento usado: ' . round($totalBytes / 1024 / 1024 / 1024, 2) . ' GB (caché válida ' . $ttl . ' min; expira ~' . $expiresAt->format('Y-m-d H:i') . ').');
             return self::SUCCESS;
         } catch (\Throwable $e) {
             $this->error('Error: ' . $e->getMessage());
             Cache::forget('r2_storage_used_bytes');
+            Cache::forget('r2_storage_updated_at');
             return self::FAILURE;
         }
     }

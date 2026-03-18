@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 const DASHBOARD_CARDS = [
     { key: 'licitaciones', statsKey: 'licitaciones', title: 'Licitaciones', icon: 'bi-briefcase', color: 'primary', route: '/licitaciones' },
@@ -18,8 +18,17 @@ const DASHBOARD_CARDS = [
     { key: 'folders', statsKey: 'gestionDocumental', title: 'Gestión Doc', icon: 'bi-folder-fill', color: 'light', route: '/folders' },
 ];
 
-export default function Dashboard({ auth, stats, r2StorageUsedBytes = null, r2StorageLimitBytes = 2 * 1024 ** 4 }) {
+function formatR2UpdatedAt(ts) {
+    if (ts == null) return null;
+    const d = new Date(ts * 1000);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+export default function Dashboard({ auth, stats, r2StorageUsedBytes = null, r2StorageUpdatedAt = null, r2StorageLimitBytes = 2 * 1024 ** 4 }) {
     const { props } = usePage();
+    const flash = props.flash ?? {};
+    const [r2Refreshing, setR2Refreshing] = useState(false);
     const user = props.auth?.user;
     const isAdmin = user?.role === 'Administrador';
     const allowedMenus = user?.allowed_menus ?? [];
@@ -164,20 +173,47 @@ export default function Dashboard({ auth, stats, r2StorageUsedBytes = null, r2St
             </div>
 
             <div className="dashboard-content container-fluid py-2">
+                {(flash.success || flash.error) && (
+                    <div className={`alert ${flash.error ? 'alert-danger' : 'alert-success'} alert-dismissible fade show mb-3`} role="alert">
+                        {flash.error || flash.success}
+                        <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Cerrar" />
+                    </div>
+                )}
                 <div className="d-flex align-items-center justify-content-between mb-5 flex-wrap gap-3">
                     <div>
                         <h1 className="display-5 fw-bold text-white mb-2 text-shadow">Panel de Control</h1>
                         <p className="lead text-white-50 mb-0">Bienvenido a TECCONING Gestión Integral</p>
                     </div>
                     {isAdmin && (r2StorageUsedBytes != null || r2StorageLimitBytes) && (
-                        <div className="card border-0 shadow-sm bg-white bg-opacity-25 text-white p-3 rounded-4" style={{ minWidth: '280px' }}>
-                            <div className="d-flex align-items-center gap-3">
-                                <div className="bg-info bg-opacity-25 rounded-circle p-2">
+                        <div className="card border-0 shadow-sm bg-white bg-opacity-25 text-white p-3 rounded-4" style={{ minWidth: '300px' }}>
+                            <div className="d-flex align-items-start gap-3">
+                                <div className="bg-info bg-opacity-25 rounded-circle p-2 flex-shrink-0">
                                     <i className="bi bi-cloud-arrow-up fs-4"></i>
                                 </div>
-                                <div>
-                                    <div className="small text-white-50 text-uppercase fw-semibold">Almacenamiento R2</div>
-                                    <div className="fw-bold">
+                                <div className="flex-grow-1 min-w-0">
+                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                        <div className="small text-white-50 text-uppercase fw-semibold">Almacenamiento R2</div>
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-light border-white text-white"
+                                            disabled={r2Refreshing}
+                                            title="Recalcular uso del bucket (puede tardar si hay muchos archivos)"
+                                            onClick={() => {
+                                                setR2Refreshing(true);
+                                                router.post('/dashboard/r2-refresh-storage', {}, {
+                                                    preserveScroll: true,
+                                                    onFinish: () => setR2Refreshing(false),
+                                                });
+                                            }}
+                                        >
+                                            {r2Refreshing ? (
+                                                <><span className="spinner-border spinner-border-sm me-1" role="status" /> Actualizando…</>
+                                            ) : (
+                                                <><i className="bi bi-arrow-clockwise me-1"></i>Actualizar</>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <div className="fw-bold mt-1">
                                         {r2StorageUsedBytes != null
                                             ? `${(r2StorageUsedBytes / 1024 / 1024 / 1024).toFixed(2)} GB`
                                             : '—'}
@@ -192,6 +228,14 @@ export default function Dashboard({ auth, stats, r2StorageUsedBytes = null, r2St
                                             />
                                         </div>
                                     )}
+                                    <div className="small text-white-50 mt-1" style={{ maxWidth: '260px' }}>
+                                        {r2StorageUsedBytes != null && formatR2UpdatedAt(r2StorageUpdatedAt) && (
+                                            <>Última lectura: {formatR2UpdatedAt(r2StorageUpdatedAt)}. Pulse Actualizar si caducó la caché.</>
+                                        )}
+                                        {r2StorageUsedBytes == null && (
+                                            <>Sin datos. Pulse <strong>Actualizar</strong> o configure el cron del scheduler.</>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -20,6 +20,9 @@ Route::get('/', function () {
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+Route::post('/dashboard/r2-refresh-storage', [DashboardController::class, 'refreshR2Storage'])
+    ->middleware(['auth', 'verified', 'admin'])
+    ->name('dashboard.r2-refresh-storage');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
