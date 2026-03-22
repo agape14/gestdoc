@@ -51,16 +51,25 @@ const getDocumentLinks = (item) => {
         ['archivo_contrato', 'Contrato'],
         ['archivo_acta_recepcion', 'Acta de Recepción'],
         ['archivo_acta_inicio', 'Acta de Inicio'],
+        ['archivo_acta_adicional', 'Acta adicional'],
+        ['archivo_acta_deductivo', 'Acta deductivo'],
+        ['archivo_aprobacion_acto_resolutivo', 'Aprobación acto resolutivo'],
         ['archivo_acta_suspension', 'Acta de Suspensión'],
         ['archivo_acta_reinicio', 'Acta de Reinicio'],
         ['archivo_acta_entrega_terreno', 'Acta de Entrega de Terreno'],
-        ['archivo_resolucion_liquidacion', 'Resolución de Liquidación'],
+        ['archivo_resolucion_liquidacion', 'Resolución de Liquidación (histórico)'],
     ];
     files.forEach(([key, label]) => {
         const path = item[key];
         const url = item[key + '_url'];
         if (path || url) links.push({ label, path: path || '', url: url || null });
     });
+    const liq = item.documentos_liquidacion || item.documentosLiquidacion || [];
+    if (Array.isArray(liq)) {
+        liq.forEach((doc) => {
+            if (doc.url) links.push({ label: doc.nombre || 'Resolución liquidación', path: doc.file_path || '', url: doc.url });
+        });
+    }
     return links;
 };
 

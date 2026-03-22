@@ -61,7 +61,11 @@ export default function ExperienciaForm({
     title,
 }) {
     const isEspecialistasEjecucion = variant === 'especialistas-ejecucion';
+    const isProveedorBienes = structure === 3;
+    const isProveedorServicios = structure === 2;
     const hasCUI = structure === 1;
+    const useMultiDocumentos = hasCUI || isProveedorBienes || isProveedorServicios;
+    const showSuspensionReinicioPdf = isProveedorServicios || hasCUI;
     const hasSuspensionReinicio = structure === 1 || structure === 2;
     const numeroContratoLabel = structure === 3
         ? 'N° CONTRATO / O/C / COMPROBANTE DE PAGO'
@@ -80,10 +84,14 @@ export default function ExperienciaForm({
             tipo_documento_adjunto: initialData.tipo_documento_adjunto ?? '',
             archivo_contrato: null,
         };
-        if (isEspecialistasEjecucion) {
+        if (useMultiDocumentos) {
             base.documentos = Array.isArray(initialData.documentos) && initialData.documentos.length > 0
                 ? initialData.documentos.map(d => ({ tipo_documento_adjunto: d.tipo_documento_adjunto ?? '', nombre_otro: d.nombre_otro ?? '', archivo: null }))
                 : [{ tipo_documento_adjunto: '', nombre_otro: '', archivo: null }];
+        }
+        if (isProveedorServicios || hasCUI) {
+            base.archivo_suspension = null;
+            base.archivo_reinicio = null;
         }
         if (hasCUI) base.cui = initialData.cui ?? '';
         if (structure === 3) base.numero_contrato_oc_comprobante = initialData.numero_contrato_oc_comprobante ?? '';
@@ -102,15 +110,17 @@ export default function ExperienciaForm({
     const { data, setData, post, put, processing, errors } = useForm(initial);
 
     const totalDias = useMemo(() => {
-        if (isEspecialistasEjecucion) return null;
         const d = calcTotalDias(data.fecha_inicio, data.fecha_culminacion);
         return d;
-    }, [data.fecha_inicio, data.fecha_culminacion, isEspecialistasEjecucion]);
+    }, [data.fecha_inicio, data.fecha_culminacion]);
 
     const totalMeses = useMemo(() => calcTotalMeses(totalDias), [totalDias]);
     const totalDiasSinTraslape = useMemo(
-        () => (isEspecialistasEjecucion ? null : calcTotalDiasSinTraslape(totalDias, data.traslape)),
-        [totalDias, data.traslape, isEspecialistasEjecucion]
+        () => {
+            if (hasCUI || isProveedorBienes || isProveedorServicios) return totalDias;
+            return calcTotalDiasSinTraslape(totalDias, data.traslape);
+        },
+        [totalDias, data.traslape, hasCUI, isProveedorBienes, isProveedorServicios]
     );
 
     const addDocumentoRow = () => {
@@ -223,7 +233,7 @@ export default function ExperienciaForm({
                                             className="form-check-input"
                                             value="NO"
                                             checked={data.tiene_fecha_suspension === 'NO'}
-                                            onChange={() => { setData('tiene_fecha_suspension', 'NO'); setData('fecha_suspension', ''); }}
+                                            onChange={() => { setData('tiene_fecha_suspension', 'NO'); setData('fecha_suspension', ''); if (showSuspensionReinicioPdf) setData('archivo_suspension', null); }}
                                         />
                                         <span className="form-check-label">No</span>
                                     </label>
@@ -236,6 +246,26 @@ export default function ExperienciaForm({
                                             value={toInputDate(data.fecha_suspension)}
                                             onChange={e => setData('fecha_suspension', toDDMMYYYY(e.target.value))}
                                         />
+                                        {showSuspensionReinicioPdf && (
+                                            <div className="mt-3">
+                                                <label className="form-label small mb-1">{hasCUI ? 'Adjuntar PDF (suspensión)' : 'Adjuntar documento (suspensión)'}</label>
+                                                <input
+                                                    type="file"
+                                                    name="archivo_suspension"
+                                                    accept={hasCUI ? '.pdf' : FILE_ACCEPT}
+                                                    className={`form-control form-control-sm ${errors.archivo_suspension ? 'is-invalid' : ''}`}
+                                                    onChange={e => setData('archivo_suspension', e.target.files?.[0] || null)}
+                                                />
+                                                {method === 'PUT' && initialData.archivo_suspension_url && (
+                                                    <div className="mt-2 small">
+                                                        <a href={initialData.archivo_suspension_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                                                            Ver archivo actual <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                {errors.archivo_suspension && <div className="invalid-feedback d-block">{errors.archivo_suspension}</div>}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -262,7 +292,7 @@ export default function ExperienciaForm({
                                             className="form-check-input"
                                             value="NO"
                                             checked={data.tiene_fecha_reinicio === 'NO'}
-                                            onChange={() => { setData('tiene_fecha_reinicio', 'NO'); setData('fecha_reinicio', ''); }}
+                                            onChange={() => { setData('tiene_fecha_reinicio', 'NO'); setData('fecha_reinicio', ''); if (showSuspensionReinicioPdf) setData('archivo_reinicio', null); }}
                                         />
                                         <span className="form-check-label">No</span>
                                     </label>
@@ -275,14 +305,33 @@ export default function ExperienciaForm({
                                             value={toInputDate(data.fecha_reinicio)}
                                             onChange={e => setData('fecha_reinicio', toDDMMYYYY(e.target.value))}
                                         />
+                                        {showSuspensionReinicioPdf && (
+                                            <div className="mt-3">
+                                                <label className="form-label small mb-1">{hasCUI ? 'Adjuntar PDF (reinicio)' : 'Adjuntar documento (reinicio)'}</label>
+                                                <input
+                                                    type="file"
+                                                    name="archivo_reinicio"
+                                                    accept={hasCUI ? '.pdf' : FILE_ACCEPT}
+                                                    className={`form-control form-control-sm ${errors.archivo_reinicio ? 'is-invalid' : ''}`}
+                                                    onChange={e => setData('archivo_reinicio', e.target.files?.[0] || null)}
+                                                />
+                                                {method === 'PUT' && initialData.archivo_reinicio_url && (
+                                                    <div className="mt-2 small">
+                                                        <a href={initialData.archivo_reinicio_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                                                            Ver archivo actual <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                {errors.archivo_reinicio && <div className="invalid-feedback d-block">{errors.archivo_reinicio}</div>}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
                         </div>
                     </>
                 )}
-                {!isEspecialistasEjecucion && (
-                    <>
+                <>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">FECHA DE INICIO *</label>
                             <input
@@ -313,24 +362,27 @@ export default function ExperienciaForm({
                             <label className="form-label fw-medium">TOTAL DE DIAS</label>
                             <input type="text" className="form-control bg-light" value={totalDias ?? ''} readOnly />
                         </div>
-                        <div className="col-md-4">
-                            <label className="form-label fw-medium">TRASLAPE</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                className="form-control"
-                                value={data.traslape}
-                                onChange={e => handleTraslapeChange(e.target.value)}
-                            />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label fw-medium">TOTAL DE DIAS SIN TRASLAPE</label>
-                            <input type="text" className="form-control bg-light" value={totalDiasSinTraslape != null ? `${totalDiasSinTraslape} Dias Calendario` : ''} readOnly />
-                        </div>
-                    </>
-                )}
-                <div className={!isEspecialistasEjecucion ? 'col-md-6' : 'col-12'}>
+                        {!isProveedorBienes && !isProveedorServicios && !hasCUI && (
+                            <>
+                                <div className="col-md-4">
+                                    <label className="form-label fw-medium">TRASLAPE</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="form-control"
+                                        value={data.traslape}
+                                        onChange={e => handleTraslapeChange(e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-medium">TOTAL DE DIAS SIN TRASLAPE</label>
+                                    <input type="text" className="form-control bg-light" value={totalDiasSinTraslape != null ? `${totalDiasSinTraslape} Dias Calendario` : ''} readOnly />
+                                </div>
+                            </>
+                        )}
+                </>
+                <div className="col-md-6">
                     <label className="form-label fw-medium">{isEspecialistasEjecucion ? 'Monto Contratado *' : 'Monto Neto *'}</label>
                     <input
                         type="text"
@@ -344,12 +396,39 @@ export default function ExperienciaForm({
                 </div>
             </div>
 
-            {isEspecialistasEjecucion ? (
+            {useMultiDocumentos ? (
                 <div className="row g-3 mt-2">
-                    <div className="col-12">
-                        <label className="form-label fw-medium">Documentos</label>
-                        <p className="small text-secondary mb-2">Agregue uno o más documentos. Si el tipo es &quot;Otros&quot;, indique el nombre.</p>
+                    <div className="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <label className="form-label fw-medium mb-0">{isProveedorServicios ? 'Nuevos documentos' : 'Documentos'}</label>
+                            <p className="small text-secondary mb-0">Agregue uno o más documentos. Si el tipo es &quot;Otros&quot;, indique el nombre del archivo.</p>
+                        </div>
                     </div>
+                    {Array.isArray(initialData.documentos_existentes) && initialData.documentos_existentes.length > 0 && (
+                        <div className="col-12">
+                            <div className="p-3 rounded border bg-light bg-opacity-50">
+                                <div className="small fw-semibold mb-2">Documentos actuales</div>
+                                <div className="d-flex flex-column gap-1">
+                                    {initialData.documentos_existentes.map((doc) => (
+                                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="small text-decoration-none">
+                                            {doc.nombre} <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {hasCUI && method === 'PUT' && (!initialData.documentos_existentes || initialData.documentos_existentes.length === 0) && initialData.archivo_contrato_url && (
+                        <div className="col-12">
+                            <div className="p-3 rounded border bg-light bg-opacity-50">
+                                <div className="small fw-semibold mb-2">Archivo principal actual</div>
+                                <a href={initialData.archivo_contrato_url} target="_blank" rel="noopener noreferrer" className="small text-decoration-none">
+                                    {(TIPOS_DOCUMENTO.find(t => t.value === initialData.tipo_documento_adjunto)?.label) || 'Documento adjunto'}
+                                    <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    )}
                     {(data.documentos || []).map((doc, index) => (
                         <div key={index} className="col-12 border rounded-3 p-3 bg-light bg-opacity-50">
                             <div className="row g-2 align-items-end">
@@ -389,7 +468,7 @@ export default function ExperienciaForm({
                                         accept={FILE_ACCEPT}
                                         className={`form-control form-control-sm ${errors[`documentos.${index}.archivo`] ? 'is-invalid' : ''}`}
                                         onChange={e => updateDocumento(index, 'archivo', e.target.files[0] || null)}
-                                        required
+                                        required={method !== 'PUT'}
                                     />
                                     {errors[`documentos.${index}.archivo`] && <div className="invalid-feedback d-block">{errors[`documentos.${index}.archivo`]}</div>}
                                 </div>
@@ -403,7 +482,7 @@ export default function ExperienciaForm({
                     ))}
                     <div className="col-12">
                         <button type="button" className="btn btn-outline-primary btn-sm rounded-pill" onClick={addDocumentoRow}>
-                            <i className="bi bi-plus-lg me-1"></i> Agregar documento
+                            <i className="bi bi-plus-lg me-1"></i> {isProveedorServicios ? 'Agregar más documento' : 'Agregar documento'}
                         </button>
                     </div>
                 </div>

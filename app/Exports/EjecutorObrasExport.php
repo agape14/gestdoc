@@ -55,7 +55,6 @@ class EjecutorObrasExport implements FromCollection, WithHeadings, WithMapping, 
             '# CONTRATO',
             'FECHA DE FIRMA DE CONTRATO',
             'Monto Total (S/.)',
-            'FECHA DE RECEPCION',
             'PLAZO (días)',
             'Fecha de Inicio',
             'Fecha Suspensión',
@@ -86,7 +85,6 @@ class EjecutorObrasExport implements FromCollection, WithHeadings, WithMapping, 
             $obra->numero_contrato ?? '',
             $fecha($obra->fecha_firma_contrato),
             number_format((float)($obra->monto_total ?? 0), 2, '.', ','),
-            $fecha($obra->fecha_recepcion),
             $obra->plazo ?? '',
             $fecha($obra->fecha_inicio),
             $fecha($obra->fecha_suspension),
@@ -104,7 +102,7 @@ class EjecutorObrasExport implements FromCollection, WithHeadings, WithMapping, 
 
     public function styles(Worksheet $sheet)
     {
-        $sheet->getStyle('A1:U1')->applyFromArray([
+        $sheet->getStyle('A1:T1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 11],
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
@@ -122,8 +120,8 @@ class EjecutorObrasExport implements FromCollection, WithHeadings, WithMapping, 
     {
         return [
             'A' => 6, 'B' => 35, 'C' => 30, 'D' => 45, 'E' => 14, 'F' => 16, 'G' => 14, 'H' => 16,
-            'I' => 14, 'J' => 10, 'K' => 14, 'L' => 14, 'M' => 14, 'N' => 14, 'O' => 14, 'P' => 16,
-            'Q' => 16, 'R' => 12, 'S' => 18, 'T' => 18, 'U' => 22,
+            'I' => 10, 'J' => 14, 'K' => 14, 'L' => 14, 'M' => 14, 'N' => 14, 'O' => 14, 'P' => 16,
+            'Q' => 16, 'R' => 12, 'S' => 18, 'T' => 18,
         ];
     }
 
@@ -134,7 +132,7 @@ class EjecutorObrasExport implements FromCollection, WithHeadings, WithMapping, 
                 $sheet = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
                 if ($highestRow > 1) {
-                    $sheet->getStyle('A2:U' . $highestRow)->applyFromArray([
+                    $sheet->getStyle('A2:T' . $highestRow)->applyFromArray([
                         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
                         'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
                     ]);

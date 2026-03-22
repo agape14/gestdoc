@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\RecordShare;
+use Illuminate\Http\Request;
 
 trait HasRoleBasedAccess
 {
@@ -108,5 +109,40 @@ trait HasRoleBasedAccess
     protected function canCreate($user)
     {
         return in_array($user->role, ['Administrador', 'Operador']);
+    }
+
+    /**
+     * Exportación Excel (listados): el operador solo exporta registros que él creó (user_id = su id).
+     * El administrador exporta todos los registros o, si envía user_id, solo los de ese operador.
+     * El visualizador no obtiene filas (0 = 1).
+     */
+    protected function applyExportRoleFilter($query, $user, ?Request $request = null)
+    {
+        if ($user->role === 'Administrador') {
+            if ($request && $request->filled('user_id')) {
+                $query->where('user_id', (int) $request->user_id);
+            }
+
+            return $query;
+        }
+        if ($user->role === 'Operador') {
+            return $query->where('user_id', $user->id);
+        }
+
+        return $query->whereRaw('0 = 1');
+    }
+
+    /**
+     * Exportar un solo registro a Excel: operador solo si es dueño del registro.
+     */
+    protected function assertCanExportOwnedRecord(object $record, $user): void
+    {
+        if ($user->role === 'Administrador') {
+            return;
+        }
+        if ($user->role === 'Operador' && isset($record->user_id) && (int) $record->user_id === (int) $user->id) {
+            return;
+        }
+        abort(403, 'No autorizado para exportar este registro.');
     }
 }

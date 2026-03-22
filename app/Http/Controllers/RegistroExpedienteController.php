@@ -25,6 +25,8 @@ class RegistroExpedienteController extends Controller
         'DEDUCTIVO',
         'ACTUALIZACION_PRECIOS',
         'REFORMULACION',
+        'VALORIZACION',
+        'LIQUIDACION',
     ];
 
     public function index(Request $request)
@@ -66,14 +68,25 @@ class RegistroExpedienteController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = trim((string) $request->search);
+            $searchUpper = mb_strtoupper($search);
             $query->where(function ($q) use ($search) {
                 $q->where('proyecto', 'like', '%' . $search . '%')
                     ->orWhere('cui', 'like', '%' . $search . '%')
+                    ->orWhere('etiqueta', 'like', '%' . $search . '%')
+                    ->orWhere('descripcion', 'like', '%' . $search . '%')
                     ->orWhere('numero_folio', 'like', '%' . $search . '%')
                     ->orWhere('resolucion', 'like', '%' . $search . '%')
-                    ->orWhere('tipo_inversion', 'like', '%' . $search . '%');
+                    ->orWhere('tipo_inversion', 'like', '%' . $search . '%')
+                    ->orWhere('tipo_accion', 'like', '%' . $search . '%')
+                    ->orWhere('estado', 'like', '%' . $search . '%');
             });
+
+            if (str_contains($searchUpper, 'ARCHIV')) {
+                $query->where('estado', 'ARCHIVADO');
+            } elseif (str_contains($searchUpper, 'CURSO')) {
+                $query->where('estado', 'EN CURSO');
+            }
         }
 
         $operadores = $user->role === 'Administrador'
@@ -106,25 +119,33 @@ class RegistroExpedienteController extends Controller
     {
         $user = auth()->user();
         $query = RegistroExpediente::query();
-        $query = $this->applyRoleBasedFilter($query, $user);
 
         if ($request->filled('folder_id')) {
             $query->where('folder_id', (int) $request->folder_id);
         } else {
             $query->whereNull('folder_id');
         }
-        if ($request->filled('user_id') && $user->role === 'Administrador') {
-            $query->where('user_id', $request->user_id);
-        }
+        $query = $this->applyExportRoleFilter($query, $user, $request);
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = trim((string) $request->search);
+            $searchUpper = mb_strtoupper($search);
             $query->where(function ($q) use ($search) {
                 $q->where('proyecto', 'like', '%' . $search . '%')
                     ->orWhere('cui', 'like', '%' . $search . '%')
+                    ->orWhere('etiqueta', 'like', '%' . $search . '%')
+                    ->orWhere('descripcion', 'like', '%' . $search . '%')
                     ->orWhere('numero_folio', 'like', '%' . $search . '%')
                     ->orWhere('resolucion', 'like', '%' . $search . '%')
-                    ->orWhere('tipo_inversion', 'like', '%' . $search . '%');
+                    ->orWhere('tipo_inversion', 'like', '%' . $search . '%')
+                    ->orWhere('tipo_accion', 'like', '%' . $search . '%')
+                    ->orWhere('estado', 'like', '%' . $search . '%');
             });
+
+            if (str_contains($searchUpper, 'ARCHIV')) {
+                $query->where('estado', 'ARCHIVADO');
+            } elseif (str_contains($searchUpper, 'CURSO')) {
+                $query->where('estado', 'EN CURSO');
+            }
         }
 
         $expedientes = $query->orderByRaw('COALESCE(etiqueta, "") ASC')->orderBy('id')->get();
@@ -178,6 +199,7 @@ class RegistroExpedienteController extends Controller
         $prefillTipoInversion = '';
         $prefillEtiqueta = '';
         $prefillDescripcion = '';
+        $prefillEstado = 'EN CURSO';
         $lockPrefill = false;
 
         if ($request->filled('prefill_from')) {
@@ -193,6 +215,7 @@ class RegistroExpedienteController extends Controller
                     $prefillProyecto = $src->proyecto ?? $prefillProyecto;
                     $prefillCui = $src->cui ?? $prefillCui;
                     $prefillDescripcion = $src->descripcion ?? '';
+                    $prefillEstado = $src->estado ?: ($src->tipo_accion === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO');
                     $lockPrefill = $tipoAccion !== null;
                 }
             }
@@ -209,6 +232,7 @@ class RegistroExpedienteController extends Controller
             'prefillTipoInversion' => $prefillTipoInversion,
             'prefillEtiqueta' => $prefillEtiqueta,
             'prefillDescripcion' => $prefillDescripcion,
+            'prefillEstado' => $prefillEstado,
             'tipoAccion' => $tipoAccion,
             'lockPrefill' => $lockPrefill,
         ]);
@@ -247,6 +271,7 @@ class RegistroExpedienteController extends Controller
                 'anio' => $e->anio,
                 'tipo_unidad_conservacion' => $e->tipo_unidad_conservacion,
                 'resolucion' => $e->resolucion,
+                'estado' => $e->estado ?: ($e->tipo_accion === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO'),
                 'fecha_aprobacion' => $e->fecha_aprobacion?->format('Y-m-d'),
                 'tiene_actualizacion_precios' => $e->tiene_actualizacion_precios,
                 'tiene_reformulacion' => $e->tiene_reformulacion,
@@ -277,6 +302,7 @@ class RegistroExpedienteController extends Controller
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
             'tipo_accion' => 'nullable|string|in:' . implode(',', self::TIPOS_ACCION),
+            'estado' => 'nullable|string|in:EN CURSO,ARCHIVADO',
             'monto_o' => 'nullable|numeric',
             'monto_p' => 'nullable|numeric',
             'monto_r' => 'nullable|numeric',
@@ -343,6 +369,7 @@ class RegistroExpedienteController extends Controller
             'anio' => $e->anio,
             'tipo_unidad_conservacion' => $e->tipo_unidad_conservacion,
             'resolucion' => $e->resolucion,
+                'estado' => $e->estado ?: ($e->tipo_accion === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO'),
             'fecha_aprobacion' => $e->fecha_aprobacion?->format('Y-m-d'),
             'tiene_actualizacion_precios' => $e->tiene_actualizacion_precios,
             'tiene_reformulacion' => $e->tiene_reformulacion,
@@ -389,6 +416,7 @@ class RegistroExpedienteController extends Controller
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
             'tipo_accion' => 'nullable|string|in:' . implode(',', self::TIPOS_ACCION),
+            'estado' => 'nullable|string|in:EN CURSO,ARCHIVADO',
             'monto_o' => 'nullable|numeric',
             'monto_p' => 'nullable|numeric',
             'monto_r' => 'nullable|numeric',
@@ -484,6 +512,12 @@ class RegistroExpedienteController extends Controller
         } else {
             unset($data['monto_r']);
         }
+
+        $estado = strtoupper(trim((string) ($request->input('estado') ?? '')));
+        if ($estado !== 'EN CURSO' && $estado !== 'ARCHIVADO') {
+            $estado = (($data['tipo_accion'] ?? null) === 'LIQUIDACION') ? 'ARCHIVADO' : 'EN CURSO';
+        }
+        $data['estado'] = $estado;
 
         return $data;
     }

@@ -137,9 +137,15 @@ export default function ModuleIndex({ title, description, items, columns, create
         setShowDocumentsModal(true);
     };
 
+    const isLikelyPdf = (pathOrUrl) => {
+        const s = String(pathOrUrl || '');
+        return /\.pdf(\?|$)/i.test(s) || s.includes('application/pdf');
+    };
+
     const openPdfInModal = (label, path, url) => {
-        setPdfModalTitle(`${breadcrumbTitle} - ${label}`);
-        setPdfModalUrl(url || (path ? `/storage/${path}` : ''));
+        const resolved = url || (path ? `/storage/${path}` : '');
+        setPdfModalTitle(`${breadcrumbTitle} — ${label}`);
+        setPdfModalUrl(resolved);
         setShowPdfModal(true);
     };
 
@@ -200,8 +206,6 @@ export default function ModuleIndex({ title, description, items, columns, create
                 </div>
             )}
 
-            {renderHeader && <div className="mb-4">{renderHeader}</div>}
-
             {hasFolders && breadcrumb && breadcrumb.length > 0 && (
                 <nav aria-label="breadcrumb" className="mb-3">
                     <ol className="breadcrumb bg-body-tertiary rounded-3 p-3">
@@ -250,6 +254,33 @@ export default function ModuleIndex({ title, description, items, columns, create
                     <h2 className="fw-bold text-body mb-0">{title}</h2>
                     <p className="text-secondary mb-0">{description}</p>
                 </div>
+                {currentUserRole !== 'Visualizador' && (
+                    <div className="d-flex gap-2 flex-wrap align-items-center justify-content-end">
+                        {hasMove && moveBulkRouteName && (
+                            <button
+                                type="button"
+                                className="btn btn-outline-info shadow-sm rounded-pill px-4"
+                                onClick={openBulkMoveModal}
+                                disabled={selectedIds.length === 0}
+                                title={selectedIds.length === 0 ? 'Seleccione al menos un registro' : `Mover ${selectedIds.length} registro(s) a otra carpeta`}
+                            >
+                                <i className="bi bi-folder-symlink me-2"></i>
+                                Mover seleccionados ({selectedIds.length})
+                            </button>
+                        )}
+                        {renderHeader}
+                        {(createRoute || onCreate) && (
+                            <button
+                                type="button"
+                                onClick={() => (onCreate ? onCreate() : router.visit(createRoute))}
+                                className="btn btn-success shadow-sm rounded-pill px-4"
+                            >
+                                <i className="bi bi-plus-lg me-2"></i>
+                                Nuevo registro
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {
@@ -279,30 +310,6 @@ export default function ModuleIndex({ title, description, items, columns, create
                     </div>
                 )
             }
-
-            <div className="d-flex justify-content-end mb-4 flex-wrap gap-2">
-                {hasMove && moveBulkRouteName && (
-                    <button
-                        type="button"
-                        className="btn btn-outline-info shadow-sm rounded-pill px-4"
-                        onClick={openBulkMoveModal}
-                        disabled={selectedIds.length === 0}
-                        title={selectedIds.length === 0 ? 'Seleccione al menos un registro' : `Mover ${selectedIds.length} registro(s) a otra carpeta`}
-                    >
-                        <i className="bi bi-folder-symlink me-2"></i>
-                        Mover seleccionados ({selectedIds.length})
-                    </button>
-                )}
-                {(createRoute || onCreate) && currentUserRole !== 'Visualizador' && (
-                    <button
-                        onClick={() => onCreate ? onCreate() : router.visit(createRoute)}
-                        className="btn btn-primary shadow-sm rounded-pill px-4"
-                    >
-                        <i className="bi bi-plus-lg me-2"></i>
-                        Nuevo Registro
-                    </button>
-                )}
-            </div>
 
             <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-body">
                 <div className="row g-3 align-items-end">
@@ -548,7 +555,7 @@ export default function ModuleIndex({ title, description, items, columns, create
 
             {showDocumentsModal && (
                 <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-                    <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                         <div className="modal-content border-0 shadow-lg rounded-4">
                             <div className="modal-header border-bottom">
                                 <h5 className="modal-title fw-bold">{breadcrumbTitle} — Documentos adjuntos</h5>
@@ -556,14 +563,29 @@ export default function ModuleIndex({ title, description, items, columns, create
                             </div>
                             <div className="modal-body">
                                 <ul className="list-group list-group-flush">
-                                    {listDocumentLinks.map((doc, idx) => (
-                                        <li key={idx} className="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
-                                            <span>{doc.label}</span>
-                                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setShowDocumentsModal(false); openPdfInModal(doc.label, doc.path, doc.url); }}>
-                                                <i className="bi bi-file-earmark-pdf me-1"></i> Ver PDF
-                                            </button>
-                                        </li>
-                                    ))}
+                                    {listDocumentLinks.map((doc, idx) => {
+                                        const href = doc.url || (doc.path ? `/storage/${doc.path}` : '#');
+                                        const pdf = isLikelyPdf(doc.path) || isLikelyPdf(doc.url);
+                                        return (
+                                            <li key={idx} className="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 px-0 py-2">
+                                                <span className="text-break me-2">{doc.label}</span>
+                                                <div className="d-flex flex-wrap gap-2">
+                                                    {pdf ? (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-primary"
+                                                            onClick={() => openPdfInModal(doc.label, doc.path, doc.url)}
+                                                        >
+                                                            <i className="bi bi-eye me-1"></i> Vista previa
+                                                        </button>
+                                                    ) : null}
+                                                    <a href={href} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-secondary">
+                                                        <i className="bi bi-box-arrow-up-right me-1"></i> Abrir archivo
+                                                    </a>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </div>
                             <div className="modal-footer border-0">
@@ -574,7 +596,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                 </div>
             )}
 
-            <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} />
+            <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} large />
 
             {(movingItem || movingIds.length > 0) && hasMove && (
                 <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>

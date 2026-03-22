@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
  * Panel desplegable reutilizable para ModuleIndex: muestra campos adicionales y botones Editar / Eliminar.
  * Clic en la fila para expandir. Responsive: datos principales en tabla, resto + acciones aquí.
  */
-export default function ModuleIndexRowDetail({ item, userRole, fields, editHref, deleteRouteName, onDelete, documentButton = null, extraActions = null }) {
+export default function ModuleIndexRowDetail({ item, userRole, fields, editHref, deleteRouteName, onDelete, documentButton = null, extraActions = null, truncateLongText = true }) {
     const auth = usePage().props?.auth;
 
     const canEdit = () => {
@@ -48,41 +48,56 @@ export default function ModuleIndexRowDetail({ item, userRole, fields, editHref,
                             <div key={i} className="col-12 col-sm-6">
                                 <span className="text-secondary fw-medium">{f.label}:</span>{' '}
                                 <span className="text-break">
-                                    {typeof f.value === 'string' && f.value.length > 80 ? f.value.slice(0, 80) + '…' : f.value}
+                                    {typeof f.value === 'string' && truncateLongText && !f.noTruncate && f.value.length > 80 ? f.value.slice(0, 80) + '…' : f.value}
                                 </span>
                             </div>
                         )
                     ))}
                 </div>
             </div>
-            <div className="col-12 col-lg-4 d-flex flex-wrap align-items-center gap-1 justify-content-lg-end">
+            <div className="col-12 col-lg-4">
                 {userRole === 'Visualizador' ? (
                     <span className="badge bg-secondary">Solo lectura</span>
                 ) : (
-                    <>
+                    <div className="d-flex flex-column gap-2 align-items-stretch align-items-lg-end">
                         {documentButton}
-                        {canEdit() && Array.isArray(extraActions) && extraActions.map((a, idx) => (
-                            a.href ? (
-                                <Link key={idx} href={a.href} className={`btn btn-sm text-nowrap px-2 py-1 shadow-sm ${a.btnClass || 'btn-outline-secondary'}`} style={{ fontSize: '0.72rem', fontWeight: 600 }} onClick={(e) => e.stopPropagation()} title={a.title || a.label}>
-                                    {a.label}
+
+                        {canEdit() && Array.isArray(extraActions) && extraActions.some((a) => a.href) && (
+                            <div className="d-flex flex-wrap gap-1 justify-content-start justify-content-lg-end">
+                                {extraActions.map((a, idx) => (
+                                    a.href ? (
+                                        <Link
+                                            key={idx}
+                                            href={a.href}
+                                            className={`btn btn-sm text-nowrap px-2 py-1 shadow-sm ${a.btnClass || 'btn-outline-secondary'}`}
+                                            style={{ fontSize: '0.72rem', fontWeight: 600 }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            title={a.title || a.label}
+                                        >
+                                            {a.label}
+                                        </Link>
+                                    ) : null
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="d-flex flex-wrap gap-2 justify-content-start justify-content-lg-end">
+                            {canEdit() && editHref && (
+                                <Link href={editHref} className="btn btn-sm btn-outline-primary" onClick={(e) => e.stopPropagation()}>
+                                    <i className="bi bi-pencil me-1"></i> Editar
                                 </Link>
-                            ) : null
-                        ))}
-                        {canEdit() && editHref && (
-                            <Link href={editHref} className="btn btn-sm btn-outline-primary" onClick={(e) => e.stopPropagation()}>
-                                <i className="bi bi-pencil me-1"></i> Editar
-                            </Link>
-                        )}
-                        {canDeleteItem() && (onDelete || deleteRouteName) && (
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteClick(); }}
-                            >
-                                <i className="bi bi-trash me-1"></i> Eliminar
-                            </button>
-                        )}
-                    </>
+                            )}
+                            {canDeleteItem() && (onDelete || deleteRouteName) && (
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(); }}
+                                >
+                                    <i className="bi bi-trash me-1"></i> Eliminar
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

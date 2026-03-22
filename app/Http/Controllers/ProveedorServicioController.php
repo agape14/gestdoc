@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProveedorServicio;
+use App\Models\ProveedorServicioDocumento;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -120,22 +121,41 @@ class ProveedorServicioController extends Controller
     public function export(Request $request)
     {
         $user = auth()->user();
-        $query = ProveedorServicio::query();
-        $query = $this->applyRoleBasedFilter($query, $user);
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
 
+        $query = ProveedorServicio::query()->active();
+
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $query = $this->applyExportRoleFilter($query, $user, $request);
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('titulo', 'like', '%' . $request->search . '%')
+                    ->orWhere('entidad', 'like', '%' . $request->search . '%')
+                    ->orWhere('especialidad', 'like', '%' . $request->search . '%')
+                    ->orWhere('cliente', 'like', '%' . $request->search . '%')
+                    ->orWhere('objeto_del_contrato', 'like', '%' . $request->search . '%');
+            });
+        }
         if ($request->filled('tipo')) {
             $query->where('categoria', $request->tipo);
         }
-
         if ($request->filled('especialidad')) {
             $query->where('especialidad', $request->especialidad);
         }
 
-        return Excel::download(new ProveedorServiciosExport($query->get()), 'proveedor-servicios.xlsx');
+        $rows = $query->orderBy('id')->get();
+        $filename = 'proveedor-servicios_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+        return Excel::download(new ProveedorServiciosExport($rows), $filename);
     }
 
     public function exportProject(ProveedorServicio $proveedorServicio)
     {
+        $this->assertCanExportOwnedRecord($proveedorServicio, auth()->user());
         return Excel::download(new ProveedorServiciosExport(collect([$proveedorServicio])), "proveedor-servicio_{$proveedorServicio->id}.xlsx");
     }
 
@@ -167,10 +187,15 @@ class ProveedorServicioController extends Controller
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
-            'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
+            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'archivo_suspension' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_reinicio' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos' => 'required|array|min:1',
+            'documentos.*.tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos.*.nombre_otro' => 'nullable|string|max:255',
+            'documentos.*.archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
 
         $data = $this->prepareExperienciaDataServicios($request, null);
@@ -194,6 +219,7 @@ class ProveedorServicioController extends Controller
         }
 
         $servicio = ProveedorServicio::create($data);
+        $this->storeDocumentosFromRequest($request, $servicio);
         $this->recalculateMontoAcumuladoServicios($servicio->folder_id);
         return redirect()->route('proveedor-servicios.index', $servicio->folder_id ? ['folder_id' => $servicio->folder_id] : [])->with('success', 'Registro creado.');
     }
@@ -207,16 +233,19 @@ class ProveedorServicioController extends Controller
             $totalDias = \Carbon\Carbon::parse($fechaInicio)->diffInDays(\Carbon\Carbon::parse($fechaCulminacion)) + 1;
         }
         $totalMeses = $totalDias !== null ? round($totalDias / 30, 2) : null;
-        $traslape = (float) ($request->input('traslape') ?? 0);
+        $traslape = 0.0;
         $totalDiasSinTraslape = $totalDias !== null ? max(0, (int) round($totalDias - $traslape)) : null;
+
+        $fechaSuspension = parse_fecha_dd_mm_yyyy($request->input('fecha_suspension'));
+        $fechaReinicio = parse_fecha_dd_mm_yyyy($request->input('fecha_reinicio'));
 
         $data = [
             'cliente' => $request->input('cliente'),
             'objeto_del_contrato' => $request->input('objeto_del_contrato'),
             'numero_contrato_os_comprobante' => $request->input('numero_contrato_os_comprobante'),
             'fecha_inicio' => $fechaInicio,
-            'fecha_suspension' => parse_fecha_dd_mm_yyyy($request->input('fecha_suspension')),
-            'fecha_reinicio' => parse_fecha_dd_mm_yyyy($request->input('fecha_reinicio')),
+            'fecha_suspension' => $fechaSuspension,
+            'fecha_reinicio' => $fechaReinicio,
             'fecha_culminacion' => $fechaCulminacion,
             'total_meses' => $totalMeses,
             'total_dias' => $totalDias,
@@ -226,13 +255,77 @@ class ProveedorServicioController extends Controller
         ];
 
         $basePath = 'expedientes/proveedor_servicios/experiencia';
-        $data['tipo_documento_adjunto'] = $request->input('tipo_documento_adjunto');
-        if ($request->hasFile('archivo_contrato')) {
+        $firstDoc = $request->input('documentos.0.tipo_documento_adjunto');
+        if ($firstDoc) {
+            $data['tipo_documento_adjunto'] = $firstDoc;
+        } else {
+            $data['tipo_documento_adjunto'] = $request->input('tipo_documento_adjunto');
+        }
+        if ($request->hasFile('documentos.0.archivo')) {
+            $data['archivo_contrato'] = $request->file('documentos.0.archivo')->store($basePath . '/adjuntos', 'r2');
+        } elseif ($request->hasFile('archivo_contrato')) {
             $data['archivo_contrato'] = $request->file('archivo_contrato')->store($basePath . '/adjuntos', 'r2');
         } elseif ($model) {
             $data['archivo_contrato'] = $model->archivo_contrato;
         }
+
+        if ($request->hasFile('archivo_suspension')) {
+            if ($model && $model->archivo_suspension) {
+                Storage::disk(storage_disk_for_path($model->archivo_suspension))->delete($model->archivo_suspension);
+            }
+            $data['archivo_suspension'] = $request->file('archivo_suspension')->store($basePath . '/suspension', 'r2');
+        } elseif ($model) {
+            if (!$fechaSuspension) {
+                if ($model->archivo_suspension) {
+                    Storage::disk(storage_disk_for_path($model->archivo_suspension))->delete($model->archivo_suspension);
+                }
+                $data['archivo_suspension'] = null;
+            } else {
+                $data['archivo_suspension'] = $model->archivo_suspension;
+            }
+        } else {
+            $data['archivo_suspension'] = null;
+        }
+
+        if ($request->hasFile('archivo_reinicio')) {
+            if ($model && $model->archivo_reinicio) {
+                Storage::disk(storage_disk_for_path($model->archivo_reinicio))->delete($model->archivo_reinicio);
+            }
+            $data['archivo_reinicio'] = $request->file('archivo_reinicio')->store($basePath . '/reinicio', 'r2');
+        } elseif ($model) {
+            if (!$fechaReinicio) {
+                if ($model->archivo_reinicio) {
+                    Storage::disk(storage_disk_for_path($model->archivo_reinicio))->delete($model->archivo_reinicio);
+                }
+                $data['archivo_reinicio'] = null;
+            } else {
+                $data['archivo_reinicio'] = $model->archivo_reinicio;
+            }
+        } else {
+            $data['archivo_reinicio'] = null;
+        }
+
         return $data;
+    }
+
+    private function storeDocumentosFromRequest(Request $request, ProveedorServicio $servicio): void
+    {
+        $documentos = $request->input('documentos', []);
+        $basePath = 'expedientes/proveedor_servicios/experiencia/adjuntos';
+        foreach ($documentos as $index => $doc) {
+            if (!$request->hasFile("documentos.$index.archivo")) {
+                continue;
+            }
+            $file = $request->file("documentos.$index.archivo");
+            $tipo = $doc['tipo_documento_adjunto'] ?? 'DOCUMENTO';
+            $nombreOtro = trim((string) ($doc['nombre_otro'] ?? ''));
+            $nombre = $tipo === 'OTROS' && $nombreOtro !== '' ? $nombreOtro : str_replace('_', ' ', $tipo);
+            ProveedorServicioDocumento::create([
+                'proveedor_servicio_id' => $servicio->id,
+                'nombre' => $nombre,
+                'file_path' => $file->store($basePath, 'r2'),
+            ]);
+        }
     }
 
     private function recalculateMontoAcumuladoServicios($folderId): void
@@ -258,6 +351,7 @@ class ProveedorServicioController extends Controller
         }
 
         $s = $proveedorServicio;
+        $s->load('documentos');
         $servicio = [
             'id' => $s->id,
             'folder_id' => $s->folder_id,
@@ -278,6 +372,14 @@ class ProveedorServicioController extends Controller
             'archivo_contrato' => $s->archivo_contrato,
             'tipo_documento_adjunto' => $s->tipo_documento_adjunto,
             'archivo_contrato_url' => $s->archivo_contrato_url,
+            'archivo_suspension_url' => $s->archivo_suspension_url,
+            'archivo_reinicio_url' => $s->archivo_reinicio_url,
+            'documentos_existentes' => $s->documentos->map(fn ($d) => [
+                'id' => $d->id,
+                'nombre' => $d->nombre,
+                'url' => $d->url,
+            ])->values(),
+            'documentos' => [['tipo_documento_adjunto' => '', 'nombre_otro' => '', 'archivo' => null]],
         ];
         return Inertia::render('ProveedorServicios/Edit', [
             'servicio' => $servicio,
@@ -299,14 +401,20 @@ class ProveedorServicioController extends Controller
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
-            'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
             'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
+            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'archivo_suspension' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_reinicio' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos' => 'nullable|array',
+            'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos.*.nombre_otro' => 'nullable|string|max:255',
+            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
 
         $data = $this->prepareExperienciaDataServicios($request, $proveedorServicio);
         $proveedorServicio->update($data);
+        $this->storeDocumentosFromRequest($request, $proveedorServicio);
         $this->recalculateMontoAcumuladoServicios($proveedorServicio->folder_id);
         return redirect()->route('proveedor-servicios.index', $proveedorServicio->folder_id ? ['folder_id' => $proveedorServicio->folder_id] : [])->with('success', 'Registro actualizado.');
     }
@@ -319,7 +427,13 @@ class ProveedorServicioController extends Controller
         }
 
         $folderId = $proveedorServicio->folder_id;
-        foreach (['archivo_contrato'] as $field) {
+        $proveedorServicio->load('documentos');
+        foreach ($proveedorServicio->documentos as $doc) {
+            if ($doc->file_path) {
+                Storage::disk(storage_disk_for_path($doc->file_path))->delete($doc->file_path);
+            }
+        }
+        foreach (['archivo_contrato', 'archivo_suspension', 'archivo_reinicio'] as $field) {
             $path = $proveedorServicio->$field ?? null;
             if ($path) {
                 Storage::disk(storage_disk_for_path($path))->delete($path);

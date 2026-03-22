@@ -11,6 +11,8 @@ const OPCIONES_TIPO_ACCION = [
     { value: 'DEDUCTIVO', label: 'DEDUCTIVO' },
     { value: 'ACTUALIZACION_PRECIOS', label: 'ACTUALIZACIÓN DE PRECIOS' },
     { value: 'REFORMULACION', label: 'REFORMULACIÓN' },
+    { value: 'VALORIZACION', label: 'VALORIZACIÓN' },
+    { value: 'LIQUIDACION', label: 'LIQUIDACIÓN' },
 ];
 
 function toInputDate(val) {
@@ -35,6 +37,7 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
         cui: expediente?.cui ?? '',
         descripcion: expediente?.descripcion ?? '',
         tipo_accion: expediente?.tipo_accion ?? '',
+        estado: expediente?.estado ?? 'EN CURSO',
         numero_folio: expediente?.numero_folio ?? '',
         tomos: expediente?.tomos ?? '',
         anio: expediente?.anio ?? '',
@@ -160,6 +163,14 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                             <label className="form-label fw-medium">Fecha de aprobación</label>
                             <input type="date" className={`form-control ${errors.fecha_aprobacion ? 'is-invalid' : ''}`} value={data.fecha_aprobacion} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                             {errors.fecha_aprobacion && <div className="invalid-feedback">{errors.fecha_aprobacion}</div>}
+                        </div>
+                        <div className="col-md-3">
+                            <label className="form-label fw-medium">Estado</label>
+                            <select className={`form-select ${errors.estado ? 'is-invalid' : ''}`} value={data.estado} onChange={e => setData('estado', e.target.value)}>
+                                <option value="EN CURSO">EN CURSO</option>
+                                <option value="ARCHIVADO">ARCHIVADO</option>
+                            </select>
+                            {errors.estado && <div className="invalid-feedback">{errors.estado}</div>}
                         </div>
 
                         <div className="col-12 mt-3">

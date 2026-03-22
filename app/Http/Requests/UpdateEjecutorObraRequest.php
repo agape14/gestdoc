@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateEjecutorObraRequest extends FormRequest
 {
@@ -24,7 +25,6 @@ class UpdateEjecutorObraRequest extends FormRequest
             'numero_contrato' => 'required|string|max:100',
             'fecha_firma_contrato' => 'required|date',
             'monto_total' => 'required|numeric|min:0',
-            'fecha_recepcion' => 'nullable|date',
             'plazo' => 'required|integer|min:0',
             'fecha_inicio' => 'nullable|date',
             'fecha_suspension' => 'nullable|date',
@@ -36,16 +36,67 @@ class UpdateEjecutorObraRequest extends FormRequest
             'fecha_entrega_terreno' => 'nullable|date',
             'fecha_recepcion_obra' => 'nullable|date',
             'fecha_aprobacion_liquidacion' => 'nullable|date',
+            'tiene_adicional_obra' => 'nullable|in:SI,NO',
+            'tiene_deductivo_obra' => 'nullable|in:SI,NO',
+            'tiene_aprobacion_acto_resolutivo' => 'nullable|in:SI,NO',
+            'fecha_adicional_obra' => 'required_if:tiene_adicional_obra,SI|nullable|date',
+            'monto_adicional' => 'nullable|numeric|min:0',
+            'plazo_adicional' => 'nullable|integer|min:0',
+            'fecha_deductivo_obra' => 'required_if:tiene_deductivo_obra,SI|nullable|date',
+            'monto_deductivo' => 'nullable|numeric|min:0',
+            'plazo_deductivo' => 'nullable|integer|min:0',
+            'fecha_aprobacion_acto_resolutivo' => 'required_if:tiene_aprobacion_acto_resolutivo,SI|nullable|date',
+            'monto_aprobacion_acto_resolutivo' => 'nullable|numeric|min:0',
+            'plazo_aprobacion_acto_resolutivo' => 'nullable|integer|min:0',
             'archivo_contrato' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_acta_recepcion' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_acta_inicio' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_acta_suspension' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_acta_reinicio' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_acta_entrega_terreno' => 'nullable|file|mimes:pdf|max:25600',
-            'archivo_resolucion_liquidacion' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_acta_adicional' => [
+                'nullable',
+                'file',
+                'mimes:pdf',
+                'max:25600',
+                Rule::requiredIf(function () use ($obra) {
+                    if (($this->input('tiene_adicional_obra') ?? '') !== 'SI') {
+                        return false;
+                    }
+                    return !$obra || !$obra->archivo_acta_adicional;
+                }),
+            ],
+            'archivo_acta_deductivo' => [
+                'nullable',
+                'file',
+                'mimes:pdf',
+                'max:25600',
+                Rule::requiredIf(function () use ($obra) {
+                    if (($this->input('tiene_deductivo_obra') ?? '') !== 'SI') {
+                        return false;
+                    }
+                    return !$obra || !$obra->archivo_acta_deductivo;
+                }),
+            ],
+            'archivo_aprobacion_acto_resolutivo' => [
+                'nullable',
+                'file',
+                'mimes:pdf',
+                'max:25600',
+                Rule::requiredIf(function () use ($obra) {
+                    if (($this->input('tiene_aprobacion_acto_resolutivo') ?? '') !== 'SI') {
+                        return false;
+                    }
+                    return !$obra || !$obra->archivo_aprobacion_acto_resolutivo;
+                }),
+            ],
+            'documentos' => 'nullable|array',
+            'documentos.*.nombre' => 'nullable|string|max:255',
+            'documentos.*.archivo' => 'nullable|file|mimes:pdf|max:25600',
+            'documento_delete_ids' => 'nullable|array',
+            'documento_delete_ids.*' => 'integer|exists:ejecutor_obra_documentos,id',
         ];
 
-        // En edición, archivo_contrato es requerido solo si no hay uno existente
         if (!$obra || !$obra->archivo_contrato) {
             $rules['archivo_contrato'] = 'required|file|mimes:pdf|max:25600';
         }
@@ -54,8 +105,24 @@ class UpdateEjecutorObraRequest extends FormRequest
         if ($tieneSuspension === 'SI' || $tieneSuspension === '1' || $tieneSuspension === true) {
             $rules['fecha_suspension'] = 'required|date';
             $rules['fecha_reinicio'] = 'required|date';
-            $rules['archivo_acta_suspension'] = 'required|file|mimes:pdf|max:25600';
-            $rules['archivo_acta_reinicio'] = 'required|file|mimes:pdf|max:25600';
+            $rules['archivo_acta_suspension'] = [
+                'nullable',
+                'file',
+                'mimes:pdf',
+                'max:25600',
+                Rule::requiredIf(function () use ($obra) {
+                    return !$obra || !$obra->archivo_acta_suspension;
+                }),
+            ];
+            $rules['archivo_acta_reinicio'] = [
+                'nullable',
+                'file',
+                'mimes:pdf',
+                'max:25600',
+                Rule::requiredIf(function () use ($obra) {
+                    return !$obra || !$obra->archivo_acta_reinicio;
+                }),
+            ];
         }
 
         return $rules;
@@ -80,6 +147,9 @@ class UpdateEjecutorObraRequest extends FormRequest
             'fecha_reinicio.required' => 'Si indicó suspensión, la fecha de reinicio es obligatoria.',
             'archivo_acta_suspension.required' => 'Si indicó suspensión, debe subir el acta de suspensión (PDF).',
             'archivo_acta_reinicio.required' => 'Si indicó suspensión, debe subir el acta de reinicio (PDF).',
+            'fecha_adicional_obra.required_if' => 'Si indicó adicional de obra, la fecha es obligatoria.',
+            'fecha_deductivo_obra.required_if' => 'Si indicó deductivo de obra, la fecha es obligatoria.',
+            'fecha_aprobacion_acto_resolutivo.required_if' => 'Si indicó aprobación mediante acto resolutivo, la fecha es obligatoria.',
         ];
     }
 }

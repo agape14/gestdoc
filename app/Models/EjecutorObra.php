@@ -27,6 +27,21 @@ class EjecutorObra extends Model
         'fecha_entrega_terreno',
         'fecha_recepcion_obra',
         'fecha_aprobacion_liquidacion',
+        'tiene_adicional_obra',
+        'tiene_deductivo_obra',
+        'fecha_adicional_obra',
+        'archivo_acta_adicional',
+        'monto_adicional',
+        'plazo_adicional',
+        'fecha_deductivo_obra',
+        'archivo_acta_deductivo',
+        'monto_deductivo',
+        'plazo_deductivo',
+        'tiene_aprobacion_acto_resolutivo',
+        'fecha_aprobacion_acto_resolutivo',
+        'archivo_aprobacion_acto_resolutivo',
+        'monto_aprobacion_acto_resolutivo',
+        'plazo_aprobacion_acto_resolutivo',
         'archivo_contrato',
         'archivo_acta_recepcion',
         'archivo_acta_inicio',
@@ -49,6 +64,12 @@ class EjecutorObra extends Model
         return $this->hasMany(EjecutorObraDocumento::class);
     }
 
+    /** Resoluciones de liquidación (nombre + archivo múltiples) */
+    public function documentosLiquidacion()
+    {
+        return $this->hasMany(EjecutorObraDocumento::class)->where('tipo', 'liquidacion');
+    }
+
     protected $casts = [
         'fecha_firma_contrato' => 'date',
         'fecha_recepcion' => 'date',
@@ -59,6 +80,9 @@ class EjecutorObra extends Model
         'fecha_entrega_terreno' => 'date',
         'fecha_recepcion_obra' => 'date',
         'fecha_aprobacion_liquidacion' => 'date',
+        'fecha_adicional_obra' => 'date',
+        'fecha_deductivo_obra' => 'date',
+        'fecha_aprobacion_acto_resolutivo' => 'date',
         'liquidado_recepcionado' => 'boolean',
         'anulado' => 'boolean',
     ];
@@ -71,6 +95,9 @@ class EjecutorObra extends Model
         'archivo_acta_reinicio_url',
         'archivo_acta_entrega_terreno_url',
         'archivo_resolucion_liquidacion_url',
+        'archivo_acta_adicional_url',
+        'archivo_acta_deductivo_url',
+        'archivo_aprobacion_acto_resolutivo_url',
     ];
 
     public function getArchivoContratoUrlAttribute(): ?string
@@ -106,6 +133,21 @@ class EjecutorObra extends Model
     public function getArchivoResolucionLiquidacionUrlAttribute(): ?string
     {
         return \storage_url_for_path($this->archivo_resolucion_liquidacion);
+    }
+
+    public function getArchivoActaAdicionalUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_acta_adicional);
+    }
+
+    public function getArchivoActaDeductivoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_acta_deductivo);
+    }
+
+    public function getArchivoAprobacionActoResolutivoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_aprobacion_acto_resolutivo);
     }
 
     public function scopeActive($query)

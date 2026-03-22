@@ -126,22 +126,42 @@ class ConsultorObraController extends Controller
 
     public function export(Request $request)
     {
-        $query = ConsultorObra::query()->active();
+        $user = auth()->user();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+
+        $query = ConsultorObra::query()->active()->with('documentos');
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $query = $this->applyExportRoleFilter($query, $user, $request);
 
         if ($request->filled('tipo')) {
             $query->where('categoria', $request->tipo);
         }
-
         if ($request->filled('especialidad')) {
             $query->where('especialidad', $request->especialidad);
         }
+        if ($request->filled('search')) {
+            $s = '%' . $request->search . '%';
+            $query->where(function ($q) use ($s) {
+                $q->where('titulo', 'like', $s)
+                    ->orWhere('entidad', 'like', $s)
+                    ->orWhere('especialidad', 'like', $s)
+                    ->orWhere('objeto_contrato', 'like', $s)
+                    ->orWhere('cui', 'like', $s)
+                    ->orWhere('numero_resolucion', 'like', $s);
+            });
+        }
 
         $filename = 'consultor-obras_' . date('Y-m-d_H-i-s') . '.xlsx';
-        return Excel::download(new ConsultorObrasExport($query->get()), $filename);
+        return Excel::download(new ConsultorObrasExport($query->orderBy('id')->get()), $filename);
     }
 
     public function exportProject(ConsultorObra $consultorObra)
     {
+        $this->assertCanExportOwnedRecord($consultorObra, auth()->user());
         return Excel::download(new ConsultorObrasExport(collect([$consultorObra])), "consultor-obra_{$consultorObra->id}.xlsx");
     }
 

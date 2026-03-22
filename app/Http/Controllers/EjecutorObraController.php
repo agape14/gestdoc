@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\EjecutorObra;
+use App\Models\EjecutorObraDocumento;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
@@ -66,7 +68,7 @@ class EjecutorObraController extends Controller
             });
         }
 
-        $obrasPaginated = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $obrasPaginated = $query->with('documentosLiquidacion')->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
@@ -101,12 +103,13 @@ class EjecutorObraController extends Controller
     {
         $user = auth()->user();
         $query = EjecutorObra::query()->active();
-        $query = $this->applyRoleBasedFilter($query, $user);
+        $query = $this->applyExportRoleFilter($query, $user, $request);
         return Excel::download(new EjecutorObrasExport($query->get()), 'ejecutor-obras_' . date('Y-m-d_H-i-s') . '.xlsx');
     }
 
     public function exportProject(EjecutorObra $ejecutorObra)
     {
+        $this->assertCanExportOwnedRecord($ejecutorObra, auth()->user());
         return Excel::download(new EjecutorObrasExport(collect([$ejecutorObra])), "ejecutor-obra_{$ejecutorObra->id}.xlsx");
     }
 
@@ -138,9 +141,12 @@ class EjecutorObraController extends Controller
             $data['archivo_acta_suspension'],
             $data['archivo_acta_reinicio'],
             $data['archivo_acta_entrega_terreno'],
-            $data['archivo_resolucion_liquidacion'],
-            $data['tiene_suspension']
+            $data['archivo_acta_adicional'],
+            $data['archivo_acta_deductivo'],
+            $data['archivo_aprobacion_acto_resolutivo'],
+            $data['tiene_suspension'],
         );
+        unset($data['documentos']);
 
         $tieneSuspension = $this->isTieneSuspension($request);
         if (!$tieneSuspension) {
@@ -149,6 +155,8 @@ class EjecutorObraController extends Controller
             $data['archivo_acta_suspension'] = null;
             $data['archivo_acta_reinicio'] = null;
         }
+
+        $this->applyEjecutorObraCondicionales($request, $data);
 
         $data['user_id'] = auth()->id();
         if ($request->filled('folder_id')) {
@@ -162,6 +170,7 @@ class EjecutorObraController extends Controller
 
         $obra = EjecutorObra::create($data);
         $this->storeArchivos($request, $obra, $tieneSuspension);
+        $this->syncDocumentosLiquidacion($request, $obra);
 
         $folderId = $request->filled('folder_id') ? (int) $request->folder_id : ($obra->folder_id ?? null);
         return redirect()->route('ejecutor-obra.index', $folderId ? ['folder_id' => $folderId] : [])->with('success', 'Registro creado.');
@@ -173,6 +182,8 @@ class EjecutorObraController extends Controller
         if (!$this->canEdit($ejecutorObra, $user)) {
             return redirect()->route('ejecutor-obra.index')->with('error', 'No tienes permiso para editar este registro.');
         }
+        $ejecutorObra->load('documentosLiquidacion');
+
         return Inertia::render('EjecutorObra/Edit', [
             'obra' => $ejecutorObra,
             'folderId' => $ejecutorObra->folder_id,
@@ -195,9 +206,15 @@ class EjecutorObraController extends Controller
             $data['archivo_acta_suspension'],
             $data['archivo_acta_reinicio'],
             $data['archivo_acta_entrega_terreno'],
-            $data['archivo_resolucion_liquidacion'],
-            $data['tiene_suspension']
+            $data['archivo_acta_adicional'],
+            $data['archivo_acta_deductivo'],
+            $data['archivo_aprobacion_acto_resolutivo'],
+            $data['tiene_suspension'],
         );
+        unset($data['documentos']);
+        if (isset($data['documento_delete_ids'])) {
+            unset($data['documento_delete_ids']);
+        }
 
         $tieneSuspension = $this->isTieneSuspension($request);
         if (!$tieneSuspension) {
@@ -207,12 +224,25 @@ class EjecutorObraController extends Controller
             $data['archivo_acta_reinicio'] = null;
         }
 
+        $this->applyEjecutorObraCondicionales($request, $data);
+
         $data['liquidado_recepcionado'] = filter_var($request->input('liquidado_recepcionado'), FILTER_VALIDATE_BOOLEAN);
         $this->computeMontoNeto($data);
 
+        $pathsAntes = [
+            'archivo_acta_adicional' => $ejecutorObra->archivo_acta_adicional,
+            'archivo_acta_deductivo' => $ejecutorObra->archivo_acta_deductivo,
+            'archivo_aprobacion_acto_resolutivo' => $ejecutorObra->archivo_aprobacion_acto_resolutivo,
+        ];
+
         $ejecutorObra->fill($data);
         $ejecutorObra->save();
+
+        $this->deleteArchivosSiDesactivaFlags($request, $pathsAntes);
+
+        $ejecutorObra->refresh();
         $this->storeArchivos($request, $ejecutorObra, $tieneSuspension);
+        $this->syncDocumentosLiquidacion($request, $ejecutorObra);
 
         return redirect()->back()->with('success', 'Registro actualizado.');
     }
@@ -230,6 +260,106 @@ class EjecutorObraController extends Controller
         return $v === 'SI' || $v === '1' || $v === true;
     }
 
+    private function isRespuestaSi(?string $value): bool
+    {
+        return $value === 'SI' || $value === '1';
+    }
+
+    /**
+     * Limpia fechas/montos/archivos en BD cuando la respuesta condicional es NO.
+     */
+    private function applyEjecutorObraCondicionales(Request $request, array &$data): void
+    {
+        if (!$this->isRespuestaSi($request->input('tiene_adicional_obra'))) {
+            $data['fecha_adicional_obra'] = null;
+            $data['monto_adicional'] = null;
+            $data['plazo_adicional'] = null;
+            $data['archivo_acta_adicional'] = null;
+        }
+        if (!$this->isRespuestaSi($request->input('tiene_deductivo_obra'))) {
+            $data['fecha_deductivo_obra'] = null;
+            $data['monto_deductivo'] = null;
+            $data['plazo_deductivo'] = null;
+            $data['archivo_acta_deductivo'] = null;
+        }
+        if (!$this->isRespuestaSi($request->input('tiene_aprobacion_acto_resolutivo'))) {
+            $data['fecha_aprobacion_acto_resolutivo'] = null;
+            $data['monto_aprobacion_acto_resolutivo'] = null;
+            $data['plazo_aprobacion_acto_resolutivo'] = null;
+            $data['archivo_aprobacion_acto_resolutivo'] = null;
+        }
+    }
+
+    /**
+     * Elimina del almacenamiento los PDFs de bloques que pasaron a NO (tras guardar null en BD).
+     */
+    private function deleteArchivosSiDesactivaFlags(Request $request, array $pathsAntes): void
+    {
+        $pairs = [
+            'tiene_adicional_obra' => 'archivo_acta_adicional',
+            'tiene_deductivo_obra' => 'archivo_acta_deductivo',
+            'tiene_aprobacion_acto_resolutivo' => 'archivo_aprobacion_acto_resolutivo',
+        ];
+        foreach ($pairs as $flag => $field) {
+            if (!$this->isRespuestaSi($request->input($flag)) && !empty($pathsAntes[$field])) {
+                try {
+                    Storage::disk(storage_disk_for_path($pathsAntes[$field]))->delete($pathsAntes[$field]);
+                } catch (\Throwable $e) {
+                    Log::warning('EjecutorObra deleteArchivosSiDesactivaFlags', ['field' => $field, 'message' => $e->getMessage()]);
+                }
+            }
+        }
+    }
+
+    private function syncDocumentosLiquidacion(Request $request, EjecutorObra $obra): void
+    {
+        $deleteIds = $request->input('documento_delete_ids', []);
+        if (is_array($deleteIds) && $deleteIds !== []) {
+            $docs = EjecutorObraDocumento::query()
+                ->where('ejecutor_obra_id', $obra->id)
+                ->where('tipo', 'liquidacion')
+                ->whereIn('id', $deleteIds)
+                ->get();
+            foreach ($docs as $doc) {
+                try {
+                    Storage::disk(storage_disk_for_path($doc->file_path))->delete($doc->file_path);
+                } catch (\Throwable $e) {
+                    Log::warning('EjecutorObra syncDocumentosLiquidacion delete', ['id' => $doc->id, 'message' => $e->getMessage()]);
+                }
+                $doc->delete();
+            }
+        }
+
+        $documentos = $request->input('documentos', []);
+        if (!is_array($documentos)) {
+            return;
+        }
+        $basePath = 'expedientes/' . self::R2_BASE . '/resoluciones_liquidacion';
+        foreach ($documentos as $index => $doc) {
+            if (!$request->hasFile("documentos.{$index}.archivo")) {
+                continue;
+            }
+            $nombre = is_array($doc) ? ($doc['nombre'] ?? '') : '';
+            try {
+                $file = $request->file("documentos.{$index}.archivo");
+                $path = $file->store($basePath, 'r2');
+                EjecutorObraDocumento::create([
+                    'ejecutor_obra_id' => $obra->id,
+                    'nombre' => $nombre !== '' ? $nombre : ($file->getClientOriginalName() ?: 'Documento'),
+                    'file_path' => $path,
+                    'tipo' => 'liquidacion',
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('EjecutorObra syncDocumentosLiquidacion upload', [
+                    'ejecutor_obra_id' => $obra->id,
+                    'index' => $index,
+                    'message' => $e->getMessage(),
+                ]);
+                throw $e;
+            }
+        }
+    }
+
     private function storeArchivos(Request $request, EjecutorObra $obra, bool $tieneSuspension): void
     {
         $base = 'expedientes/' . self::R2_BASE;
@@ -240,7 +370,15 @@ class EjecutorObraController extends Controller
             'archivo_acta_suspension' => $base . '/actas_suspension',
             'archivo_acta_reinicio' => $base . '/actas_reinicio',
             'archivo_acta_entrega_terreno' => $base . '/actas_entrega_terreno',
-            'archivo_resolucion_liquidacion' => $base . '/resoluciones_liquidacion',
+            'archivo_acta_adicional' => $base . '/actas_adicional',
+            'archivo_acta_deductivo' => $base . '/actas_deductivo',
+            'archivo_aprobacion_acto_resolutivo' => $base . '/aprobaciones_acto_resolutivo',
+        ];
+
+        $flagPorArchivo = [
+            'archivo_acta_adicional' => 'tiene_adicional_obra',
+            'archivo_acta_deductivo' => 'tiene_deductivo_obra',
+            'archivo_aprobacion_acto_resolutivo' => 'tiene_aprobacion_acto_resolutivo',
         ];
 
         $updates = [];
@@ -257,6 +395,13 @@ class EjecutorObraController extends Controller
                     continue;
                 }
             }
+
+            if (isset($flagPorArchivo[$field])) {
+                if (!$this->isRespuestaSi($request->input($flagPorArchivo[$field]))) {
+                    continue;
+                }
+            }
+
             if (!$request->hasFile($field)) {
                 continue;
             }

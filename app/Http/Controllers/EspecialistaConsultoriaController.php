@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\EspecialistasConsultoriaExport;
 use App\Models\EspecialistaConsultoria;
+use App\Models\EspecialistaConsultoriaDocumento;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 
@@ -20,9 +23,6 @@ class EspecialistaConsultoriaController extends Controller
     {
         $user = auth()->user();
         $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
-        $effectiveUserId = $user->role === 'Administrador'
-            ? ($request->filled('user_id') ? (int) $request->user_id : null)
-            : $user->id;
 
         if ($folderId) {
             $currentFolder = Folder::visibleForModuleUser(self::MODULE, $user)->findOrFail($folderId);
@@ -49,9 +49,12 @@ class EspecialistaConsultoriaController extends Controller
             $query->where('user_id', $request->user_id);
         }
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->search . '%')
-                  ->orWhere('especialidad', 'like', '%' . $request->search . '%');
+            $s = '%' . $request->search . '%';
+            $query->where(function ($q) use ($s) {
+                $q->where('nombre', 'like', $s)
+                    ->orWhere('especialidad', 'like', $s)
+                    ->orWhere('cliente', 'like', $s)
+                    ->orWhere('objeto_del_contrato', 'like', $s);
             });
         }
         if ($request->filled('tipo')) {
@@ -123,6 +126,37 @@ class EspecialistaConsultoriaController extends Controller
         ]);
     }
 
+    public function export(Request $request)
+    {
+        $user = auth()->user();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+
+        $query = EspecialistaConsultoria::query()->active();
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $query = $this->applyExportRoleFilter($query, $user, $request);
+        if ($request->filled('search')) {
+            $s = '%' . $request->search . '%';
+            $query->where(function ($q) use ($s) {
+                $q->where('nombre', 'like', $s)
+                    ->orWhere('especialidad', 'like', $s)
+                    ->orWhere('cliente', 'like', $s)
+                    ->orWhere('objeto_del_contrato', 'like', $s);
+            });
+        }
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->tipo);
+        }
+
+        $rows = $query->orderBy('id')->get();
+        $filename = 'especialistas-consultoria_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+        return Excel::download(new EspecialistasConsultoriaExport($rows), $filename);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -134,11 +168,23 @@ class EspecialistaConsultoriaController extends Controller
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
-            'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
+            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
+            'documentos' => 'required|array|min:1',
+            'documentos.*.tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos.*.nombre_otro' => 'nullable|string|max:255',
+            'documentos.*.archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
+        foreach ($request->input('documentos', []) as $i => $doc) {
+            if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && empty(trim($doc['nombre_otro'] ?? ''))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "documentos.{$i}.nombre_otro" => ['El nombre del documento es obligatorio cuando el tipo es Otros.'],
+                ]);
+            }
+        }
 
         $data = $this->prepareExperienciaData($request, null);
         $data['user_id'] = auth()->id();
@@ -161,6 +207,7 @@ class EspecialistaConsultoriaController extends Controller
         }
 
         $especialista = EspecialistaConsultoria::create($data);
+        $this->storeDocumentosConsultoriaFromRequest($request, $especialista);
         $this->recalculateMontoAcumulado(EspecialistaConsultoria::class, $especialista->folder_id);
         return redirect()->route('especialistas-consultoria.index', $especialista->folder_id ? ['folder_id' => $especialista->folder_id] : [])->with('success', 'Registro creado.');
     }
@@ -174,8 +221,11 @@ class EspecialistaConsultoriaController extends Controller
             $totalDias = \Carbon\Carbon::parse($fechaInicio)->diffInDays(\Carbon\Carbon::parse($fechaCulminacion)) + 1;
         }
         $totalMeses = $totalDias !== null ? round($totalDias / 30, 2) : null;
-        $traslape = (float) ($request->input('traslape') ?? 0);
+        $traslape = 0.0;
         $totalDiasSinTraslape = $totalDias !== null ? max(0, (int) round($totalDias - $traslape)) : null;
+
+        $fechaSuspension = parse_fecha_dd_mm_yyyy($request->input('fecha_suspension'));
+        $fechaReinicio = parse_fecha_dd_mm_yyyy($request->input('fecha_reinicio'));
 
         $data = [
             'cliente' => $request->input('cliente'),
@@ -183,8 +233,8 @@ class EspecialistaConsultoriaController extends Controller
             'cui' => $request->input('cui'),
             'numero_contrato_os_comprobante' => $request->input('numero_contrato_os_comprobante'),
             'fecha_inicio' => $fechaInicio,
-            'fecha_suspension' => parse_fecha_dd_mm_yyyy($request->input('fecha_suspension')),
-            'fecha_reinicio' => parse_fecha_dd_mm_yyyy($request->input('fecha_reinicio')),
+            'fecha_suspension' => $fechaSuspension,
+            'fecha_reinicio' => $fechaReinicio,
             'fecha_culminacion' => $fechaCulminacion,
             'total_meses' => $totalMeses,
             'total_dias' => $totalDias,
@@ -194,11 +244,21 @@ class EspecialistaConsultoriaController extends Controller
         ];
 
         $basePath = 'expedientes/especialistas_consultoria';
-        if ($request->hasFile('archivo_contrato')) {
+        $firstTipo = $request->input('documentos.0.tipo_documento_adjunto');
+        if ($firstTipo) {
+            $data['tipo_documento_adjunto'] = $firstTipo;
+        } else {
+            $data['tipo_documento_adjunto'] = $request->input('tipo_documento_adjunto');
+        }
+
+        if ($request->hasFile('documentos.0.archivo')) {
+            $data['archivo_contrato'] = $request->file('documentos.0.archivo')->store($basePath . '/contratos', 'r2');
+        } elseif ($request->hasFile('archivo_contrato')) {
             $data['archivo_contrato'] = $request->file('archivo_contrato')->store($basePath . '/contratos', 'r2');
         } elseif ($model) {
             $data['archivo_contrato'] = $model->archivo_contrato;
         }
+
         if ($request->hasFile('archivo_comprobante_pago')) {
             $data['archivo_comprobante_pago'] = $request->file('archivo_comprobante_pago')->store($basePath . '/comprobantes', 'r2');
         } elseif ($model) {
@@ -209,7 +269,74 @@ class EspecialistaConsultoriaController extends Controller
         } elseif ($model) {
             $data['archivo_conformidad_servicio'] = $model->archivo_conformidad_servicio;
         }
+
+        if ($request->hasFile('archivo_suspension')) {
+            if ($model && $model->archivo_suspension) {
+                Storage::disk(storage_disk_for_path($model->archivo_suspension))->delete($model->archivo_suspension);
+            }
+            $data['archivo_suspension'] = $request->file('archivo_suspension')->store($basePath . '/suspension', 'r2');
+        } elseif ($model) {
+            if (! $fechaSuspension) {
+                if ($model->archivo_suspension) {
+                    Storage::disk(storage_disk_for_path($model->archivo_suspension))->delete($model->archivo_suspension);
+                }
+                $data['archivo_suspension'] = null;
+            } else {
+                $data['archivo_suspension'] = $model->archivo_suspension;
+            }
+        } else {
+            $data['archivo_suspension'] = null;
+        }
+
+        if ($request->hasFile('archivo_reinicio')) {
+            if ($model && $model->archivo_reinicio) {
+                Storage::disk(storage_disk_for_path($model->archivo_reinicio))->delete($model->archivo_reinicio);
+            }
+            $data['archivo_reinicio'] = $request->file('archivo_reinicio')->store($basePath . '/reinicio', 'r2');
+        } elseif ($model) {
+            if (! $fechaReinicio) {
+                if ($model->archivo_reinicio) {
+                    Storage::disk(storage_disk_for_path($model->archivo_reinicio))->delete($model->archivo_reinicio);
+                }
+                $data['archivo_reinicio'] = null;
+            } else {
+                $data['archivo_reinicio'] = $model->archivo_reinicio;
+            }
+        } else {
+            $data['archivo_reinicio'] = null;
+        }
+
         return $data;
+    }
+
+    private function storeDocumentosConsultoriaFromRequest(Request $request, EspecialistaConsultoria $especialista): void
+    {
+        $basePath = 'expedientes/especialistas_consultoria/adjuntos';
+        $tiposLabels = [
+            'CONTRATO' => 'CONTRATO',
+            'COMPROBANTE_DE_PAGO' => 'COMPROBANTE DE PAGO',
+            'CONFORMIDAD_DE_SERVICIO' => 'CONFORMIDAD DE SERVICIO',
+            'OTROS' => null,
+        ];
+        $documentosList = array_values($request->input('documentos', []));
+        foreach ($documentosList as $index => $doc) {
+            $tipo = $doc['tipo_documento_adjunto'] ?? '';
+            $nombreDoc = ($tipo === 'OTROS' && ! empty(trim($doc['nombre_otro'] ?? '')))
+                ? trim($doc['nombre_otro'])
+                : ($tiposLabels[$tipo] ?? $tipo);
+            $file = $request->file("documentos.{$index}.archivo");
+            if ($file) {
+                $path = $file->store($basePath, 'r2');
+                EspecialistaConsultoriaDocumento::create([
+                    'especialista_consultoria_id' => $especialista->id,
+                    'nombre' => $nombreDoc,
+                    'file_path' => $path,
+                ]);
+                if ($index === 0) {
+                    $especialista->update(['archivo_contrato' => $path, 'tipo_documento_adjunto' => $tipo]);
+                }
+            }
+        }
     }
 
     private function recalculateMontoAcumulado(string $modelClass, $folderId): void
@@ -235,6 +362,7 @@ class EspecialistaConsultoriaController extends Controller
         }
 
         $e = $especialistaConsultoria;
+        $e->load('documentos');
         $especialista = [
             'id' => $e->id,
             'folder_id' => $e->folder_id,
@@ -256,6 +384,14 @@ class EspecialistaConsultoriaController extends Controller
             'archivo_contrato' => $e->archivo_contrato,
             'tipo_documento_adjunto' => $e->tipo_documento_adjunto,
             'archivo_contrato_url' => $e->archivo_contrato_url,
+            'archivo_suspension_url' => $e->archivo_suspension_url,
+            'archivo_reinicio_url' => $e->archivo_reinicio_url,
+            'documentos_existentes' => $e->documentos->map(fn ($d) => [
+                'id' => $d->id,
+                'nombre' => $d->nombre,
+                'url' => $d->url,
+            ])->values(),
+            'documentos' => [['tipo_documento_adjunto' => '', 'nombre_otro' => '', 'archivo' => null]],
         ];
         return Inertia::render('EspecialistasConsultoria/Edit', [
             'especialista' => $especialista,
@@ -278,11 +414,23 @@ class EspecialistaConsultoriaController extends Controller
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
-            'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
             'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
+            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
+            'documentos' => 'nullable|array',
+            'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos.*.nombre_otro' => 'nullable|string|max:255',
+            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
+        foreach ($request->input('documentos', []) as $i => $doc) {
+            if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "documentos.{$i}.nombre_otro" => ['El nombre del documento es obligatorio cuando el tipo es Otros.'],
+                ]);
+            }
+        }
 
         $data = $this->prepareExperienciaData($request, $especialistaConsultoria);
         if ($request->hasFile('documento')) {
@@ -292,6 +440,7 @@ class EspecialistaConsultoriaController extends Controller
             $data['documento'] = $request->file('documento')->store('expedientes/especialistas_consultoria', 'r2');
         }
         $especialistaConsultoria->update($data);
+        $this->storeDocumentosConsultoriaFromRequest($request, $especialistaConsultoria);
         $this->recalculateMontoAcumulado(EspecialistaConsultoria::class, $especialistaConsultoria->folder_id);
         return redirect()->route('especialistas-consultoria.index', $especialistaConsultoria->folder_id ? ['folder_id' => $especialistaConsultoria->folder_id] : [])->with('success', 'Registro actualizado.');
     }
@@ -304,10 +453,16 @@ class EspecialistaConsultoriaController extends Controller
         }
 
         $folderId = $especialistaConsultoria->folder_id;
+        $especialistaConsultoria->load('documentos');
+        foreach ($especialistaConsultoria->documentos as $doc) {
+            if ($doc->file_path) {
+                Storage::disk(storage_disk_for_path($doc->file_path))->delete($doc->file_path);
+            }
+        }
         if ($especialistaConsultoria->documento) {
             Storage::disk(storage_disk_for_path($especialistaConsultoria->documento))->delete($especialistaConsultoria->documento);
         }
-        foreach (['archivo_contrato'] as $field) {
+        foreach (['archivo_contrato', 'archivo_comprobante_pago', 'archivo_conformidad_servicio', 'archivo_suspension', 'archivo_reinicio'] as $field) {
             $path = $especialistaConsultoria->$field ?? null;
             if ($path) {
                 Storage::disk(storage_disk_for_path($path))->delete($path);

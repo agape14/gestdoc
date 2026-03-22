@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class EjecutorObraDocumento extends Model
 {
-    protected $fillable = ['ejecutor_obra_id', 'nombre', 'file_path'];
+    protected $fillable = ['ejecutor_obra_id', 'nombre', 'file_path', 'tipo'];
 
     protected $appends = ['url'];
 

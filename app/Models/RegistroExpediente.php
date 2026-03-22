@@ -38,6 +38,7 @@ class RegistroExpediente extends Model
         'fecha_reinicio',
         'acta_reinicio',
         'tipo_accion',
+        'estado',
     ];
 
     protected $casts = [

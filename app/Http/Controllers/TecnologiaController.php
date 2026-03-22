@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TecnologiaExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 
@@ -78,6 +80,28 @@ class TecnologiaController extends Controller
             'operadores' => $operadores,
             'anulados' => $anulados,
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $user = auth()->user();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+        $query = Tecnologia::query()->activo();
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $query = $this->applyExportRoleFilter($query, $user, $request);
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('titulo', 'like', '%' . $request->search . '%')
+                    ->orWhere('descripcion', 'like', '%' . $request->search . '%');
+            });
+        }
+        $rows = $query->orderBy('id')->get();
+
+        return Excel::download(new TecnologiaExport($rows), 'tecnologia_' . date('Y-m-d_H-i-s') . '.xlsx');
     }
 
     public function storeFolder(Request $request)

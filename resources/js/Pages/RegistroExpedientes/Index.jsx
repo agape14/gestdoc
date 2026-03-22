@@ -11,6 +11,8 @@ const TIPO_ACCION_LABEL = {
     DEDUCTIVO: 'DEDUCTIVO',
     ACTUALIZACION_PRECIOS: 'ACTUALIZACIÓN DE PRECIOS',
     REFORMULACION: 'REFORMULACIÓN',
+    VALORIZACION: 'VALORIZACIÓN',
+    LIQUIDACION: 'LIQUIDACIÓN',
 };
 
 const ACCIONES_CREAR = [
@@ -19,9 +21,17 @@ const ACCIONES_CREAR = [
     { key: 'DEDUCTIVO', label: 'DEDUCTIVO', title: 'Nuevo registro: DEDUCTIVO', btnClass: 'btn-danger' },
     { key: 'ACTUALIZACION_PRECIOS', label: 'ACT. PRECIOS', title: 'Nuevo registro: ACTUALIZACIÓN DE PRECIOS', btnClass: 'btn-info text-dark' },
     { key: 'REFORMULACION', label: 'REFORMULACIÓN', title: 'Nuevo registro: REFORMULACIÓN', btnClass: 'btn-dark' },
+    { key: 'VALORIZACION', label: 'VALORIZACIÓN', title: 'Nuevo registro: VALORIZACIÓN', btnClass: 'btn-primary' },
+    { key: 'LIQUIDACION', label: 'LIQUIDACIÓN', title: 'Nuevo registro: LIQUIDACIÓN', btnClass: 'btn-secondary' },
 ];
 
 export default function Index({ expedientes, filters = {}, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], operadores = [] }) {
+    const getEstado = (item) => {
+        if (item?.estado === 'ARCHIVADO' || item?.estado === 'EN CURSO') return item.estado;
+        if (!item?.tipo_accion) return 'EN CURSO';
+        return item.tipo_accion === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO';
+    };
+
     const handleDelete = (item) => {
         Swal.fire({
             title: '¿Estás seguro?',
@@ -49,9 +59,32 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
 
     const columns = [
         { header: 'ETIQUETA', accessor: 'etiqueta', render: (item) => item.etiqueta ?? '-' },
-        { header: 'TIPO INVERSIÓN', accessor: 'tipo_inversion', render: (item) => (item.tipo_inversion ? String(item.tipo_inversion).slice(0, 35) + (String(item.tipo_inversion).length > 35 ? '…' : '') : '-') },
-        { header: 'PROYECTO', accessor: 'proyecto', render: (item) => (item.proyecto ? String(item.proyecto).slice(0, 50) + (String(item.proyecto).length > 50 ? '…' : '') : '-') },
+        { header: 'TIPO INVERSIÓN', accessor: 'tipo_inversion', render: (item) => item.tipo_inversion || '-' },
+        {
+            header: 'PROYECTO',
+            accessor: 'proyecto',
+            render: (item) => (
+                <span
+                    className="d-inline-block text-wrap"
+                    style={{ maxWidth: '320px', minWidth: '260px', whiteSpace: 'normal', wordBreak: 'break-word' }}
+                >
+                    {item.proyecto || '-'}
+                </span>
+            ),
+        },
         { header: 'CUI', accessor: 'cui' },
+        {
+            header: 'ESTADO',
+            accessor: 'estado',
+            render: (item) => {
+                const estado = getEstado(item);
+                return (
+                    <span className={`badge rounded-pill ${estado === 'ARCHIVADO' ? 'text-bg-secondary' : 'text-bg-warning'}`}>
+                        {estado}
+                    </span>
+                );
+            },
+        },
         { header: 'FECHA APROB.', accessor: 'fecha_aprobacion', render: (item) => formatDateDisplay(item.fecha_aprobacion) },
         { header: 'MONTOS', accessor: 'monto_total', render: (item) => formatMonedaPeruana(item.monto_total) },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
@@ -60,6 +93,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
     const getDetailFields = (item) => {
         const accion = item.tipo_accion ? (TIPO_ACCION_LABEL[item.tipo_accion] || item.tipo_accion) : null;
         const fields = [
+            { label: 'Estado', value: getEstado(item) },
             { label: 'Tipo de acción', value: accion },
             { label: 'Descripción', value: item.descripcion },
             { label: 'N° de folio', value: item.numero_folio },
@@ -69,6 +103,11 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             { label: 'Resolución', value: item.resolucion },
             { label: 'Contrato', value: item.contrato ? 'Sí (archivo cargado)' : 'No' },
             { label: 'Resolución (archivo)', value: item.resolucion_archivo ? 'Sí (archivo cargado)' : 'No' },
+            { label: 'EXPEDIENTE TECNICO (S/)', value: formatMonedaPeruana(item.monto_o ?? 0) },
+            { label: 'EVALUACION (S/)', value: formatMonedaPeruana(item.monto_p ?? 0) },
+            { label: 'PPTO DE OBRA (S/)', value: formatMonedaPeruana(item.monto_s ?? 0) },
+            { label: 'SUPERVISION (S/)', value: formatMonedaPeruana(item.monto_supervision ?? 0) },
+            { label: 'Total montos', value: formatMonedaPeruana(item.monto_total ?? 0) },
             { label: 'Proyecto (completo)', value: item.proyecto },
         ];
         return fields.filter((f) => f.value != null && f.value !== '');
@@ -103,11 +142,9 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
     };
 
     const renderHeader = (
-        <div className="d-flex justify-content-end mb-2">
-            <a href={exportExcelUrl()} className="btn btn-success shadow-sm rounded-pill px-4" target="_blank" rel="noopener noreferrer">
-                <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
-            </a>
-        </div>
+        <a href={exportExcelUrl()} className="btn btn-success shadow-sm rounded-pill px-4" target="_blank" rel="noopener noreferrer">
+            <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
+        </a>
     );
 
     return (

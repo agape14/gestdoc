@@ -3,6 +3,11 @@ import ModuleIndex from '@/Components/ModuleIndex';
 import ModuleIndexRowDetail from '@/Components/ModuleIndexRowDetail';
 
 export default function Index({ items, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [], anulados = [] }) {
+    const getDocumentLinks = (item) => {
+        if (!item.imagen) return [];
+        return [{ label: 'Imagen del proyecto', path: item.imagen, url: item.imagen_url }];
+    };
+
     const columns = [
         { header: 'PROYECTO', accessor: 'titulo', render: (item) => (item.titulo ? String(item.titulo).slice(0, 45) + (String(item.titulo).length > 45 ? '…' : '') : '-') },
         { header: 'UBICACIÓN', accessor: 'ubicacion', render: (item) => (item.ubicacion ? String(item.ubicacion).slice(0, 35) + (String(item.ubicacion).length > 35 ? '…' : '') : '-') },
@@ -18,13 +23,33 @@ export default function Index({ items, filters, userRole, folders = [], currentF
         { label: 'Estado', value: item.estado },
     ];
 
-    const renderDetail = (item) => (
+    const exportExcelUrl = () => {
+        const params = new URLSearchParams();
+        if (currentFolder?.id) params.set('folder_id', currentFolder.id);
+        if (filters?.user_id) params.set('user_id', filters.user_id);
+        if (filters?.search) params.set('search', filters.search);
+        const qs = params.toString();
+        return route('inmobiliaria.export') + (qs ? '?' + qs : '');
+    };
+
+    const renderHeader = (
+        <a href={exportExcelUrl()} className="btn btn-success shadow-sm rounded-pill px-4" target="_blank" rel="noopener noreferrer">
+            <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
+        </a>
+    );
+
+    const renderDetail = (item, context) => (
         <ModuleIndexRowDetail
             item={item}
             userRole={userRole}
             fields={getDetailFields(item)}
             editHref={route('inmobiliaria.edit', item.id)}
             deleteRouteName="inmobiliaria.destroy"
+            documentButton={getDocumentLinks(item).length > 0 && context?.openDocumentsModal ? (
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={(e) => { e.stopPropagation(); context.openDocumentsModal(item); }}>
+                    <i className="bi bi-paperclip me-1"></i> Ver archivos
+                </button>
+            ) : null}
         />
     );
 
@@ -51,6 +76,8 @@ export default function Index({ items, filters, userRole, folders = [], currentF
             operadores={operadores}
             anulados={anulados}
             renderDetail={renderDetail}
+            getDocumentLinks={getDocumentLinks}
+            renderHeader={renderHeader}
         />
     );
 }

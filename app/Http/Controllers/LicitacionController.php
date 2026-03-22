@@ -130,21 +130,38 @@ class LicitacionController extends Controller
 
     public function export(Request $request)
     {
-        $query = Licitacion::query();
+        $user = auth()->user();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+
+        $query = Licitacion::query()->active()->with('documentos');
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $query = $this->applyExportRoleFilter($query, $user, $request);
 
         if ($request->filled('tipo')) {
             $query->where('tipo', $request->tipo);
         }
-
         if ($request->filled('especialidad')) {
             $query->where('especialidad', $request->especialidad);
         }
+        if ($request->filled('search')) {
+            $s = '%' . $request->search . '%';
+            $query->where(function ($q) use ($s) {
+                $q->where('titulo', 'like', $s)
+                    ->orWhere('entidad', 'like', $s)
+                    ->orWhere('especialidad', 'like', $s);
+            });
+        }
 
-        return Excel::download(new LicitacionesExport($query->get()), 'licitaciones.xlsx');
+        return Excel::download(new LicitacionesExport($query->orderBy('id')->get()), 'licitaciones.xlsx');
     }
 
     public function exportProject(Licitacion $licitacion)
     {
+        $this->assertCanExportOwnedRecord($licitacion, auth()->user());
         return Excel::download(new LicitacionesExport(collect([$licitacion])), "licitacion_{$licitacion->id}.xlsx");
     }
 

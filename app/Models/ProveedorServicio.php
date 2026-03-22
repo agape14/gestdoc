@@ -18,6 +18,7 @@ class ProveedorServicio extends Model
         'total_meses', 'total_dias', 'traslape', 'total_dias_sin_traslape',
         'monto_neto', 'monto_acumulado',
         'archivo_contrato', 'archivo_comprobante_pago', 'archivo_conformidad_servicio',
+        'archivo_suspension', 'archivo_reinicio',
         'tipo_documento_adjunto',
     ];
 
@@ -40,6 +41,7 @@ class ProveedorServicio extends Model
         'contrato_archivo_url', 'tdr_archivo_url', 'panel_fotografico_url',
         'actas_resoluciones_url', 'conformidad_tecnica_url', 'informes_tecnicos_urls',
         'archivo_contrato_url', 'archivo_comprobante_pago_url', 'archivo_conformidad_servicio_url',
+        'archivo_suspension_url', 'archivo_reinicio_url',
     ];
 
     protected $casts = [
@@ -97,6 +99,16 @@ class ProveedorServicio extends Model
     public function getArchivoConformidadServicioUrlAttribute(): ?string
     {
         return \storage_url_for_path($this->archivo_conformidad_servicio ?? null);
+    }
+
+    public function getArchivoSuspensionUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_suspension ?? null);
+    }
+
+    public function getArchivoReinicioUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_reinicio ?? null);
     }
 
     public function scopeForUser($query, $user)

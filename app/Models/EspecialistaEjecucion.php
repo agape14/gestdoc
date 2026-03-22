@@ -14,6 +14,7 @@ class EspecialistaEjecucion extends Model
         'total_meses', 'total_dias', 'traslape', 'total_dias_sin_traslape',
         'monto_neto', 'monto_acumulado',
         'archivo_contrato', 'archivo_comprobante_pago', 'archivo_conformidad_servicio',
+        'archivo_suspension', 'archivo_reinicio',
         'tipo_documento_adjunto',
     ];
 
@@ -24,7 +25,14 @@ class EspecialistaEjecucion extends Model
         'fecha_culminacion' => 'date',
     ];
 
-    protected $appends = ['documento_url', 'archivo_contrato_url', 'archivo_comprobante_pago_url', 'archivo_conformidad_servicio_url'];
+    protected $appends = [
+        'documento_url',
+        'archivo_contrato_url',
+        'archivo_comprobante_pago_url',
+        'archivo_conformidad_servicio_url',
+        'archivo_suspension_url',
+        'archivo_reinicio_url',
+    ];
 
     public function getDocumentoUrlAttribute(): ?string
     {
@@ -44,6 +52,16 @@ class EspecialistaEjecucion extends Model
     public function getArchivoConformidadServicioUrlAttribute(): ?string
     {
         return \storage_url_for_path($this->archivo_conformidad_servicio);
+    }
+
+    public function getArchivoSuspensionUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_suspension ?? null);
+    }
+
+    public function getArchivoReinicioUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->archivo_reinicio ?? null);
     }
 
     public function folder()

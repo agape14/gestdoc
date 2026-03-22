@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProveedorBien;
+use App\Models\ProveedorBienDocumento;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProveedorBienesExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 
@@ -90,6 +93,31 @@ class ProveedorBienController extends Controller
         ]);
     }
 
+    public function export(Request $request)
+    {
+        $user = auth()->user();
+        $folderId = $request->filled('folder_id') ? (int) $request->folder_id : null;
+
+        $query = ProveedorBien::query()->active();
+        if ($folderId) {
+            $query->where('folder_id', $folderId);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        $query = $this->applyExportRoleFilter($query, $user, $request);
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('objeto_del_contrato', 'like', '%' . $request->search . '%')
+                    ->orWhere('cliente', 'like', '%' . $request->search . '%')
+                    ->orWhere('numero_contrato_oc_comprobante', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $bienes = $query->orderBy('id')->get();
+        $filename = 'proveedor-bienes_' . date('Y-m-d_H-i-s') . '.xlsx';
+        return Excel::download(new ProveedorBienesExport($bienes), $filename);
+    }
+
     public function storeFolder(Request $request)
     {
         $validated = $request->validate([
@@ -131,10 +159,13 @@ class ProveedorBienController extends Controller
             'numero_contrato_oc_comprobante' => 'required|string|max:255',
             'fecha_inicio' => 'required|string',
             'fecha_culminacion' => 'required|string',
-            'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO',
+            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos' => 'required|array|min:1',
+            'documentos.*.tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos.*.nombre_otro' => 'nullable|string|max:255',
+            'documentos.*.archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
 
         $data = $this->prepareExperienciaDataBienes($request, null);
@@ -158,6 +189,7 @@ class ProveedorBienController extends Controller
         }
 
         $bien = ProveedorBien::create($data);
+        $this->storeDocumentosFromRequest($request, $bien);
         $this->recalculateMontoAcumuladoBienes($bien->folder_id);
         return redirect()->route('proveedor-bienes.index', $bien->folder_id ? ['folder_id' => $bien->folder_id] : [])->with('success', 'Registro creado.');
     }
@@ -171,7 +203,7 @@ class ProveedorBienController extends Controller
             $totalDias = \Carbon\Carbon::parse($fechaInicio)->diffInDays(\Carbon\Carbon::parse($fechaCulminacion)) + 1;
         }
         $totalMeses = $totalDias !== null ? round($totalDias / 30, 2) : null;
-        $traslape = (float) ($request->input('traslape') ?? 0);
+        $traslape = 0;
         $totalDiasSinTraslape = $totalDias !== null ? max(0, (int) round($totalDias - $traslape)) : null;
 
         $data = [
@@ -188,13 +220,40 @@ class ProveedorBienController extends Controller
         ];
 
         $basePath = 'expedientes/proveedor_bienes/experiencia';
-        $data['tipo_documento_adjunto'] = $request->input('tipo_documento_adjunto');
-        if ($request->hasFile('archivo_contrato')) {
+        $firstDoc = $request->input('documentos.0.tipo_documento_adjunto');
+        if ($firstDoc) {
+            $data['tipo_documento_adjunto'] = $firstDoc;
+        } else {
+            $data['tipo_documento_adjunto'] = $request->input('tipo_documento_adjunto');
+        }
+        if ($request->hasFile('documentos.0.archivo')) {
+            $data['archivo_contrato'] = $request->file('documentos.0.archivo')->store($basePath . '/adjuntos', 'r2');
+        } elseif ($request->hasFile('archivo_contrato')) {
             $data['archivo_contrato'] = $request->file('archivo_contrato')->store($basePath . '/adjuntos', 'r2');
         } elseif ($model) {
             $data['archivo_contrato'] = $model->archivo_contrato;
         }
         return $data;
+    }
+
+    private function storeDocumentosFromRequest(Request $request, ProveedorBien $bien): void
+    {
+        $documentos = $request->input('documentos', []);
+        $basePath = 'expedientes/proveedor_bienes/experiencia/adjuntos';
+        foreach ($documentos as $index => $doc) {
+            if (!$request->hasFile("documentos.$index.archivo")) {
+                continue;
+            }
+            $file = $request->file("documentos.$index.archivo");
+            $tipo = $doc['tipo_documento_adjunto'] ?? 'DOCUMENTO';
+            $nombreOtro = trim((string) ($doc['nombre_otro'] ?? ''));
+            $nombre = $tipo === 'OTROS' && $nombreOtro !== '' ? $nombreOtro : str_replace('_', ' ', $tipo);
+            ProveedorBienDocumento::create([
+                'proveedor_bien_id' => $bien->id,
+                'nombre' => $nombre,
+                'file_path' => $file->store($basePath, 'r2'),
+            ]);
+        }
     }
 
     private function recalculateMontoAcumuladoBienes($folderId): void
@@ -220,6 +279,7 @@ class ProveedorBienController extends Controller
         }
 
         $b = $proveedorBien;
+        $b->load('documentos');
         $bien = [
             'id' => $b->id,
             'folder_id' => $b->folder_id,
@@ -238,6 +298,12 @@ class ProveedorBienController extends Controller
             'archivo_contrato' => $b->archivo_contrato,
             'tipo_documento_adjunto' => $b->tipo_documento_adjunto,
             'archivo_contrato_url' => $b->archivo_contrato_url,
+            'documentos_existentes' => $b->documentos->map(fn ($d) => [
+                'id' => $d->id,
+                'nombre' => $d->nombre,
+                'url' => storage_url_for_path($d->file_path),
+            ])->values(),
+            'documentos' => [['tipo_documento_adjunto' => '', 'nombre_otro' => '', 'archivo' => null]],
         ];
         return Inertia::render('ProveedorBienes/Edit', [
             'bien' => $bien,
@@ -257,15 +323,18 @@ class ProveedorBienController extends Controller
             'numero_contrato_oc_comprobante' => 'required|string|max:255',
             'fecha_inicio' => 'required|string',
             'fecha_culminacion' => 'required|string',
-            'traslape' => 'nullable|numeric|min:0',
             'monto_neto' => 'required|numeric|min:0.01',
             'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'archivo_comprobante_pago' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'archivo_conformidad_servicio' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos' => 'nullable|array',
+            'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos.*.nombre_otro' => 'nullable|string|max:255',
+            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
 
         $data = $this->prepareExperienciaDataBienes($request, $proveedorBien);
         $proveedorBien->update($data);
+        $this->storeDocumentosFromRequest($request, $proveedorBien);
         $this->recalculateMontoAcumuladoBienes($proveedorBien->folder_id);
         return redirect()->route('proveedor-bienes.index', $proveedorBien->folder_id ? ['folder_id' => $proveedorBien->folder_id] : [])->with('success', 'Registro actualizado.');
     }

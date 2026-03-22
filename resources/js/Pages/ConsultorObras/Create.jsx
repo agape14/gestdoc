@@ -152,32 +152,40 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                             </select>
                         </div>
                         {data.consorciado && (
-                            <>
-                                <div className="col-md-12">
-                                    <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
-                                    <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-bold small text-secondary">% DE PARTICIPACIÓN</label>
-                                    <div className="input-group">
-                                        <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion || ''} onChange={e => {
-                                            const val = e.target.value;
-                                            setData('porcentaje_participacion', val);
-                                            const baseImporte = parseFloat(data.importe) || 0;
-                                            const p = parseFloat(val) || 0;
-                                            setData('monto_contratado', baseImporte * p / 100);
-                                        }} />
-                                        <span className="input-group-text">%</span>
+                            <div className="col-12">
+                                <div className="p-3 p-md-4 rounded-4 border border-primary border-opacity-50 shadow">
+                                    <p className="small text-primary fw-bold mb-3 pb-2 border-bottom border-primary border-opacity-25">
+                                        <i className="bi bi-people-fill me-2"></i>
+                                        Datos aplicables solo cuando CONSORCIADO es Sí
+                                    </p>
+                                    <div className="row g-3">
+                                        <div className="col-md-12">
+                                            <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
+                                            <input type="text" className="form-control" value={data.experiencia_proveniente_de || ''} onChange={e => setData('experiencia_proveniente_de', e.target.value)} />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-bold small text-secondary">% DE PARTICIPACIÓN</label>
+                                            <div className="input-group">
+                                                <input type="number" step="0.01" min="0" max="100" className="form-control" value={data.porcentaje_participacion || ''} onChange={e => {
+                                                    const val = e.target.value;
+                                                    setData('porcentaje_participacion', val);
+                                                    const baseImporte = parseFloat(data.importe) || 0;
+                                                    const p = parseFloat(val) || 0;
+                                                    setData('monto_contratado', baseImporte * p / 100);
+                                                }} />
+                                                <span className="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
+                                            <div className="input-group">
+                                                <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
+                                                <input type="text" className="form-control bg-light fw-bold" value={data.monto_contratado != null && data.monto_contratado !== '' ? Number(data.monto_contratado).toFixed(2) : ''} readOnly />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="col-md-6">
-                                    <label className="form-label fw-bold small text-secondary">MONTO CONTRATADO</label>
-                                    <div className="input-group">
-                                        <span className="input-group-text">{data.moneda === 'Dólares' ? 'US$' : 'S/'}</span>
-                                        <input type="text" className="form-control bg-light fw-bold" value={data.monto_contratado != null && data.monto_contratado !== '' ? Number(data.monto_contratado).toFixed(2) : ''} readOnly />
-                                    </div>
-                                </div>
-                            </>
+                            </div>
                         )}
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">N° DE RESOLUCIÓN</label>

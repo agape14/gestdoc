@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-export default function PdfModal({ show, onClose, pdfUrl, title = 'Ver PDF' }) {
+export default function PdfModal({ show, onClose, pdfUrl, title = 'Ver PDF', large = false }) {
     useEffect(() => {
         if (show) {
             // Agregar clase al body para prevenir scroll cuando el modal está abierto
@@ -36,13 +36,13 @@ export default function PdfModal({ show, onClose, pdfUrl, title = 'Ver PDF' }) {
     return (
         <div
             className="modal fade show d-block"
-            style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1055 }}
+            style={{ backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 1060 }}
             onClick={onClose}
             tabIndex="-1"
         >
             <div
-                className="modal-dialog modal-dialog-centered"
-                style={{ maxWidth: '95vw', width: '95vw', margin: '1rem auto' }}
+                className={`modal-dialog modal-dialog-centered ${large ? 'modal-xl' : ''}`}
+                style={large ? { maxWidth: 'min(96vw, 1400px)', width: '96vw', margin: '0.75rem auto' } : { maxWidth: '95vw', width: '95vw', margin: '1rem auto' }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-content border-0 shadow-lg rounded-3">

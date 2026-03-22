@@ -6,16 +6,12 @@ use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class ProveedorServiciosExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithColumnWidths, WithEvents
+/**
+ * Exportación de experiencia (proveedor de servicios): incluye TRASLAPE y TOTAL DIAS SIN TRASLAPE
+ * aunque estén vacíos o en cero según reglas de negocio.
+ */
+class ProveedorServiciosExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $servicios;
 
@@ -32,90 +28,54 @@ class ProveedorServiciosExport implements FromCollection, WithHeadings, WithMapp
     public function headings(): array
     {
         return [
-            'SERVICIO',
-            'ENTIDAD',
+            'CLIENTE',
+            'OBJETO DEL CONTRATO',
+            'N° CONTRATO / O/S / COMPROBANTE',
+            'FECHA INICIO',
+            'FECHA SUSPENSIÓN',
+            'FECHA REINICIO',
+            'FECHA CULMINACIÓN',
+            'TOTAL MESES',
+            'TOTAL DÍAS',
+            'TRASLAPE',
+            'TOTAL DÍAS SIN TRASLAPE',
+            'MONTO NETO',
+            'MONTO ACUMULADO',
             'ESPECIALIDAD',
-            'TIPO',
-            'PRESUPUESTO',
+            'TIPO SERVICIO',
+            'CATEGORÍA',
+            'CLASIFICACIÓN',
+            'TÍTULO',
+            'ENTIDAD',
             'ESTADO',
-            'DURACION',
+            'TIPO DOCUMENTO ADJUNTO',
         ];
     }
 
-    public function map($servicio): array
+    public function map($s): array
     {
         return [
-            $servicio->titulo ?? '',
-            $servicio->entidad ?? '',
-            $servicio->especialidad ?? '',
-            $servicio->tipo_servicio ?? '',
-            number_format($servicio->presupuesto ?? 0, 2, '.', ','),
-            $servicio->estado ?? '',
-            $servicio->duracion ?? '',
-        ];
-    }
-
-    public function styles(Worksheet $sheet)
-    {
-        $sheet->getStyle('A1:G1')->applyFromArray([
-            'font' => [
-                'bold' => true,
-                'size' => 11,
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER,
-                'wrapText' => true,
-            ],
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                ],
-            ],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'E0E0E0'],
-            ],
-        ]);
-
-        $sheet->getRowDimension('1')->setRowHeight(30);
-
-        return [];
-    }
-
-    public function columnWidths(): array
-    {
-        return [
-            'A' => 30,  // SERVICIO
-            'B' => 25,  // ENTIDAD
-            'C' => 20,  // ESPECIALIDAD
-            'D' => 20,  // TIPO
-            'E' => 18,  // PRESUPUESTO
-            'F' => 15,  // ESTADO
-            'G' => 15,  // DURACION
-        ];
-    }
-
-    public function registerEvents(): array
-    {
-        return [
-            AfterSheet::class => function(AfterSheet $event) {
-                $sheet = $event->sheet->getDelegate();
-                $highestRow = $sheet->getHighestRow();
-
-                if ($highestRow > 1) {
-                    $sheet->getStyle('A2:G' . $highestRow)->applyFromArray([
-                        'borders' => [
-                            'allBorders' => [
-                                'borderStyle' => Border::BORDER_THIN,
-                            ],
-                        ],
-                        'alignment' => [
-                            'vertical' => Alignment::VERTICAL_CENTER,
-                        ],
-                    ]);
-                }
-            },
+            $s->cliente ?? '',
+            $s->objeto_del_contrato ?? '',
+            $s->numero_contrato_os_comprobante ?? '',
+            optional($s->fecha_inicio)?->format('d/m/Y') ?? '',
+            optional($s->fecha_suspension)?->format('d/m/Y') ?? '',
+            optional($s->fecha_reinicio)?->format('d/m/Y') ?? '',
+            optional($s->fecha_culminacion)?->format('d/m/Y') ?? '',
+            $s->total_meses !== null && $s->total_meses !== '' ? (string) $s->total_meses : '',
+            $s->total_dias !== null && $s->total_dias !== '' ? (string) $s->total_dias : '',
+            $s->traslape !== null && $s->traslape !== '' ? (string) $s->traslape : '',
+            $s->total_dias_sin_traslape !== null && $s->total_dias_sin_traslape !== '' ? (string) $s->total_dias_sin_traslape : '',
+            $s->monto_neto !== null ? number_format((float) $s->monto_neto, 2, '.', ',') : '',
+            $s->monto_acumulado !== null ? number_format((float) $s->monto_acumulado, 2, '.', ',') : '',
+            $s->especialidad ?? '',
+            $s->tipo_servicio ?? '',
+            $s->categoria ?? '',
+            $s->clasificacion ?? '',
+            $s->titulo ?? '',
+            $s->entidad ?? '',
+            $s->estado ?? '',
+            $s->tipo_documento_adjunto ?? '',
         ];
     }
 }

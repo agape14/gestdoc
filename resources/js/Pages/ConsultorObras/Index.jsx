@@ -427,6 +427,9 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
         const params = new URLSearchParams();
         if (filters.tipo) params.append('tipo', filters.tipo);
         if (filters.especialidad) params.append('especialidad', filters.especialidad);
+        if (search) params.append('search', search);
+        if (filters.folder_id) params.append('folder_id', filters.folder_id);
+        if (isAdmin && operatorId) params.append('user_id', operatorId);
         window.location.href = route('consultor-obras.export') + '?' + params.toString();
     };
 
@@ -619,7 +622,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                 <th scope="col" className="py-3">CUI</th>
                                 <th scope="col" className="py-3">ESPECIALIDAD</th>
                                 <th scope="col" className="py-3">TIPO</th>
-                                <th scope="col" className="py-3">PRESUPUESTO</th>
                                 <th scope="col" className="py-3">IMPORTE</th>
                                 <th scope="col" className="py-3">N° RESOL.</th>
                                 <th scope="col" className="py-3">F. APROB.</th>
@@ -633,7 +635,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                 Object.entries(grouped).map(([especialidad, items]) => (
                                     <React.Fragment key={especialidad}>
                                         <tr className="bg-light">
-                                            <td colSpan={hasMove ? 13 : 12} className="ps-4 py-2 fw-bold text-primary">
+                                            <td colSpan={hasMove ? 12 : 11} className="ps-4 py-2 fw-bold text-primary">
                                                 <i className="bi bi-folder-fill me-2"></i>
                                                 {especialidad || 'Sin Especialidad'} ({items.length} {items.length === 1 ? 'registro' : 'registros'})
                                             </td>
@@ -651,9 +653,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                     <td className="text-secondary">{consultoria.cui || '-'}</td>
                                                     <td className="text-secondary">{consultoria.especialidad || '-'}</td>
                                                     <td className="text-secondary">{consultoria.tipo_servicio || '-'}</td>
-                                                    <td className="text-secondary fw-bold text-body">
-                                                        S/ {parseFloat(consultoria.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </td>
                                                     <td className="text-secondary fw-bold text-body">
                                                         S/ {parseFloat(consultoria.importe || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </td>
@@ -726,9 +725,6 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                             <td className="text-secondary">{consultoria.especialidad || '-'}</td>
                                             <td className="text-secondary">{consultoria.tipo_servicio || '-'}</td>
                                             <td className="text-secondary fw-bold text-body">
-                                                S/ {parseFloat(consultoria.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </td>
-                                            <td className="text-secondary fw-bold text-body">
                                                 S/ {parseFloat(consultoria.importe || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="text-secondary">{consultoria.numero_resolucion || '-'}</td>
@@ -785,7 +781,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={hasMove ? 13 : 12} className="text-center py-5 text-muted">No se encontraron registros.</td>
+                                    <td colSpan={hasMove ? 12 : 11} className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>
