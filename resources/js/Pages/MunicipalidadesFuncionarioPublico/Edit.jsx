@@ -3,7 +3,6 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head } from '@inertiajs/react';
 import ExperienciaForm from '@/Components/ExperienciaForm';
 
-/** Convierte fecha del backend (ISO o yyyy-mm-dd) a DD/MM/YYYY. */
 function toDDMMYYYY(val) {
     if (!val) return '';
     const s = String(val).trim();
@@ -26,22 +25,22 @@ export default function Edit({ especialista }) {
         fecha_culminacion: especialista.fecha_culminacion ? toDDMMYYYY(especialista.fecha_culminacion) : '',
     };
     const cancelUrl = especialista?.folder_id
-        ? route('especialistas-ejecucion.index', { folder_id: especialista.folder_id })
-        : route('especialistas-ejecucion.index');
+        ? route('municipalidades-funcionario-publico.index', { folder_id: especialista.folder_id })
+        : route('municipalidades-funcionario-publico.index');
 
     return (
         <MainLayout>
-            <Head title="Editar registro - Especialistas en Ejecución" />
+            <Head title="Editar registro - Municipalidades y/o Funcionario Publico" />
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-body form-card-responsive" style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <ExperienciaForm
                     key={especialista?.id ?? 'edit'}
                     structure={1}
-                    variant="especialistas-ejecucion"
+                    variant="municipalidades-funcionario-publico"
                     initialData={initialData}
-                    submitRoute={especialista?.id != null ? `/especialistas-ejecucion/${especialista.id}` : '#'}
+                    submitRoute={especialista?.id != null ? `/municipalidades-funcionario-publico/${especialista.id}` : '#'}
                     method="PUT"
                     cancelUrl={cancelUrl}
-                    title="Editar Especialista en Ejecución de Obra"
+                    title="Editar Municipalidades y/o Funcionario Publico"
                 />
             </div>
         </MainLayout>

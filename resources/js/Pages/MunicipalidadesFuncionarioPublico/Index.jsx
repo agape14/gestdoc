@@ -10,9 +10,8 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
         if (key === 'COMPLETO') return 'bg-success-subtle text-success-emphasis border border-success-subtle';
         if (key === 'INCOMPLETO') return 'bg-danger-subtle text-danger-emphasis border border-danger-subtle';
         if (key === 'ARCHIVADO') return 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle';
-        return 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'; // EN CURSO
+        return 'bg-warning-subtle text-warning-emphasis border border-warning-subtle';
     };
-
     const estadoLabel = (estado) => {
         const key = String(estado || '').toUpperCase();
         if (key === 'COMPLETO') return 'COMPLETO';
@@ -20,8 +19,8 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
         if (key === 'ARCHIVADO') return 'ARCHIVADO';
         return 'EN CURSO';
     };
-
     const labelTipo = (t) => ({ CONTRATO: 'Contrato', COMPROBANTE_DE_PAGO: 'Comprobante de pago', CONFORMIDAD_DE_SERVICIO: 'Conformidad de servicio' }[t] || t);
+
     const getDocumentLinks = (item) => {
         let docs = [];
         if (Array.isArray(item.documentos) && item.documentos.length > 0) {
@@ -35,12 +34,8 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
         } else if (item.documento) {
             docs = [{ label: 'Documento', path: item.documento, url: item.documento_url }];
         }
-        if (item.archivo_suspension_url) {
-            docs.push({ label: 'PDF suspensión', path: item.archivo_suspension, url: item.archivo_suspension_url });
-        }
-        if (item.archivo_reinicio_url) {
-            docs.push({ label: 'PDF reinicio', path: item.archivo_reinicio, url: item.archivo_reinicio_url });
-        }
+        if (item.archivo_suspension_url) docs.push({ label: 'PDF suspensión', path: item.archivo_suspension, url: item.archivo_suspension_url });
+        if (item.archivo_reinicio_url) docs.push({ label: 'PDF reinicio', path: item.archivo_reinicio, url: item.archivo_reinicio_url });
         return docs;
     };
 
@@ -93,7 +88,7 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
         if (filters?.search) params.set('search', filters.search);
         if (filters?.tipo) params.set('tipo', filters.tipo);
         const qs = params.toString();
-        return route('especialistas-ejecucion.export') + (qs ? '?' + qs : '');
+        return route('municipalidades-funcionario-publico.export') + (qs ? '?' + qs : '');
     };
 
     const renderHeader = (
@@ -108,8 +103,8 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
             userRole={userRole}
             fields={getDetailFields(item)}
             truncateLongText={false}
-            editHref={`/especialistas-ejecucion/${item.id}/edit`}
-            deleteRouteName="especialistas-ejecucion.destroy"
+            editHref={`/municipalidades-funcionario-publico/${item.id}/edit`}
+            deleteRouteName="municipalidades-funcionario-publico.destroy"
             documentButton={getDocumentLinks(item).length > 0 && context?.openDocumentsModal ? (
                 <button type="button" className="btn btn-sm btn-outline-primary" onClick={(e) => { e.stopPropagation(); context.openDocumentsModal(item); }}>
                     <i className="bi bi-paperclip me-1"></i> Ver archivos
@@ -120,33 +115,27 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
 
     return (
         <ModuleIndex
-            renderFooter={
-                <ExperienciaPieTabla
-                    totalDiasSinTraslape={experienceTotals.total_dias_sin_traslape ?? 0}
-                    totalMontoAcumulado={experienceTotals.total_monto_acumulado ?? 0}
-                    showMonto
-                />
-            }
+            renderFooter={<ExperienciaPieTabla totalDiasSinTraslape={experienceTotals.total_dias_sin_traslape ?? 0} totalMontoAcumulado={experienceTotals.total_monto_acumulado ?? 0} showMonto />}
             renderHeader={renderHeader}
             getDocumentLinks={getDocumentLinks}
-            title="Especialistas en Ejecución de Obra"
-            description="Experiencia en la especialidad. Clic en la fila para ver detalle y acciones."
+            title="Municipalidades y/o Funcionario Publico"
+            description="Experiencia registrada. Clic en la fila para ver detalle y acciones."
             items={especialistas}
             columns={columns}
-            createRoute={currentFolder?.id ? route('especialistas-ejecucion.create', { folder_id: currentFolder.id }) : route('especialistas-ejecucion.create')}
-            editRoute={(id) => `/especialistas-ejecucion/${id}/edit`}
-            deleteRoute="especialistas-ejecucion.destroy"
+            createRoute={currentFolder?.id ? route('municipalidades-funcionario-publico.create', { folder_id: currentFolder.id }) : route('municipalidades-funcionario-publico.create')}
+            editRoute={(id) => `/municipalidades-funcionario-publico/${id}/edit`}
+            deleteRoute="municipalidades-funcionario-publico.destroy"
             filters={[]}
             routeParams={filters}
             userRole={userRole}
             folders={folders}
             currentFolder={currentFolder}
             breadcrumb={breadcrumb}
-            storeFolderRoute="especialistas-ejecucion.folders.store"
-            indexRoute="especialistas-ejecucion.index"
-            indexTitle="Especialistas en Ejecución"
-            moveRouteName="especialistas-ejecucion.move"
-            moveBulkRouteName="especialistas-ejecucion.move-bulk"
+            storeFolderRoute="municipalidades-funcionario-publico.folders.store"
+            indexRoute="municipalidades-funcionario-publico.index"
+            indexTitle="Municipalidades y/o Funcionario Publico"
+            moveRouteName="municipalidades-funcionario-publico.move"
+            moveBulkRouteName="municipalidades-funcionario-publico.move-bulk"
             operadores={operadores}
             renderDetail={renderDetail}
         />

@@ -5,7 +5,7 @@ import SubmitButton from '@/Components/SubmitButton';
 
 const ALL_MENU_KEYS = [
     'dashboard', 'licitaciones', 'consultor-obras', 'ejecutor-obra', 'proveedor-servicios',
-    'proveedor-bienes', 'especialistas-ejecucion', 'especialistas-consultoria', 'inmobiliaria',
+    'proveedor-bienes', 'especialistas-ejecucion', 'municipalidades-funcionario-publico', 'especialistas-consultoria', 'inmobiliaria',
     'topografia', 'tecnologia', 'plantillas-ing', 'cvs', 'folders',
 ];
 

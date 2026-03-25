@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class EspecialistaEjecucion extends Model
+class MunicipalidadFuncionarioPublico extends Model
 {
     protected $fillable = [
         'nombre', 'especialidad', 'tipo', 'documento', 'estado', 'user_id',
@@ -19,8 +19,8 @@ class EspecialistaEjecucion extends Model
     ];
 
     protected $casts = [
-        'fecha_inicio' => 'date',
         'fecha_contrato_cp' => 'date',
+        'fecha_inicio' => 'date',
         'fecha_suspension' => 'date',
         'fecha_reinicio' => 'date',
         'fecha_culminacion' => 'date',
@@ -72,21 +72,11 @@ class EspecialistaEjecucion extends Model
 
     public function documentos()
     {
-        return $this->hasMany(EspecialistaEjecucionDocumento::class);
+        return $this->hasMany(MunicipalidadFuncionarioPublicoDocumento::class);
     }
 
     public function scopeActive($query)
     {
         return $query->where('anulado', false);
-    }
-
-    public function scopeForUser($query, $user)
-    {
-        if ($user->role === 'Administrador') {
-            return $query;
-        } elseif ($user->role === 'Operador') {
-            return $query->where('user_id', $user->id);
-        }
-        return $query;
     }
 }

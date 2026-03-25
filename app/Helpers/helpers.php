@@ -14,6 +14,13 @@ if (!function_exists('parse_fecha_dd_mm_yyyy')) {
             return null;
         }
         $trimmed = trim($value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $trimmed)) {
+            [$year, $month, $day] = array_map('intval', explode('-', $trimmed));
+            if (!checkdate($month, $day, $year)) {
+                return null;
+            }
+            return sprintf('%04d-%02d-%02d', $year, $month, $day);
+        }
         $parts = preg_split('/[\/\-\.]/', $trimmed);
         if (count($parts) !== 3) {
             return null;

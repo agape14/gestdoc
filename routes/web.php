@@ -89,6 +89,11 @@ Route::middleware('auth')->group(function () {
         Route::put('/especialistas-ejecucion/{especialistaEjecucion}/move', [\App\Http\Controllers\EspecialistaEjecucionController::class, 'move'])->name('especialistas-ejecucion.move');
         Route::post('/especialistas-ejecucion/move-bulk', [\App\Http\Controllers\EspecialistaEjecucionController::class, 'moveBulk'])->name('especialistas-ejecucion.move-bulk');
         Route::resource('especialistas-ejecucion', \App\Http\Controllers\EspecialistaEjecucionController::class)->parameters(['especialistas-ejecucion' => 'especialistaEjecucion']);
+        Route::post('/municipalidades-funcionario-publico/folders', [\App\Http\Controllers\MunicipalidadFuncionarioPublicoController::class, 'storeFolder'])->name('municipalidades-funcionario-publico.folders.store');
+        Route::get('/municipalidades-funcionario-publico/export', [\App\Http\Controllers\MunicipalidadFuncionarioPublicoController::class, 'export'])->name('municipalidades-funcionario-publico.export');
+        Route::put('/municipalidades-funcionario-publico/{municipalidadFuncionarioPublico}/move', [\App\Http\Controllers\MunicipalidadFuncionarioPublicoController::class, 'move'])->name('municipalidades-funcionario-publico.move');
+        Route::post('/municipalidades-funcionario-publico/move-bulk', [\App\Http\Controllers\MunicipalidadFuncionarioPublicoController::class, 'moveBulk'])->name('municipalidades-funcionario-publico.move-bulk');
+        Route::resource('municipalidades-funcionario-publico', \App\Http\Controllers\MunicipalidadFuncionarioPublicoController::class)->parameters(['municipalidades-funcionario-publico' => 'municipalidadFuncionarioPublico']);
         Route::post('/especialistas-consultoria/folders', [\App\Http\Controllers\EspecialistaConsultoriaController::class, 'storeFolder'])->name('especialistas-consultoria.folders.store');
         Route::get('/especialistas-consultoria/export', [\App\Http\Controllers\EspecialistaConsultoriaController::class, 'export'])->name('especialistas-consultoria.export');
         Route::put('/especialistas-consultoria/{especialistaConsultoria}/move', [\App\Http\Controllers\EspecialistaConsultoriaController::class, 'move'])->name('especialistas-consultoria.move');

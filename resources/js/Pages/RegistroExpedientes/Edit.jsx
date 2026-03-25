@@ -188,7 +188,12 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                                             <td className="align-middle">Contrato</td>
                                             <td>
                                                 <input type="file" className={`form-control form-control-sm ${errors.contrato ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('contrato', e.target.files?.[0] || null)} />
-                                                {expediente?.contrato && <small className="text-muted d-block">Archivo cargado. Suba otro para reemplazar.</small>}
+                                                {expediente?.contrato_url && (
+                                                    <a href={expediente.contrato_url} target="_blank" rel="noopener noreferrer" className="small d-inline-block mt-1 text-decoration-none">
+                                                        Ver archivo cargado <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                                    </a>
+                                                )}
+                                                {expediente?.contrato && <small className="text-muted d-block">Suba otro para reemplazar.</small>}
                                                 {errors.contrato && <div className="invalid-feedback d-block">{errors.contrato}</div>}
                                             </td>
                                         </tr>
@@ -196,7 +201,12 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                                             <td className="align-middle">Resolución</td>
                                             <td>
                                                 <input type="file" className={`form-control form-control-sm ${errors.resolucion_archivo ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('resolucion_archivo', e.target.files?.[0] || null)} />
-                                                {expediente?.resolucion_archivo && <small className="text-muted d-block">Archivo cargado. Suba otro para reemplazar.</small>}
+                                                {expediente?.resolucion_archivo_url && (
+                                                    <a href={expediente.resolucion_archivo_url} target="_blank" rel="noopener noreferrer" className="small d-inline-block mt-1 text-decoration-none">
+                                                        Ver archivo cargado <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                                    </a>
+                                                )}
+                                                {expediente?.resolucion_archivo && <small className="text-muted d-block">Suba otro para reemplazar.</small>}
                                                 {errors.resolucion_archivo && <div className="invalid-feedback d-block">{errors.resolucion_archivo}</div>}
                                             </td>
                                         </tr>

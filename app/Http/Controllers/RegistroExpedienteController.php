@@ -89,11 +89,27 @@ class RegistroExpedienteController extends Controller
             }
         }
 
+        $sortBy = (string) $request->input('sort_by', 'etiqueta');
+        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $sortable = ['etiqueta', 'tipo_inversion', 'proyecto', 'cui', 'estado', 'fecha_aprobacion', 'monto_total'];
+        if (!in_array($sortBy, $sortable, true)) {
+            $sortBy = 'etiqueta';
+        }
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
-        $expedientes = $query->orderByRaw('COALESCE(etiqueta, "") ASC')->orderBy('id')->paginate(15)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        if ($sortBy === 'monto_total') {
+            $query->orderByRaw('COALESCE(monto_o,0) + COALESCE(monto_p,0) + COALESCE(monto_s,0) + COALESCE(monto_supervision,0) ' . strtoupper($sortDir));
+        } elseif ($sortBy === 'etiqueta') {
+            $query->orderByRaw('COALESCE(etiqueta, "") ' . strtoupper($sortDir));
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
+        $query->orderBy('id', 'asc');
+
+        $expedientes = $query->paginate(15)->withQueryString()->appends($request->only(['folder_id', 'user_id', 'sort_by', 'sort_dir']));
 
         // Todas las carpetas del módulo visibles para el usuario, como destinos posibles al mover
         $moveTargetFolders = Folder::visibleForModuleUser(self::MODULE, $user)
@@ -105,7 +121,7 @@ class RegistroExpedienteController extends Controller
 
         return Inertia::render('RegistroExpedientes/Index', [
             'expedientes' => $expedientes,
-            'filters' => $request->only(['search', 'folder_id', 'user_id']),
+            'filters' => $request->only(['search', 'folder_id', 'user_id', 'sort_by', 'sort_dir']),
             'userRole' => $user->role,
             'folders' => $folders,
             'moveTargetFolders' => $moveTargetFolders,
@@ -379,7 +395,9 @@ class RegistroExpedienteController extends Controller
             'monto_s' => $e->monto_s !== null ? (float) $e->monto_s : null,
             'monto_supervision' => $e->monto_supervision !== null ? (float) $e->monto_supervision : null,
             'contrato' => $e->contrato,
+            'contrato_url' => \storage_url_for_path($e->contrato),
             'resolucion_archivo' => $e->resolucion_archivo,
+            'resolucion_archivo_url' => \storage_url_for_path($e->resolucion_archivo),
             'tuvo_suspension' => $e->tuvo_suspension,
             'fecha_suspension' => $e->fecha_suspension?->format('Y-m-d'),
             'acta_suspension' => $e->acta_suspension,

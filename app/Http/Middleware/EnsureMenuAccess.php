@@ -11,7 +11,7 @@ class EnsureMenuAccess
     /** Segmentos de ruta que corresponden a menús (claves). Dashboard no se verifica: todos pueden entrar al inicio. */
     protected const MENU_SEGMENTS = [
         'licitaciones', 'consultor-obras', 'ejecutor-obra', 'proveedor-servicios',
-        'proveedor-bienes', 'especialistas-ejecucion', 'especialistas-consultoria',
+        'proveedor-bienes', 'especialistas-ejecucion', 'municipalidades-funcionario-publico', 'especialistas-consultoria',
         'inmobiliaria', 'topografia', 'tecnologia', 'plantillas-ing', 'cvs', 'folders',
         'registro-expedientes',
     ];

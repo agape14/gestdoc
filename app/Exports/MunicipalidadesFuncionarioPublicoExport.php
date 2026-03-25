@@ -7,10 +7,7 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
-/**
- * Incluye TRASLAPE y TOTAL DÍAS SIN TRASLAPE para exportación (aunque en UI no se editen).
- */
-class EspecialistasEjecucionExport implements FromCollection, WithHeadings, WithMapping
+class MunicipalidadesFuncionarioPublicoExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $rows;
 

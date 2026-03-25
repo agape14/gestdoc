@@ -12,6 +12,15 @@ import {
 const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png';
 const MAX_FILE_SIZE_MB = 25;
 
+const explainValidationError = (message, fallback) => {
+    if (!message) return '';
+    const msg = String(message);
+    if (msg.includes('validation.max.file') || msg.includes('The ') || msg.includes('kilobytes')) {
+        return fallback || `El archivo excede el tamaño máximo permitido (${MAX_FILE_SIZE_MB} MB).`;
+    }
+    return msg;
+};
+
 function formatDateForInput(dateStrOrDate) {
     if (!dateStrOrDate) return '';
     if (dateStrOrDate instanceof Date) return dateStrOrDate.toISOString().slice(0, 10);
@@ -33,9 +42,10 @@ function toDDMMYYYY(isoOrDDMMYYYY) {
 /** Valor para input type="date": siempre yyyy-mm-dd. */
 function toInputDate(value) {
     if (!value) return '';
+    const isoOrPartial = String(value).trim();
+    if (/^\d{0,4}(-\d{0,2})?(-\d{0,2})?$/.test(isoOrPartial)) return isoOrPartial;
     const d = parseDateDDMMYYYY(value);
     if (d) return formatDateToDDMMYYYY(d).split('/').reverse().join('-');
-    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) return String(value).trim();
     return '';
 }
 
@@ -60,7 +70,7 @@ export default function ExperienciaForm({
     cancelUrl,
     title,
 }) {
-    const isEspecialistasEjecucion = variant === 'especialistas-ejecucion';
+    const isEspecialistasEjecucion = ['especialistas-ejecucion', 'municipalidades-funcionario-publico'].includes(variant);
     const isProveedorBienes = structure === 3;
     const isProveedorServicios = structure === 2;
     const hasCUI = structure === 1;
@@ -84,6 +94,10 @@ export default function ExperienciaForm({
             tipo_documento_adjunto: initialData.tipo_documento_adjunto ?? '',
             archivo_contrato: null,
         };
+        if (isEspecialistasEjecucion) {
+            base.fecha_contrato_cp = initialData.fecha_contrato_cp ? toDDMMYYYY(initialData.fecha_contrato_cp) : '';
+            base.estado = initialData.estado ?? 'EN CURSO';
+        }
         if (useMultiDocumentos) {
             base.documentos = Array.isArray(initialData.documentos) && initialData.documentos.length > 0
                 ? initialData.documentos.map(d => ({ tipo_documento_adjunto: d.tipo_documento_adjunto ?? '', nombre_otro: d.nombre_otro ?? '', archivo: null }))
@@ -209,6 +223,34 @@ export default function ExperienciaForm({
                         <div className="invalid-feedback">{errors.numero_contrato_os_comprobante || errors.numero_contrato_oc_comprobante}</div>
                     )}
                 </div>
+                {isEspecialistasEjecucion && (
+                    <>
+                        <div className="col-md-6">
+                            <label className="form-label fw-medium">FECHA DE CONTRATO O CP</label>
+                            <input
+                                type="date"
+                                className={`form-control ${errors.fecha_contrato_cp ? 'is-invalid' : ''}`}
+                                value={toInputDate(data.fecha_contrato_cp)}
+                                onChange={e => setData('fecha_contrato_cp', e.target.value)}
+                            />
+                            {errors.fecha_contrato_cp && <div className="invalid-feedback">{errors.fecha_contrato_cp}</div>}
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-label fw-medium">ESTADO</label>
+                            <select
+                                className={`form-select ${errors.estado ? 'is-invalid' : ''}`}
+                                value={data.estado || 'EN CURSO'}
+                                onChange={e => setData('estado', e.target.value)}
+                            >
+                                <option value="COMPLETO">COMPLETO</option>
+                                <option value="INCOMPLETO">INCOMPLETO</option>
+                                <option value="EN CURSO">EN CURSO</option>
+                                <option value="ARCHIVADO">ARCHIVADO</option>
+                            </select>
+                            {errors.estado && <div className="invalid-feedback">{errors.estado}</div>}
+                        </div>
+                    </>
+                )}
                 {hasSuspensionReinicio && (
                     <>
                         <div className="col-md-6">
@@ -244,7 +286,7 @@ export default function ExperienciaForm({
                                             type="date"
                                             className="form-control"
                                             value={toInputDate(data.fecha_suspension)}
-                                            onChange={e => setData('fecha_suspension', toDDMMYYYY(e.target.value))}
+                                            onChange={e => setData('fecha_suspension', e.target.value)}
                                         />
                                         {showSuspensionReinicioPdf && (
                                             <div className="mt-3">
@@ -263,7 +305,7 @@ export default function ExperienciaForm({
                                                         </a>
                                                     </div>
                                                 )}
-                                                {errors.archivo_suspension && <div className="invalid-feedback d-block">{errors.archivo_suspension}</div>}
+                                                {errors.archivo_suspension && <div className="invalid-feedback d-block">{explainValidationError(errors.archivo_suspension, `El archivo de suspensión excede el tamaño máximo permitido (${MAX_FILE_SIZE_MB} MB).`)}</div>}
                                             </div>
                                         )}
                                     </div>
@@ -303,7 +345,7 @@ export default function ExperienciaForm({
                                             type="date"
                                             className="form-control"
                                             value={toInputDate(data.fecha_reinicio)}
-                                            onChange={e => setData('fecha_reinicio', toDDMMYYYY(e.target.value))}
+                                            onChange={e => setData('fecha_reinicio', e.target.value)}
                                         />
                                         {showSuspensionReinicioPdf && (
                                             <div className="mt-3">
@@ -322,7 +364,7 @@ export default function ExperienciaForm({
                                                         </a>
                                                     </div>
                                                 )}
-                                                {errors.archivo_reinicio && <div className="invalid-feedback d-block">{errors.archivo_reinicio}</div>}
+                                                {errors.archivo_reinicio && <div className="invalid-feedback d-block">{explainValidationError(errors.archivo_reinicio, `El archivo de reinicio excede el tamaño máximo permitido (${MAX_FILE_SIZE_MB} MB).`)}</div>}
                                             </div>
                                         )}
                                     </div>
@@ -338,7 +380,7 @@ export default function ExperienciaForm({
                                 type="date"
                                 className={`form-control ${errors.fecha_inicio ? 'is-invalid' : ''}`}
                                 value={toInputDate(data.fecha_inicio)}
-                                onChange={e => handleFechaChange('fecha_inicio', toDDMMYYYY(e.target.value))}
+                                onChange={e => handleFechaChange('fecha_inicio', e.target.value)}
                                 required
                             />
                             {errors.fecha_inicio && <div className="invalid-feedback">{errors.fecha_inicio}</div>}
@@ -349,7 +391,7 @@ export default function ExperienciaForm({
                                 type="date"
                                 className={`form-control ${errors.fecha_culminacion ? 'is-invalid' : ''}`}
                                 value={toInputDate(data.fecha_culminacion)}
-                                onChange={e => handleFechaChange('fecha_culminacion', toDDMMYYYY(e.target.value))}
+                                onChange={e => handleFechaChange('fecha_culminacion', e.target.value)}
                                 required
                             />
                             {errors.fecha_culminacion && <div className="invalid-feedback">{errors.fecha_culminacion}</div>}
@@ -470,7 +512,7 @@ export default function ExperienciaForm({
                                         onChange={e => updateDocumento(index, 'archivo', e.target.files[0] || null)}
                                         required={method !== 'PUT'}
                                     />
-                                    {errors[`documentos.${index}.archivo`] && <div className="invalid-feedback d-block">{errors[`documentos.${index}.archivo`]}</div>}
+                                    {errors[`documentos.${index}.archivo`] && <div className="invalid-feedback d-block">{explainValidationError(errors[`documentos.${index}.archivo`], `El archivo adjunto excede el tamaño máximo permitido (${MAX_FILE_SIZE_MB} MB).`)}</div>}
                                 </div>
                                 <div className="col-md-1 text-end">
                                     <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeDocumentoRow(index)} title="Quitar" disabled={(data.documentos || []).length <= 1}>
@@ -524,7 +566,7 @@ export default function ExperienciaForm({
                         {method === 'PUT' && initialData.archivo_contrato_url && (
                             <div className="form-text">Dejar vacío para mantener el archivo actual, o elegir otro para reemplazarlo.</div>
                         )}
-                        {errors.archivo_contrato && <div className="invalid-feedback">{errors.archivo_contrato}</div>}
+                        {errors.archivo_contrato && <div className="invalid-feedback">{explainValidationError(errors.archivo_contrato, `El archivo excede el tamaño máximo permitido (${MAX_FILE_SIZE_MB} MB).`)}</div>}
                     </div>
                 </div>
             )}

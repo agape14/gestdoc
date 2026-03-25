@@ -26,6 +26,42 @@ const ACCIONES_CREAR = [
 ];
 
 export default function Index({ expedientes, filters = {}, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], operadores = [] }) {
+    const sortBy = filters?.sort_by || 'etiqueta';
+    const sortDir = filters?.sort_dir || 'asc';
+
+    const toggleSort = (field) => {
+        const nextDir = sortBy === field && sortDir === 'asc' ? 'desc' : 'asc';
+        const params = {
+            ...filters,
+            sort_by: field,
+            sort_dir: nextDir,
+        };
+        router.get(route('registro-expedientes.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const sortHeader = (label, field) => (
+        <button
+            type="button"
+            className="btn btn-link btn-sm text-decoration-none p-0 fw-semibold text-uppercase"
+            onClick={(e) => {
+                e.stopPropagation();
+                toggleSort(field);
+            }}
+            title={`Ordenar por ${label}`}
+        >
+            {label}{' '}
+            {sortBy === field ? (
+                <i className={`bi ${sortDir === 'asc' ? 'bi-sort-down-alt' : 'bi-sort-up-alt'} ms-1`} />
+            ) : (
+                <i className="bi bi-arrow-down-up ms-1 text-secondary" />
+            )}
+        </button>
+    );
+
     const getEstado = (item) => {
         if (item?.estado === 'ARCHIVADO' || item?.estado === 'EN CURSO') return item.estado;
         if (!item?.tipo_accion) return 'EN CURSO';
@@ -57,11 +93,30 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         return route('registro-expedientes.create') + (p.toString() ? `?${p.toString()}` : '');
     };
 
+    const getDocumentLinks = (item) => {
+        const docs = [];
+        if (item.contrato || item.contrato_url) {
+            docs.push({
+                label: 'Contrato',
+                path: item.contrato || '',
+                url: item.contrato_url || null,
+            });
+        }
+        if (item.resolucion_archivo || item.resolucion_archivo_url) {
+            docs.push({
+                label: 'Resolución',
+                path: item.resolucion_archivo || '',
+                url: item.resolucion_archivo_url || null,
+            });
+        }
+        return docs;
+    };
+
     const columns = [
-        { header: 'ETIQUETA', accessor: 'etiqueta', render: (item) => item.etiqueta ?? '-' },
-        { header: 'TIPO INVERSIÓN', accessor: 'tipo_inversion', render: (item) => item.tipo_inversion || '-' },
+        { header: sortHeader('ETIQUETA', 'etiqueta'), accessor: 'etiqueta', render: (item) => item.etiqueta ?? '-' },
+        { header: sortHeader('TIPO INVERSIÓN', 'tipo_inversion'), accessor: 'tipo_inversion', render: (item) => item.tipo_inversion || '-' },
         {
-            header: 'PROYECTO',
+            header: sortHeader('PROYECTO', 'proyecto'),
             accessor: 'proyecto',
             render: (item) => (
                 <span
@@ -72,9 +127,9 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
                 </span>
             ),
         },
-        { header: 'CUI', accessor: 'cui' },
+        { header: sortHeader('CUI', 'cui'), accessor: 'cui' },
         {
-            header: 'ESTADO',
+            header: sortHeader('ESTADO', 'estado'),
             accessor: 'estado',
             render: (item) => {
                 const estado = getEstado(item);
@@ -85,8 +140,8 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
                 );
             },
         },
-        { header: 'FECHA APROB.', accessor: 'fecha_aprobacion', render: (item) => formatDateDisplay(item.fecha_aprobacion) },
-        { header: 'MONTOS', accessor: 'monto_total', render: (item) => formatMonedaPeruana(item.monto_total) },
+        { header: sortHeader('FECHA APROB.', 'fecha_aprobacion'), accessor: 'fecha_aprobacion', render: (item) => formatDateDisplay(item.fecha_aprobacion) },
+        { header: sortHeader('MONTOS', 'monto_total'), accessor: 'monto_total', render: (item) => formatMonedaPeruana(item.monto_total) },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
@@ -121,7 +176,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             btnClass: a.btnClass,
         }));
 
-    const renderDetail = (item) => (
+    const renderDetail = (item, context) => (
         <ModuleIndexRowDetail
             item={item}
             userRole={userRole}
@@ -129,6 +184,11 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             editHref={`/registro-expedientes/${item.id}/edit`}
             onDelete={handleDelete}
             extraActions={extraActionsFor(item)}
+            documentButton={getDocumentLinks(item).length > 0 && context?.openDocumentsModal ? (
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={(e) => { e.stopPropagation(); context.openDocumentsModal(item); }}>
+                    <i className="bi bi-paperclip me-1"></i> Ver archivos
+                </button>
+            ) : null}
         />
     );
 
@@ -137,6 +197,8 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         if (currentFolder?.id) params.set('folder_id', currentFolder.id);
         if (filters?.user_id) params.set('user_id', filters.user_id);
         if (filters?.search) params.set('search', filters.search);
+        if (filters?.sort_by) params.set('sort_by', filters.sort_by);
+        if (filters?.sort_dir) params.set('sort_dir', filters.sort_dir);
         const qs = params.toString();
         return route('registro-expedientes.export') + (qs ? '?' + qs : '');
     };
@@ -172,6 +234,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             anulados={null}
             renderDetail={renderDetail}
             renderHeader={renderHeader}
+            getDocumentLinks={getDocumentLinks}
         />
     );
 }

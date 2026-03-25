@@ -53,7 +53,7 @@ class RegistroExpediente extends Model
         'anio' => 'integer',
     ];
 
-    protected $appends = ['monto_total'];
+    protected $appends = ['monto_total', 'contrato_url', 'resolucion_archivo_url'];
 
     public function folder()
     {
@@ -75,6 +75,16 @@ class RegistroExpediente extends Model
         $s = (float) ($this->attributes['monto_s'] ?? 0);
         $sup = (float) ($this->attributes['monto_supervision'] ?? 0);
         return round($o + $p + $s + $sup, 2);
+    }
+
+    public function getContratoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->contrato);
+    }
+
+    public function getResolucionArchivoUrlAttribute(): ?string
+    {
+        return \storage_url_for_path($this->resolucion_archivo);
     }
 
     /**
