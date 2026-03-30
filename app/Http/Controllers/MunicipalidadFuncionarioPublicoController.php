@@ -8,6 +8,8 @@ use App\Models\MunicipalidadFuncionarioPublico;
 use App\Models\MunicipalidadFuncionarioPublicoDocumento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
@@ -59,11 +61,19 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             $query->where('tipo', $request->tipo);
         }
 
+        $sortable = ['id', 'cliente', 'objeto_del_contrato', 'cui', 'fecha_contrato_cp', 'fecha_inicio', 'fecha_culminacion', 'estado', 'total_dias', 'monto_neto'];
+        $sort = $request->input('sort', 'id');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'id';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction);
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
-        $items = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $items = $query->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id', 'sort', 'direction', 'search', 'tipo']));
         $totalsQuery = MunicipalidadFuncionarioPublico::query()->active();
         $this->applyRoleBasedFilter($totalsQuery, $user);
         if ($folderId) {
@@ -82,7 +92,10 @@ class MunicipalidadFuncionarioPublicoController extends Controller
         return Inertia::render('MunicipalidadesFuncionarioPublico/Index', [
             'especialistas' => $items,
             'experienceTotals' => $experienceTotals,
-            'filters' => $request->only(['search', 'tipo', 'user_id', 'folder_id']),
+            'filters' => array_merge(
+                $request->only(['search', 'tipo', 'user_id', 'folder_id']),
+                ['sort' => $sort, 'direction' => $direction]
+            ),
             'userRole' => $user->role,
             'operadores' => $operadores,
             'folders' => $folders,
@@ -279,18 +292,37 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
             'documentos' => 'nullable|array',
-            'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos.*.tipo_documento_adjunto' => [
+                'nullable',
+                'string',
+                Rule::in(['', 'CONTRATO', 'COMPROBANTE_DE_PAGO', 'CONFORMIDAD_DE_SERVICIO', 'OTROS']),
+            ],
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
             'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos_eliminar_ids' => 'nullable|array',
+            'documentos_eliminar_ids.*' => 'integer|exists:municipalidad_funcionario_publico_documentos,id',
             'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
         ], $this->mensajesValidacion());
+        $tiposDoc = ['CONTRATO', 'COMPROBANTE_DE_PAGO', 'CONFORMIDAD_DE_SERVICIO', 'OTROS'];
         foreach ($request->input('documentos', []) as $i => $doc) {
+            if ($request->hasFile("documentos.{$i}.archivo")) {
+                $tipo = $doc['tipo_documento_adjunto'] ?? '';
+                if ($tipo === '' || ! in_array($tipo, $tiposDoc, true)) {
+                    throw ValidationException::withMessages([
+                        "documentos.{$i}.tipo_documento_adjunto" => ['Seleccione el tipo de documento cuando adjunta un archivo.'],
+                    ]);
+                }
+            }
             if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     "documentos.{$i}.nombre_otro" => ['El nombre del documento es obligatorio cuando el tipo es Otros.'],
                 ]);
             }
         }
+
+        $this->eliminarDocumentosMarcados($request, $municipalidadFuncionarioPublico);
+        $municipalidadFuncionarioPublico->refresh();
+        $this->syncPrimaryAdjuntoFromDocumentos($municipalidadFuncionarioPublico);
 
         $data = $this->prepareData($request, $municipalidadFuncionarioPublico);
         $municipalidadFuncionarioPublico->update($data);
@@ -415,6 +447,51 @@ class MunicipalidadFuncionarioPublicoController extends Controller
         }
 
         return $data;
+    }
+
+    private function eliminarDocumentosMarcados(Request $request, MunicipalidadFuncionarioPublico $item): void
+    {
+        $ids = $request->input('documentos_eliminar_ids', []);
+        if (!is_array($ids) || $ids === []) {
+            return;
+        }
+        foreach (array_unique(array_map('intval', $ids)) as $docId) {
+            $doc = MunicipalidadFuncionarioPublicoDocumento::query()
+                ->where('id', $docId)
+                ->where('municipalidad_funcionario_publico_id', $item->id)
+                ->first();
+            if (!$doc) {
+                continue;
+            }
+            if ($doc->file_path) {
+                Storage::disk(storage_disk_for_path($doc->file_path))->delete($doc->file_path);
+            }
+            $doc->delete();
+        }
+    }
+
+    /**
+     * Alinea archivo_contrato y tipo_documento_adjunto con el primer documento en tabla (o null si no hay).
+     */
+    private function syncPrimaryAdjuntoFromDocumentos(MunicipalidadFuncionarioPublico $item): void
+    {
+        $item->load('documentos');
+        $first = $item->documentos->sortBy('id')->first();
+        if (!$first) {
+            $item->update(['archivo_contrato' => null, 'tipo_documento_adjunto' => null]);
+
+            return;
+        }
+        $nombreToTipo = [
+            'CONTRATO' => 'CONTRATO',
+            'COMPROBANTE DE PAGO' => 'COMPROBANTE_DE_PAGO',
+            'CONFORMIDAD DE SERVICIO' => 'CONFORMIDAD_DE_SERVICIO',
+        ];
+        $tipo = $nombreToTipo[$first->nombre] ?? 'OTROS';
+        $item->update([
+            'archivo_contrato' => $first->file_path,
+            'tipo_documento_adjunto' => $tipo,
+        ]);
     }
 
     private function storeDocumentosFromRequest(Request $request, MunicipalidadFuncionarioPublico $item): void

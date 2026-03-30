@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useForm } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 import {
@@ -71,6 +71,7 @@ export default function ExperienciaForm({
     title,
 }) {
     const isEspecialistasEjecucion = ['especialistas-ejecucion', 'municipalidades-funcionario-publico'].includes(variant);
+    const allowDeleteExistingDocuments = variant === 'municipalidades-funcionario-publico' && method === 'PUT';
     const isProveedorBienes = structure === 3;
     const isProveedorServicios = structure === 2;
     const hasCUI = structure === 1;
@@ -103,6 +104,9 @@ export default function ExperienciaForm({
                 ? initialData.documentos.map(d => ({ tipo_documento_adjunto: d.tipo_documento_adjunto ?? '', nombre_otro: d.nombre_otro ?? '', archivo: null }))
                 : [{ tipo_documento_adjunto: '', nombre_otro: '', archivo: null }];
         }
+        if (allowDeleteExistingDocuments) {
+            base.documentos_eliminar_ids = [];
+        }
         if (isProveedorServicios || hasCUI) {
             base.archivo_suspension = null;
             base.archivo_reinicio = null;
@@ -122,6 +126,24 @@ export default function ExperienciaForm({
     const initial = getInitialFormData();
     if (method === 'PUT') initial._method = 'PUT';
     const { data, setData, post, put, processing, errors } = useForm(initial);
+
+    const [documentosExistentesVista, setDocumentosExistentesVista] = useState(() =>
+        allowDeleteExistingDocuments && Array.isArray(initialData.documentos_existentes)
+            ? [...initialData.documentos_existentes]
+            : null
+    );
+    const documentosEliminarRef = useRef([]);
+
+    const documentosActualesList = allowDeleteExistingDocuments && documentosExistentesVista != null
+        ? documentosExistentesVista
+        : (Array.isArray(initialData.documentos_existentes) ? initialData.documentos_existentes : []);
+
+    const quitarDocumentoExistente = (id) => {
+        if (!allowDeleteExistingDocuments) return;
+        setDocumentosExistentesVista((prev) => (prev || []).filter((d) => d.id !== id));
+        documentosEliminarRef.current = [...documentosEliminarRef.current, id];
+        setData('documentos_eliminar_ids', documentosEliminarRef.current);
+    };
 
     const totalDias = useMemo(() => {
         const d = calcTotalDias(data.fecha_inicio, data.fecha_culminacion);
@@ -446,21 +468,33 @@ export default function ExperienciaForm({
                             <p className="small text-secondary mb-0">Agregue uno o más documentos. Si el tipo es &quot;Otros&quot;, indique el nombre del archivo.</p>
                         </div>
                     </div>
-                    {Array.isArray(initialData.documentos_existentes) && initialData.documentos_existentes.length > 0 && (
+                    {documentosActualesList.length > 0 && (
                         <div className="col-12">
                             <div className="p-3 rounded border bg-light bg-opacity-50">
                                 <div className="small fw-semibold mb-2">Documentos actuales</div>
                                 <div className="d-flex flex-column gap-1">
-                                    {initialData.documentos_existentes.map((doc) => (
-                                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="small text-decoration-none">
-                                            {doc.nombre} <i className="bi bi-box-arrow-up-right ms-1"></i>
-                                        </a>
+                                    {documentosActualesList.map((doc) => (
+                                        <div key={doc.id} className="d-flex flex-wrap align-items-center gap-2">
+                                            <a href={doc.url} target="_blank" rel="noopener noreferrer" className="small text-decoration-none">
+                                                {doc.nombre} <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                            </a>
+                                            {allowDeleteExistingDocuments && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger btn-sm py-0 px-2"
+                                                    title="Quitar documento"
+                                                    onClick={() => quitarDocumentoExistente(doc.id)}
+                                                >
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
                         </div>
                     )}
-                    {hasCUI && method === 'PUT' && (!initialData.documentos_existentes || initialData.documentos_existentes.length === 0) && initialData.archivo_contrato_url && (
+                    {hasCUI && method === 'PUT' && documentosActualesList.length === 0 && initialData.archivo_contrato_url && (
                         <div className="col-12">
                             <div className="p-3 rounded border bg-light bg-opacity-50">
                                 <div className="small fw-semibold mb-2">Archivo principal actual</div>
@@ -480,7 +514,7 @@ export default function ExperienciaForm({
                                         className={`form-select form-select-sm ${errors[`documentos.${index}.tipo_documento_adjunto`] ? 'is-invalid' : ''}`}
                                         value={doc.tipo_documento_adjunto}
                                         onChange={e => updateDocumento(index, 'tipo_documento_adjunto', e.target.value)}
-                                        required
+                                        required={method !== 'PUT' || Boolean(doc.archivo)}
                                     >
                                         <option value="">Seleccione...</option>
                                         {TIPOS_DOCUMENTO.map(t => (
@@ -498,13 +532,13 @@ export default function ExperienciaForm({
                                             placeholder="Ej. Acta de entrega"
                                             value={doc.nombre_otro}
                                             onChange={e => updateDocumento(index, 'nombre_otro', e.target.value)}
-                                            required={doc.tipo_documento_adjunto === 'OTROS'}
+                                            required={doc.tipo_documento_adjunto === 'OTROS' && (method !== 'PUT' || Boolean(doc.archivo))}
                                         />
                                         {errors[`documentos.${index}.nombre_otro`] && <div className="invalid-feedback d-block">{errors[`documentos.${index}.nombre_otro`]}</div>}
                                     </div>
                                 )}
                                 <div className="col-md-4">
-                                    <label className="form-label small mb-1">Adjuntar archivo *</label>
+                                    <label className="form-label small mb-1">Adjuntar archivo{method !== 'PUT' ? ' *' : ''}</label>
                                     <input
                                         type="file"
                                         accept={FILE_ACCEPT}

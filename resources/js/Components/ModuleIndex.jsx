@@ -12,7 +12,7 @@ const getIconClass = (iconName) => {
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null, moveRouteName = null, moveBulkRouteName = null }) {
+export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null, moveRouteName = null, moveBulkRouteName = null, sortEnabled = false }) {
     const { auth, flash } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
@@ -63,6 +63,26 @@ export default function ModuleIndex({ title, description, items, columns, create
         const newFilters = { ...currentFilters, [key]: value };
         setCurrentFilters(newFilters);
         router.get(window.location.pathname, newFilters, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const handleSortColumn = (sortKey) => {
+        if (!sortKey) return;
+        const curCol = routeParams.sort ?? 'id';
+        const curDir = routeParams.direction === 'asc' || routeParams.direction === 'desc' ? routeParams.direction : 'desc';
+        const direction = curCol === sortKey ? (curDir === 'asc' ? 'desc' : 'asc') : 'asc';
+        const newFilters = { ...currentFilters, sort: sortKey, direction };
+        setCurrentFilters(newFilters);
+        const params = {
+            ...newFilters,
+            search,
+            folder_id: routeParams.folder_id,
+            ...(isAdmin ? { user_id: operatorId || undefined } : {}),
+        };
+        router.get(window.location.pathname, params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -394,11 +414,32 @@ export default function ModuleIndex({ title, description, items, columns, create
                                         />
                                     </th>
                                 )}
-                                {columns.map((col, i) => (
-                                    <th key={i} scope="col" className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''}`}>
-                                        {col.header}
-                                    </th>
-                                ))}
+                                {columns.map((col, i) => {
+                                    const sk = col.sortKey ?? col.accessor;
+                                    const canSort = sortEnabled && col.sortable && sk && col.header !== '' && col.accessor !== '_expand';
+                                    const activeSort = canSort && (routeParams.sort ?? 'id') === sk;
+                                    const dir = routeParams.direction === 'asc' ? 'asc' : 'desc';
+                                    return (
+                                        <th key={i} scope="col" className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''}`}>
+                                            {canSort ? (
+                                                <button
+                                                    type="button"
+                                                    className={`btn btn-link text-secondary text-decoration-none p-0 border-0 fw-semibold text-uppercase small d-inline-flex align-items-center gap-1 ${activeSort ? 'text-primary' : ''}`}
+                                                    onClick={() => handleSortColumn(sk)}
+                                                >
+                                                    <span>{col.header}</span>
+                                                    {activeSort ? (
+                                                        <i className={`bi ${dir === 'asc' ? 'bi-sort-up' : 'bi-sort-down'}`} aria-hidden />
+                                                    ) : (
+                                                        <i className="bi bi-arrow-down-up opacity-50" style={{ fontSize: '0.75rem' }} aria-hidden />
+                                                    )}
+                                                </button>
+                                            ) : (
+                                                col.header
+                                            )}
+                                        </th>
+                                    );
+                                })}
                             </tr>
                         </thead>
                         <tbody>
