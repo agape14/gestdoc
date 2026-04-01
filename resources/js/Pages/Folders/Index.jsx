@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import FolderModal from '@/Components/FolderModal';
 import DocumentModal from '@/Components/DocumentModal';
 import DocumentPdfModal from '@/Components/DocumentPdfModal';
+import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 
 export default function Index({
     folders = [],
@@ -37,10 +38,14 @@ export default function Index({
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [selectedDocIds, setSelectedDocIds] = useState([]);
 
+    const docRows = Array.isArray(documents) ? documents : (documents?.data ?? []);
+    const docPaginator = Array.isArray(documents) ? null : documents;
+    const docTotal = docPaginator?.total ?? docRows.length;
+
     useEffect(() => {
         if (!currentFolder) return;
         const timer = setTimeout(() => {
-            const params = { search, date_start: dateStart, date_end: dateEnd };
+            const params = { ...filters, search, date_start: dateStart, date_end: dateEnd };
             if (isAdmin) params.user_id = operatorId || undefined;
             const hasChanges =
                 search !== (filters.search || '') ||
@@ -48,7 +53,7 @@ export default function Index({
                 dateEnd !== (filters.date_end || '') ||
                 operatorId !== (filters.user_id || '');
             if (hasChanges) {
-                router.get(route('folders.show', currentFolder.id), params, { preserveState: true, preserveScroll: true, replace: true });
+                router.get(route('folders.show', currentFolder.id), { ...params, page: 1 }, { preserveState: true, preserveScroll: true, replace: true });
             }
         }, 300);
         return () => clearTimeout(timer);
@@ -165,11 +170,11 @@ export default function Index({
     };
 
     const toggleSelectAllDocs = () => {
-        if (!documents || documents.length === 0) return;
-        if (selectedDocIds.length === documents.length) {
+        if (!docRows || docRows.length === 0) return;
+        if (selectedDocIds.length === docRows.length) {
             setSelectedDocIds([]);
         } else {
-            setSelectedDocIds(documents.map((d) => d.id));
+            setSelectedDocIds(docRows.map((d) => d.id));
         }
     };
 
@@ -223,6 +228,24 @@ export default function Index({
             month: '2-digit',
             year: 'numeric',
         }).format(new Date(dateString));
+    };
+
+    const sortField = filters.sort || 'fecha_documento';
+    const sortDirection = filters.direction === 'asc' ? 'asc' : 'desc';
+    const navigateFolderShow = (extra = {}) => {
+        if (!currentFolder?.id) return;
+        router.get(route('folders.show', currentFolder.id), {
+            ...filters,
+            search,
+            date_start: dateStart,
+            date_end: dateEnd,
+            ...(isAdmin ? { user_id: operatorId || undefined } : {}),
+            ...extra,
+        }, { preserveState: true, preserveScroll: true, replace: true });
+    };
+    const toggleDocSort = (field) => {
+        const nextDir = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+        navigateFolderShow({ sort: field, direction: nextDir, page: 1 });
     };
 
     const getIconClass = (iconName) => {
@@ -438,6 +461,9 @@ export default function Index({
                                 onChange={(e) => setDateEnd(e.target.value)}
                             />
                         </div>
+                        <div className="col-12 col-lg-auto d-flex align-items-end">
+                            <GridPerPageSelect value={String(filters.per_page ?? '50')} onChange={(v) => navigateFolderShow({ per_page: v, page: 1 })} />
+                        </div>
                         <div className="col-12 col-lg-2">
                             <button
                                 onClick={clearFilters}
@@ -454,12 +480,12 @@ export default function Index({
             {/* Dentro de una carpeta: documentos */}
             {currentFolder && (
                 <>
-                    {documents && documents.length > 0 ? (
+                    {docTotal > 0 ? (
                         <div className="mb-4">
                             <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
                                 <h5 className="fw-bold text-body mb-0">
                                     <i className="bi bi-file-earmark-text me-2"></i>
-                                    Documentos en {currentFolder.name} ({documents.length})
+                                    Documentos en {currentFolder.name} ({docTotal})
                                 </h5>
                                 <div className="d-flex gap-2 align-items-center flex-wrap">
                                     <a
@@ -510,22 +536,22 @@ export default function Index({
                                                     <input
                                                         type="checkbox"
                                                         className="form-check-input"
-                                                        checked={documents.length > 0 && selectedDocIds.length === documents.length}
+                                                        checked={docRows.length > 0 && selectedDocIds.length === docRows.length}
                                                         onChange={toggleSelectAllDocs}
                                                         title="Seleccionar todos"
                                                     />
                                                 </th>
-                                                <th className="py-3">Número</th>
-                                                <th className="py-3">Fecha</th>
-                                                <th className="py-3">Asunto</th>
-                                                <th className="py-3">Remitente</th>
-                                                <th className="py-3">Destinatario</th>
+                                                <SortTh label="Número" field="numero" currentSort={sortField} currentDirection={sortDirection} onSort={toggleDocSort} className="py-3" />
+                                                <SortTh label="Fecha" field="fecha_documento" currentSort={sortField} currentDirection={sortDirection} onSort={toggleDocSort} className="py-3" />
+                                                <SortTh label="Asunto" field="asunto" currentSort={sortField} currentDirection={sortDirection} onSort={toggleDocSort} className="py-3" />
+                                                <SortTh label="Remitente" field="remitente" currentSort={sortField} currentDirection={sortDirection} onSort={toggleDocSort} className="py-3" />
+                                                <SortTh label="Destinatario" field="destinatario" currentSort={sortField} currentDirection={sortDirection} onSort={toggleDocSort} className="py-3" />
                                                 <th className="py-3">Archivos</th>
                                                 <th className="text-end pe-4 py-3">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {documents.map((doc) => (
+                                            {docRows.map((doc) => (
                                                 <tr key={doc.id}>
                                                     <td className="ps-4 py-3">
                                                         <input
@@ -593,6 +619,23 @@ export default function Index({
                                         </tbody>
                                     </table>
                                 </div>
+                                {docPaginator?.links && docPaginator.links.length > 3 && (
+                                    <div className="card-footer bg-body border-top-0 py-3">
+                                        <nav aria-label="Paginación documentos">
+                                            <ul className="pagination justify-content-center mb-0">
+                                                {docPaginator.links.map((link, key) => (
+                                                    <li key={key} className={`page-item ${link.active ? 'active' : ''} ${!link.url ? 'disabled' : ''}`}>
+                                                        <Link
+                                                            className="page-link"
+                                                            href={link.url || '#'}
+                                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                                        />
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </nav>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (

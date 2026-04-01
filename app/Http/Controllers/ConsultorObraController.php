@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ConsultorObrasExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
+use App\Support\GridPagination;
 
 class ConsultorObraController extends Controller
 {
@@ -85,8 +86,16 @@ class ConsultorObraController extends Controller
             $query->where('especialidad', $request->especialidad);
         }
 
-        $consultoriasPaginated = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
-        $consultorias = $query->latest()->get();
+        $sortable = ['titulo', 'entidad', 'cui', 'especialidad', 'categoria', 'importe', 'numero_resolucion', 'fecha_aprobacion', 'estado', 'duracion', 'created_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
+        $consultoriasPaginated = GridPagination::paginate(clone $query, $request);
+        $consultorias = (clone $query)->get();
         $groupedByEspecialidad = $consultorias->groupBy('especialidad');
 
         $anulados = $user->role === 'Administrador'
@@ -99,7 +108,10 @@ class ConsultorObraController extends Controller
         return Inertia::render('ConsultorObras/Index', [
             'consultorias' => $consultoriasPaginated,
             'groupedByEspecialidad' => $groupedByEspecialidad,
-            'filters' => $request->only(['search', 'tipo', 'especialidad', 'user_id', 'folder_id']),
+            'filters' => array_merge(
+                $request->only(['search', 'tipo', 'especialidad', 'user_id', 'folder_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'userRole' => $user->role,
             'anulados' => $anulados,
             'operadores' => $operadores,

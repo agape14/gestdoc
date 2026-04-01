@@ -12,6 +12,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProveedorBienesExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
+use App\Support\GridPagination;
 
 class ProveedorBienController extends Controller
 {
@@ -61,11 +62,19 @@ class ProveedorBienController extends Controller
             $query->where('categoria', $request->tipo);
         }
 
+        $sortable = ['id', 'cliente', 'objeto_del_contrato', 'fecha_inicio', 'fecha_culminacion', 'total_dias', 'monto_neto', 'created_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
-        $bienes = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $bienes = GridPagination::paginate(clone $query, $request);
         $totalsQuery = ProveedorBien::query()->active();
         $this->applyRoleBasedFilter($totalsQuery, $user);
         if ($folderId) {
@@ -84,7 +93,10 @@ class ProveedorBienController extends Controller
         return Inertia::render('ProveedorBienes/Index', [
             'bienes' => $bienes,
             'experienceTotals' => $experienceTotals,
-            'filters' => $request->only(['search', 'tipo', 'user_id', 'folder_id']),
+            'filters' => array_merge(
+                $request->only(['search', 'tipo', 'user_id', 'folder_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'userRole' => $user->role,
             'operadores' => $operadores,
             'folders' => $folders,

@@ -6,6 +6,7 @@ import PdfModal from '@/Components/PdfModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
+import { GridPerPageSelect } from '@/Components/GridTableControls';
 
 const getIconClass = (iconName) => {
     const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
@@ -33,6 +34,18 @@ export default function ModuleIndex({ title, description, items, columns, create
     const [movingIds, setMovingIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
 
+    const routeParamsSerialized = JSON.stringify(routeParams ?? {});
+    useEffect(() => {
+        try {
+            const p = JSON.parse(routeParamsSerialized);
+            setCurrentFilters(p);
+            setSearch(p.search ?? '');
+            setOperatorId(p.user_id != null && p.user_id !== '' ? String(p.user_id) : '');
+        } catch {
+            /* ignore */
+        }
+    }, [routeParamsSerialized]);
+
     const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (indexTitle || title);
     const buildIndexParams = (extra = {}) => ({ ...currentFilters, ...extra });
     const hasFolders = Boolean(indexRoute && (storeFolderRoute || (folders && folders.length > 0)));
@@ -55,7 +68,7 @@ export default function ModuleIndex({ title, description, items, columns, create
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [search, operatorId]);
+    }, [search, operatorId, currentFilters]);
 
     const handleCloseFolderModal = () => setShowFolderModal(false);
 
@@ -88,6 +101,23 @@ export default function ModuleIndex({ title, description, items, columns, create
             replace: true,
         });
     };
+
+    const handlePerPageChange = (perPageVal) => {
+        const newFilters = { ...currentFilters, per_page: perPageVal };
+        setCurrentFilters(newFilters);
+        router.get(window.location.pathname, {
+            ...newFilters,
+            search,
+            folder_id: routeParams.folder_id,
+            ...(isAdmin ? { user_id: operatorId || undefined } : {}),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const perPageValue = String(currentFilters.per_page ?? routeParams.per_page ?? '50');
 
     const canEdit = (item) => {
         if (currentUserRole === 'Administrador') return true;
@@ -354,6 +384,10 @@ export default function ModuleIndex({ title, description, items, columns, create
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
+                    </div>
+                    <div className="col-md-6 col-lg-auto">
+                        <label className="form-label small text-secondary mb-1 d-none d-lg-block">&nbsp;</label>
+                        <GridPerPageSelect value={perPageValue} onChange={handlePerPageChange} />
                     </div>
                 </div>
             </div>

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use App\Support\GridPagination;
 
 class UserController extends Controller
 {
@@ -149,11 +150,22 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
 
-        $users = $query->latest()->paginate(10)->withQueryString();
+        $sortable = ['name', 'email', 'role', 'created_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
+        $users = GridPagination::paginate(clone $query, $request);
 
         return Inertia::render('Config/Index', [
             'users' => $users,
-            'filters' => $request->only(['search', 'date_start', 'date_end', 'role']),
+            'filters' => array_merge(
+                $request->only(['search', 'date_start', 'date_end', 'role']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
         ]);
     }
 

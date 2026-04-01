@@ -6,6 +6,7 @@ import PdfModal from '@/Components/PdfModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
+import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 
 const getIconClass = (iconName) => {
     const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
@@ -62,12 +63,30 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
     const breadcrumbTitle = (breadcrumb && breadcrumb.length > 0) ? breadcrumb.map(f => f.name).join(' / ') : (currentFolder?.name || 'Banco de CVs');
     const buildParams = (extra = {}) => ({ ...filters, ...extra });
 
+    const sortField = filters.sort || 'created_at';
+    const sortDirection = filters.direction === 'asc' ? 'asc' : 'desc';
+    const navigateList = (extra = {}) => {
+        router.get(route('cvs.index'), {
+            ...filters,
+            search,
+            date_start: dateStart,
+            date_end: dateEnd,
+            folder_id: filters.folder_id,
+            ...(isAdmin ? { user_id: operatorId || undefined } : {}),
+            ...extra,
+        }, { preserveState: true, preserveScroll: true, replace: true });
+    };
+    const toggleSort = (field) => {
+        const nextDir = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+        navigateList({ sort: field, direction: nextDir, page: 1 });
+    };
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            const params = { search, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
+            const params = { ...filters, search, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
             if (isAdmin) params.user_id = operatorId || undefined;
             if (search !== (filters.search || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '') || operatorId !== (filters.user_id || '')) {
-                router.get(route('cvs.index'), params, {
+                router.get(route('cvs.index'), { ...params, page: 1 }, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -314,6 +333,9 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                             </select>
                         </div>
                     )}
+                    <div className="col-12 col-lg-auto d-flex align-items-end">
+                        <GridPerPageSelect value={String(filters.per_page ?? '50')} onChange={(v) => navigateList({ per_page: v, page: 1 })} />
+                    </div>
                 </div>
             </div>
 
@@ -381,8 +403,8 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                         />
                                     )}
                                 </th>
-                                <th scope="col" className="py-3">NOMBRE</th>
-                                <th scope="col" className="py-3">Fecha Registro</th>
+                                <SortTh label="NOMBRE" field="nombre_candidato" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} className="py-3" />
+                                <SortTh label="Fecha Registro" field="created_at" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} className="py-3" />
                                 <th scope="col" className="text-center py-3" style={{ minWidth: '260px' }}>Archivos</th>
                                 <th scope="col" className="text-end pe-4 py-3">Acciones</th>
                             </tr>

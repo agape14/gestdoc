@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
+import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 
 const DetailForm = ({ item, onClose }) => {
     const existingDocs = item.documentos || [];
@@ -257,6 +258,24 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
     const hasFolders = Boolean(folders && folders.length > 0);
     const hasMove = hasFolders && currentUserRole !== 'Visualizador';
 
+    const sortField = filters.sort || 'created_at';
+    const sortDirection = filters.direction === 'asc' ? 'asc' : 'desc';
+    const navigateList = (extra = {}) => {
+        router.get(route('licitaciones.index'), {
+            ...filters,
+            search,
+            date_start: dateStart,
+            date_end: dateEnd,
+            folder_id: filters.folder_id,
+            ...(isAdmin ? { user_id: operatorId || undefined } : {}),
+            ...extra,
+        }, { preserveState: true, preserveScroll: true, replace: true });
+    };
+    const toggleSort = (field) => {
+        const nextDir = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+        navigateList({ sort: field, direction: nextDir, page: 1 });
+    };
+
     const toggleSelectOne = (id) => {
         setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     };
@@ -338,7 +357,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
             const params = { ...filters, search, date_start: dateStart, date_end: dateEnd, folder_id: filters.folder_id };
             if (isAdmin) params.user_id = operatorId || undefined;
             if (search !== (filters.search || '') || dateStart !== (filters.date_start || '') || dateEnd !== (filters.date_end || '') || operatorId !== (filters.user_id || '')) {
-                router.get(route('licitaciones.index'), params, {
+                router.get(route('licitaciones.index'), { ...params, page: 1 }, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -523,6 +542,10 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                             onChange={(e) => setDateEnd(e.target.value)}
                         />
                     </div>
+                    <div className="col-12 col-md-6 col-lg-auto">
+                        <label className="form-label small text-secondary mb-1 d-none d-lg-block">&nbsp;</label>
+                        <GridPerPageSelect value={String(filters.per_page ?? '50')} onChange={(v) => navigateList({ per_page: v, page: 1 })} />
+                    </div>
                 </div>
             </div>
 
@@ -567,11 +590,11 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                         )}
                                     </th>
                                 )}
-                                <th scope="col" className="py-3">PROYECTO</th>
-                                <th scope="col" className="py-3">ENTIDAD</th>
-                                <th scope="col" className="py-3">ESPECIALIDAD</th>
-                                <th scope="col" className="py-3">PRESUPUESTO</th>
-                                <th scope="col" className="py-3">ESTADO</th>
+                                <SortTh label="PROYECTO" field="titulo" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="ENTIDAD" field="entidad" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="ESPECIALIDAD" field="especialidad" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="PRESUPUESTO" field="presupuesto" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="ESTADO" field="estado" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>

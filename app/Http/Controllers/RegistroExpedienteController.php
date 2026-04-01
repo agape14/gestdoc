@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
+use App\Support\GridPagination;
 
 class RegistroExpedienteController extends Controller
 {
@@ -109,7 +110,7 @@ class RegistroExpedienteController extends Controller
         }
         $query->orderBy('id', 'asc');
 
-        $expedientes = $query->paginate(15)->withQueryString()->appends($request->only(['folder_id', 'user_id', 'sort_by', 'sort_dir']));
+        $expedientes = GridPagination::paginate($query, $request);
 
         // Todas las carpetas del módulo visibles para el usuario, como destinos posibles al mover
         $moveTargetFolders = Folder::visibleForModuleUser(self::MODULE, $user)
@@ -121,7 +122,10 @@ class RegistroExpedienteController extends Controller
 
         return Inertia::render('RegistroExpedientes/Index', [
             'expedientes' => $expedientes,
-            'filters' => $request->only(['search', 'folder_id', 'user_id', 'sort_by', 'sort_dir']),
+            'filters' => array_merge(
+                $request->only(['search', 'folder_id', 'user_id', 'sort_by', 'sort_dir']),
+                ['per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'userRole' => $user->role,
             'folders' => $folders,
             'moveTargetFolders' => $moveTargetFolders,

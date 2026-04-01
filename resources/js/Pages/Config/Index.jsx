@@ -3,6 +3,7 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import UserFolderPermissionsModal from '@/Components/UserFolderPermissionsModal';
+import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 
 export default function Index({ users, filters, flash }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -11,17 +12,33 @@ export default function Index({ users, filters, flash }) {
     const [roleFilter, setRoleFilter] = useState(filters.role || '');
     const [folderModalUser, setFolderModalUser] = useState(null);
 
+    const sortField = filters.sort || 'created_at';
+    const sortDirection = filters.direction === 'asc' ? 'asc' : 'desc';
+    const navigateList = (extra = {}) => {
+        router.get(route('config'), {
+            ...filters,
+            search,
+            date_start: dateStart,
+            date_end: dateEnd,
+            role: roleFilter || undefined,
+            ...extra,
+        }, { preserveState: true, preserveScroll: true, replace: true });
+    };
+    const toggleSort = (field) => {
+        const nextDir = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+        navigateList({ sort: field, direction: nextDir, page: 1 });
+    };
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            const params = { search, date_start: dateStart, date_end: dateEnd };
-            if (roleFilter) params.role = roleFilter;
+            const params = { ...filters, search, date_start: dateStart, date_end: dateEnd, role: roleFilter || undefined };
             const hasChanges =
                 search !== (filters.search || '') ||
                 dateStart !== (filters.date_start || '') ||
                 dateEnd !== (filters.date_end || '') ||
                 roleFilter !== (filters.role || '');
             if (hasChanges) {
-                router.get(route('config'), params, {
+                router.get(route('config'), { ...params, page: 1 }, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -122,6 +139,9 @@ export default function Index({ users, filters, flash }) {
                             onChange={(e) => setDateEnd(e.target.value)}
                         />
                     </div>
+                    <div className="col-12 col-md-6 col-lg-auto d-flex align-items-end">
+                        <GridPerPageSelect value={String(filters.per_page ?? '50')} onChange={(v) => navigateList({ per_page: v, page: 1 })} />
+                    </div>
                 </div>
             </div>
 
@@ -130,10 +150,10 @@ export default function Index({ users, filters, flash }) {
                     <table className="table table-hover align-middle mb-0" style={{ minWidth: '560px' }}>
                         <thead className="border-bottom text-secondary small text-uppercase">
                             <tr>
-                                <th scope="col" className="ps-4 py-3">Nombre</th>
-                                <th scope="col" className="py-3">Email</th>
-                                <th scope="col" className="py-3">Rol</th>
-                                <th scope="col" className="py-3">Fecha Registro</th>
+                                <SortTh label="Nombre" field="name" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} className="ps-4 py-3" />
+                                <SortTh label="Email" field="email" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} className="py-3" />
+                                <SortTh label="Rol" field="role" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} className="py-3" />
+                                <SortTh label="Fecha Registro" field="created_at" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} className="py-3" />
                                 <th scope="col" className="text-end pe-4 py-3">Acciones</th>
                             </tr>
                         </thead>
@@ -173,7 +193,7 @@ export default function Index({ users, filters, flash }) {
                         </tbody>
                     </table>
                 </div>
-                {users.links && users.last_page > 1 && (
+                {users.links && users.links.length > 3 && (
                     <div className="card-footer bg-body border-top-0 py-3">
                         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
                             <small className="text-secondary">

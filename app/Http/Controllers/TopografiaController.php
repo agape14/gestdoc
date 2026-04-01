@@ -12,6 +12,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\TopografiaExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
+use App\Support\GridPagination;
 
 class TopografiaController extends Controller
 {
@@ -59,6 +60,14 @@ class TopografiaController extends Controller
             });
         }
 
+        $sortable = ['titulo', 'descripcion', 'created_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
@@ -71,8 +80,11 @@ class TopografiaController extends Controller
             : collect();
 
         return Inertia::render('Topografia/Index', [
-            'items' => $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
-            'filters' => $request->only(['search', 'folder_id', 'user_id']),
+            'items' => GridPagination::paginate(clone $query, $request),
+            'filters' => array_merge(
+                $request->only(['search', 'folder_id', 'user_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'userRole' => $user->role,
             'folders' => $folders,
             'currentFolder' => $currentFolder,

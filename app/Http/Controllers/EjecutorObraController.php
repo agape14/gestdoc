@@ -15,6 +15,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\EjecutorObrasExport;
 use App\Http\Requests\StoreEjecutorObraRequest;
 use App\Http\Requests\UpdateEjecutorObraRequest;
+use App\Support\GridPagination;
 
 class EjecutorObraController extends Controller
 {
@@ -68,14 +69,27 @@ class EjecutorObraController extends Controller
             });
         }
 
-        $obrasPaginated = $query->with('documentosLiquidacion')->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $query->with('documentosLiquidacion');
+
+        $sortable = ['nombre_sigla_entidad', 'nomenclatura', 'cui', 'numero_contrato', 'monto_total', 'plazo', 'created_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
+        $obrasPaginated = GridPagination::paginate(clone $query, $request);
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
         return Inertia::render('EjecutorObra/Index', [
             'obras' => $obrasPaginated,
-            'filters' => $request->only(['search', 'user_id', 'folder_id']),
+            'filters' => array_merge(
+                $request->only(['search', 'user_id', 'folder_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'userRole' => $user->role,
             'operadores' => $operadores,
             'folders' => $folders,

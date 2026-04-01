@@ -12,6 +12,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\LicitacionesExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
+use App\Support\GridPagination;
 
 class LicitacionController extends Controller
 {
@@ -78,8 +79,16 @@ class LicitacionController extends Controller
             $query->where('especialidad', $request->especialidad);
         }
 
-        $licitacionesPaginated = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
-        $licitaciones = $query->latest()->get();
+        $sortable = ['titulo', 'entidad', 'especialidad', 'presupuesto', 'estado', 'created_at', 'updated_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
+        $licitacionesPaginated = GridPagination::paginate(clone $query, $request);
+        $licitaciones = (clone $query)->get();
         $groupedByEspecialidad = $licitaciones->groupBy('especialidad');
 
         $anulados = collect();
@@ -103,7 +112,10 @@ class LicitacionController extends Controller
         return Inertia::render('Licitaciones/Index', [
             'licitaciones' => $licitacionesPaginated,
             'groupedByEspecialidad' => $groupedByEspecialidad,
-            'filters' => $request->only(['search', 'date_start', 'date_end', 'tipo', 'especialidad', 'user_id', 'folder_id']),
+            'filters' => array_merge(
+                $request->only(['search', 'date_start', 'date_end', 'tipo', 'especialidad', 'user_id', 'folder_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'userRole' => $user->role,
             'anulados' => $anulados,
             'operadores' => $operadores,

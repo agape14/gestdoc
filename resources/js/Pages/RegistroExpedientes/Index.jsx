@@ -199,6 +199,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         if (filters?.search) params.set('search', filters.search);
         if (filters?.sort_by) params.set('sort_by', filters.sort_by);
         if (filters?.sort_dir) params.set('sort_dir', filters.sort_dir);
+        if (filters?.per_page) params.set('per_page', filters.per_page);
         const qs = params.toString();
         return route('registro-expedientes.export') + (qs ? '?' + qs : '');
     };

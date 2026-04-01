@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
+use App\Support\GridPagination;
 
 class MunicipalidadFuncionarioPublicoController extends Controller
 {
@@ -73,7 +74,7 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
-        $items = $query->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id', 'sort', 'direction', 'search', 'tipo']));
+        $items = GridPagination::paginate($query, $request);
         $totalsQuery = MunicipalidadFuncionarioPublico::query()->active();
         $this->applyRoleBasedFilter($totalsQuery, $user);
         if ($folderId) {
@@ -94,7 +95,7 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'experienceTotals' => $experienceTotals,
             'filters' => array_merge(
                 $request->only(['search', 'tipo', 'user_id', 'folder_id']),
-                ['sort' => $sort, 'direction' => $direction]
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
             ),
             'userRole' => $user->role,
             'operadores' => $operadores,

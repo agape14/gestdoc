@@ -6,6 +6,7 @@ import PdfModal from '@/Components/PdfModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
+import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 
 const fmtDate = (d) => (!d ? '-' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
 
@@ -93,6 +94,23 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
     const hasFolders = Boolean(folders && folders.length > 0);
     const hasMove = hasFolders && currentUserRole !== 'Visualizador';
+
+    const sortField = filters.sort || 'created_at';
+    const sortDirection = filters.direction === 'asc' ? 'asc' : 'desc';
+    const navigateList = (extra = {}) => {
+        router.get(route('ejecutor-obra.index'), {
+            ...filters,
+            search,
+            folder_id: filters.folder_id,
+            ...(isAdmin ? { user_id: operatorId || undefined } : {}),
+            ...extra,
+        }, { preserveState: true, preserveScroll: true, replace: true });
+    };
+    const toggleSort = (field) => {
+        const nextDir = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+        navigateList({ sort: field, direction: nextDir, page: 1 });
+    };
+
     const toggleSelectOne = (id) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     const toggleSelectAll = () => {
         const data = obras.data || [];
@@ -129,7 +147,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
             const params = { ...filters, search, folder_id: filters.folder_id };
             if (isAdmin) params.user_id = operatorId || undefined;
             if (search !== (filters.search || '') || operatorId !== (filters.user_id || '')) {
-                router.get(route('ejecutor-obra.index'), params, { preserveState: true, preserveScroll: true, replace: true });
+                router.get(route('ejecutor-obra.index'), { ...params, page: 1 }, { preserveState: true, preserveScroll: true, replace: true });
             }
         }, 300);
         return () => clearTimeout(timer);
@@ -320,6 +338,9 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                             />
                         </div>
                     </div>
+                    <div className="col-12 col-md-6 col-lg-auto d-flex align-items-end">
+                        <GridPerPageSelect value={String(filters.per_page ?? '50')} onChange={(v) => navigateList({ per_page: v, page: 1 })} />
+                    </div>
                 </div>
             </div>
 
@@ -338,12 +359,12 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                         )}
                                     </th>
                                 )}
-                                <th scope="col" className="py-3">ENTIDAD</th>
-                                <th scope="col" className="py-3">NOMENCLATURA</th>
-                                <th scope="col" className="py-3">CUI</th>
-                                <th scope="col" className="py-3"># CONTRATO</th>
-                                <th scope="col" className="py-3">MONTO TOTAL</th>
-                                <th scope="col" className="py-3">PLAZO</th>
+                                <SortTh label="ENTIDAD" field="nombre_sigla_entidad" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="NOMENCLATURA" field="nomenclatura" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="CUI" field="cui" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="# CONTRATO" field="numero_contrato" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="MONTO TOTAL" field="monto_total" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <SortTh label="PLAZO" field="plazo" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>

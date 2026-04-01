@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
+use App\Support\GridPagination;
 
 class EspecialistaEjecucionController extends Controller
 {
@@ -65,11 +66,19 @@ class EspecialistaEjecucionController extends Controller
             $query->where('tipo', $request->tipo);
         }
 
+        $sortable = ['id', 'cliente', 'objeto_del_contrato', 'cui', 'fecha_contrato_cp', 'fecha_inicio', 'fecha_culminacion', 'estado', 'total_dias', 'monto_neto', 'created_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
 
-        $especialistas = $query->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id']));
+        $especialistas = GridPagination::paginate(clone $query, $request);
         $totalsQuery = EspecialistaEjecucion::query()->active();
         $this->applyRoleBasedFilter($totalsQuery, $user);
         if ($folderId) {
@@ -88,7 +97,10 @@ class EspecialistaEjecucionController extends Controller
         return Inertia::render('EspecialistasEjecucion/Index', [
             'especialistas' => $especialistas,
             'experienceTotals' => $experienceTotals,
-            'filters' => $request->only(['search', 'tipo', 'user_id', 'folder_id']),
+            'filters' => array_merge(
+                $request->only(['search', 'tipo', 'user_id', 'folder_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'userRole' => $user->role,
             'operadores' => $operadores,
             'folders' => $folders,

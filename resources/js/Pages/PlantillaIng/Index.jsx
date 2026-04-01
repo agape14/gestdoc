@@ -21,8 +21,8 @@ export default function Index({ items, filters, userRole, folders = [], currentF
     );
 
     const columns = [
-        { header: 'PLANTILLA', accessor: 'titulo', render: (item) => (item.titulo ? String(item.titulo).slice(0, 45) + (String(item.titulo).length > 45 ? '…' : '') : '-') },
-        { header: 'ESPECIALIDAD', accessor: 'especialidad' },
+        { header: 'PLANTILLA', accessor: 'titulo', sortable: true, render: (item) => (item.titulo ? String(item.titulo).slice(0, 45) + (String(item.titulo).length > 45 ? '…' : '') : '-') },
+        { header: 'ESPECIALIDAD', accessor: 'especialidad', sortable: true },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
@@ -71,6 +71,7 @@ export default function Index({ items, filters, userRole, folders = [], currentF
             anulados={anulados}
             renderDetail={renderDetail}
             renderHeader={renderHeader}
+            sortEnabled
         />
     );
 }

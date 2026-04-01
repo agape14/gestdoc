@@ -9,10 +9,10 @@ export default function Index({ items, filters, userRole, folders = [], currentF
     };
 
     const columns = [
-        { header: 'PROYECTO', accessor: 'titulo', render: (item) => (item.titulo ? String(item.titulo).slice(0, 45) + (String(item.titulo).length > 45 ? '…' : '') : '-') },
-        { header: 'UBICACIÓN', accessor: 'ubicacion', render: (item) => (item.ubicacion ? String(item.ubicacion).slice(0, 35) + (String(item.ubicacion).length > 35 ? '…' : '') : '-') },
-        { header: 'PRECIO', accessor: 'precio', render: (row) => `S/ ${parseFloat(row.precio || 0).toFixed(2)}` },
-        { header: 'ESTADO', accessor: 'estado' },
+        { header: 'PROYECTO', accessor: 'titulo', sortable: true, render: (item) => (item.titulo ? String(item.titulo).slice(0, 45) + (String(item.titulo).length > 45 ? '…' : '') : '-') },
+        { header: 'UBICACIÓN', accessor: 'ubicacion', sortable: true, render: (item) => (item.ubicacion ? String(item.ubicacion).slice(0, 35) + (String(item.ubicacion).length > 35 ? '…' : '') : '-') },
+        { header: 'PRECIO', accessor: 'precio', sortable: true, render: (row) => `S/ ${parseFloat(row.precio || 0).toFixed(2)}` },
+        { header: 'ESTADO', accessor: 'estado', sortable: true },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
@@ -78,6 +78,7 @@ export default function Index({ items, filters, userRole, folders = [], currentF
             renderDetail={renderDetail}
             getDocumentLinks={getDocumentLinks}
             renderHeader={renderHeader}
+            sortEnabled
         />
     );
 }

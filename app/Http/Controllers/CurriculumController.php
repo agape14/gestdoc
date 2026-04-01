@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 use ZipArchive;
+use App\Support\GridPagination;
 
 class CurriculumController extends Controller
 {
@@ -78,6 +79,14 @@ class CurriculumController extends Controller
             $query->whereDate('created_at', '<=', $request->date_end);
         }
 
+        $sortable = ['nombre_candidato', 'especialidad', 'created_at'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'created_at';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
@@ -89,9 +98,14 @@ class CurriculumController extends Controller
                 ->latest()->get()
             : collect();
 
+        $query->with('files');
+
         return Inertia::render('Cvs/Index', [
-            'cvs' => $query->with('files')->latest()->paginate(10)->withQueryString()->appends($request->only(['folder_id', 'user_id'])),
-            'filters' => $request->only(['search', 'especialidad', 'date_start', 'date_end', 'folder_id', 'user_id']),
+            'cvs' => GridPagination::paginate(clone $query, $request),
+            'filters' => array_merge(
+                $request->only(['search', 'especialidad', 'date_start', 'date_end', 'folder_id', 'user_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
             'folders' => $folders,
             'currentFolder' => $currentFolder,
             'breadcrumb' => $breadcrumb,

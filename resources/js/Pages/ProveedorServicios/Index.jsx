@@ -28,21 +28,22 @@ export default function Index({ servicios, experienceTotals = {}, filters, userR
     };
 
     const columns = [
-        { header: 'N°', accessor: 'id', render: (item, rowIndex) => ((servicios.current_page || 1) - 1) * (servicios.per_page || 10) + (rowIndex ?? 0) + 1 },
-        { header: 'CLIENTE', accessor: 'cliente', render: (item) => (item.cliente ? String(item.cliente).slice(0, 35) + (String(item.cliente).length > 35 ? '…' : '') : '-') },
+        { header: 'N°', accessor: 'id', sortable: true, sortKey: 'id', render: (item, rowIndex) => ((servicios.current_page || 1) - 1) * (servicios.per_page || 10) + (rowIndex ?? 0) + 1 },
+        { header: 'CLIENTE', accessor: 'cliente', sortable: true, render: (item) => (item.cliente ? String(item.cliente).slice(0, 35) + (String(item.cliente).length > 35 ? '…' : '') : '-') },
         {
             header: 'OBJETO',
             accessor: 'objeto_del_contrato',
+            sortable: true,
             render: (item) => (
                 <span className="d-inline-block text-wrap" style={{ maxWidth: '320px', minWidth: '260px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                     {item.objeto_del_contrato || '-'}
                 </span>
             ),
         },
-        { header: 'FECHA INICIO', accessor: 'fecha_inicio', render: (item) => formatDateDisplay(item.fecha_inicio) },
-        { header: 'FECHA CULM.', accessor: 'fecha_culminacion', render: (item) => formatDateDisplay(item.fecha_culminacion) },
-        { header: 'TOTAL DÍAS', accessor: 'total_dias', render: (item) => item.total_dias ?? '-' },
-        { header: 'MONTO NETO', accessor: 'monto_neto', render: (item) => formatMonedaPeruana(item.monto_neto) },
+        { header: 'FECHA INICIO', accessor: 'fecha_inicio', sortable: true, render: (item) => formatDateDisplay(item.fecha_inicio) },
+        { header: 'FECHA CULM.', accessor: 'fecha_culminacion', sortable: true, render: (item) => formatDateDisplay(item.fecha_culminacion) },
+        { header: 'TOTAL DÍAS', accessor: 'total_dias', sortable: true, render: (item) => item.total_dias ?? '-' },
+        { header: 'MONTO NETO', accessor: 'monto_neto', sortable: true, render: (item) => formatMonedaPeruana(item.monto_neto) },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
@@ -128,6 +129,7 @@ export default function Index({ servicios, experienceTotals = {}, filters, userR
             operadores={operadores}
             renderDetail={renderDetail}
             renderHeader={renderHeader}
+            sortEnabled
         />
     );
 }

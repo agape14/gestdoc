@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Support\GridPagination;
 
 class FolderController extends Controller
 {
@@ -87,7 +88,15 @@ class FolderController extends Controller
             $query->whereDate('fecha_documento', '<=', $request->date_end);
         }
 
-        $documents = $query->latest('fecha_documento')->latest()->get();
+        $sortable = ['numero', 'fecha_documento', 'asunto', 'remitente', 'destinatario', 'referencia', 'created_at'];
+        $sort = (string) $request->input('sort', 'fecha_documento');
+        if (!in_array($sort, $sortable, true)) {
+            $sort = 'fecha_documento';
+        }
+        $direction = strtolower((string) $request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sort, $direction)->orderBy('id', 'desc');
+
+        $documents = GridPagination::paginate($query, $request);
 
         $foldersQuery = Folder::whereNull('parent_id')->whereNull('module');
         if ($user->role === 'Administrador' && $request->filled('user_id')) {
@@ -119,7 +128,10 @@ class FolderController extends Controller
             'documents' => $documents,
             'allFoldersForMove' => $allFoldersForMove,
             'operadores' => $operadores,
-            'filters' => $request->only(['search', 'date_start', 'date_end', 'user_id']),
+            'filters' => array_merge(
+                $request->only(['search', 'date_start', 'date_end', 'user_id']),
+                ['sort' => $sort, 'direction' => $direction, 'per_page' => GridPagination::perPageFilterValue($request)]
+            ),
         ]);
     }
 
