@@ -59,6 +59,7 @@ class FolderDocumentController extends Controller
                 "archivos.{$index}.file" => 'required|file|mimes:pdf|max:25600',
             ], [
                 "archivos.{$index}.file.max" => 'Cada archivo PDF no debe superar 25 MB.',
+                "archivos.{$index}.file.uploaded" => 'El archivo no se recibió completo en el servidor. Suele deberse a límites de PHP (upload_max_filesize, post_max_size) o del proxy web menores que el tamaño del PDF. Se necesita permitir subidas de al menos 30 MB para este formulario, o reduzca el tamaño del archivo.',
             ], ["archivos.{$index}.file" => 'archivo PDF']);
             $nombre = \Str::limit($item['nombre_archivo'], 255);
             $path = $item['file']->store('expedientes/documentos', 'r2');
@@ -102,7 +103,10 @@ class FolderDocumentController extends Controller
             'archivos_existentes' => 'nullable|array',
             'archivos_existentes.*.id' => 'required|exists:document_files,id',
             'archivos_existentes.*.nombre_archivo' => 'required|string|max:255',
-        ], [], [
+        ], [
+            'archivos.*.file.max' => 'Cada archivo PDF no debe superar 25 MB.',
+            'archivos.*.file.uploaded' => 'El archivo no se recibió completo en el servidor. Suele deberse a límites de PHP (upload_max_filesize, post_max_size) o del proxy web menores que el tamaño del PDF. Se necesita permitir subidas de al menos 30 MB para este formulario, o reduzca el tamaño del archivo.',
+        ], [
             'archivos.*.nombre_archivo' => 'nombre del archivo',
             'archivos.*.file' => 'archivo PDF',
         ]);
@@ -305,7 +309,7 @@ class FolderDocumentController extends Controller
                 ->get();
         }
 
-        $filesToZip = [];
+        $entries = [];
         foreach ($documents as $doc) {
             foreach ($doc->files as $file) {
                 $disk = storage_disk_for_path($file->path);
@@ -313,41 +317,42 @@ class FolderDocumentController extends Controller
                     continue;
                 }
                 if ($disk === 'public') {
-                    $filesToZip[] = [
+                    $entries[] = [
+                        'type' => 'local',
                         'path' => Storage::disk('public')->path($file->path),
                         'nombre_archivo' => $file->nombre_archivo,
                     ];
                 } else {
-                    $content = Storage::disk($disk)->get($file->path);
-                    $tmpPath = storage_path('app/documentos_temp_' . uniqid() . '.pdf');
-                    file_put_contents($tmpPath, $content);
-                    $filesToZip[] = [
-                        'path' => $tmpPath,
+                    $entries[] = [
+                        'type' => 'remote',
+                        'disk' => $disk,
+                        'path' => $file->path,
                         'nombre_archivo' => $file->nombre_archivo,
-                        'temp' => true,
                     ];
                 }
             }
         }
 
-        if (empty($filesToZip)) {
+        if (empty($entries)) {
             return redirect()->back()->with('error', 'No hay archivos PDF para descargar.');
         }
 
         $usedBaseNames = [];
         $zip = new ZipArchive();
-        $zipPath = storage_path('app/public/documentos_temp_' . uniqid() . '.zip');
+        $zipPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'gestdoc-docs-' . uniqid('', true) . '.zip';
 
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return redirect()->back()->with('error', 'No se pudo crear el archivo ZIP.');
         }
 
-        foreach ($filesToZip as $item) {
+        foreach ($entries as $item) {
             $baseName = \Str::slug($item['nombre_archivo']);
             if (empty($baseName)) {
                 $baseName = 'documento';
             }
-            $ext = pathinfo($item['path'], PATHINFO_EXTENSION) ?: 'pdf';
+            $ext = $item['type'] === 'local'
+                ? (pathinfo($item['path'], PATHINFO_EXTENSION) ?: 'pdf')
+                : 'pdf';
             if (!isset($usedBaseNames[$baseName])) {
                 $usedBaseNames[$baseName] = 0;
             }
@@ -355,16 +360,20 @@ class FolderDocumentController extends Controller
             $fileName = $usedBaseNames[$baseName] === 1
                 ? $baseName . '.' . $ext
                 : $baseName . '-' . $usedBaseNames[$baseName] . '.' . $ext;
-            $zip->addFile($item['path'], $fileName);
+
+            if ($item['type'] === 'local') {
+                $zip->addFile($item['path'], $fileName);
+            } else {
+                $content = Storage::disk($item['disk'])->get($item['path']);
+                if ($content === null || $content === false) {
+                    continue;
+                }
+                $zip->addFromString($fileName, $content);
+                unset($content);
+            }
         }
 
         $zip->close();
-
-        foreach ($filesToZip as $item) {
-            if (!empty($item['temp']) && file_exists($item['path'])) {
-                @unlink($item['path']);
-            }
-        }
 
         $downloadName = \Str::slug($folder->name) . '-documentos-' . now()->format('Y-m-d-His') . '.zip';
 

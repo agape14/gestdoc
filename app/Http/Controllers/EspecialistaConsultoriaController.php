@@ -19,6 +19,7 @@ class EspecialistaConsultoriaController extends Controller
     use HasRoleBasedAccess, MovesToFolder;
 
     const MODULE = 'especialistas-consultoria';
+    private const ESTADOS_VALIDOS = ['COMPLETO', 'INCOMPLETO', 'EN CURSO', 'ARCHIVADO'];
 
     public function index(Request $request)
     {
@@ -176,6 +177,7 @@ class EspecialistaConsultoriaController extends Controller
             'objeto_del_contrato' => 'required|string',
             'cui' => 'nullable|string|max:100',
             'numero_contrato_os_comprobante' => 'required|string|max:255',
+            'fecha_contrato_cp' => 'nullable|string',
             'fecha_inicio' => 'required|string',
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
@@ -189,6 +191,7 @@ class EspecialistaConsultoriaController extends Controller
             'documentos.*.tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
             'documentos.*.archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
         ]);
         foreach ($request->input('documentos', []) as $i => $doc) {
             if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && empty(trim($doc['nombre_otro'] ?? ''))) {
@@ -202,7 +205,7 @@ class EspecialistaConsultoriaController extends Controller
         $data['user_id'] = auth()->id();
         $data['nombre'] = $data['nombre'] ?? $data['cliente'];
         $data['tipo'] = $data['tipo'] ?? 'Profesional';
-        $data['estado'] = $data['estado'] ?? 'Activo';
+        $data['estado'] = $data['estado'] ?? 'EN CURSO';
 
         if ($request->filled('folder_id')) {
             $folder = Folder::where('module', self::MODULE)->find($request->folder_id);
@@ -244,6 +247,7 @@ class EspecialistaConsultoriaController extends Controller
             'objeto_del_contrato' => $request->input('objeto_del_contrato'),
             'cui' => $request->input('cui'),
             'numero_contrato_os_comprobante' => $request->input('numero_contrato_os_comprobante'),
+            'fecha_contrato_cp' => parse_fecha_dd_mm_yyyy($request->input('fecha_contrato_cp')),
             'fecha_inicio' => $fechaInicio,
             'fecha_suspension' => $fechaSuspension,
             'fecha_reinicio' => $fechaReinicio,
@@ -253,6 +257,7 @@ class EspecialistaConsultoriaController extends Controller
             'traslape' => $traslape,
             'total_dias_sin_traslape' => $totalDiasSinTraslape,
             'monto_neto' => $request->input('monto_neto') !== null && $request->input('monto_neto') !== '' ? (float) preg_replace('/[^\d.]/', '', $request->input('monto_neto')) : null,
+            'estado' => in_array((string) $request->input('estado'), self::ESTADOS_VALIDOS, true) ? $request->input('estado') : 'EN CURSO',
         ];
 
         $basePath = 'expedientes/especialistas_consultoria';
@@ -383,6 +388,7 @@ class EspecialistaConsultoriaController extends Controller
             'objeto_del_contrato' => $e->objeto_del_contrato,
             'cui' => $e->cui,
             'numero_contrato_os_comprobante' => $e->numero_contrato_os_comprobante,
+            'fecha_contrato_cp' => $e->fecha_contrato_cp?->format('Y-m-d'),
             'fecha_inicio' => $e->fecha_inicio?->format('Y-m-d'),
             'fecha_suspension' => $e->fecha_suspension?->format('Y-m-d'),
             'fecha_reinicio' => $e->fecha_reinicio?->format('Y-m-d'),
@@ -398,6 +404,7 @@ class EspecialistaConsultoriaController extends Controller
             'archivo_contrato_url' => $e->archivo_contrato_url,
             'archivo_suspension_url' => $e->archivo_suspension_url,
             'archivo_reinicio_url' => $e->archivo_reinicio_url,
+            'estado' => in_array((string) $e->estado, self::ESTADOS_VALIDOS, true) ? $e->estado : 'EN CURSO',
             'documentos_existentes' => $e->documentos->map(fn ($d) => [
                 'id' => $d->id,
                 'nombre' => $d->nombre,
@@ -422,6 +429,7 @@ class EspecialistaConsultoriaController extends Controller
             'objeto_del_contrato' => 'required|string',
             'cui' => 'nullable|string|max:100',
             'numero_contrato_os_comprobante' => 'required|string|max:255',
+            'fecha_contrato_cp' => 'nullable|string',
             'fecha_inicio' => 'required|string',
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
@@ -435,6 +443,7 @@ class EspecialistaConsultoriaController extends Controller
             'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
             'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
         ]);
         foreach ($request->input('documentos', []) as $i => $doc) {
             if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {

@@ -35,6 +35,7 @@ export default function Edit({ especialista }) {
                 <ExperienciaForm
                     key={especialista?.id ?? 'edit'}
                     structure={1}
+                    variant="especialistas-consultoria"
                     initialData={initialData}
                     submitRoute={especialista?.id != null ? `/especialistas-consultoria/${especialista.id}` : '#'}
                     method="PUT"

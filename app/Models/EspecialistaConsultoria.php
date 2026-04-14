@@ -9,7 +9,7 @@ class EspecialistaConsultoria extends Model
     protected $fillable = [
         'nombre', 'especialidad', 'tipo', 'documento', 'estado', 'user_id',
         'anulado', 'folder_id', 'clasificacion',
-        'cliente', 'objeto_del_contrato', 'cui', 'numero_contrato_os_comprobante',
+        'cliente', 'objeto_del_contrato', 'cui', 'numero_contrato_os_comprobante', 'fecha_contrato_cp',
         'fecha_inicio', 'fecha_suspension', 'fecha_reinicio', 'fecha_culminacion',
         'total_meses', 'total_dias', 'traslape', 'total_dias_sin_traslape',
         'monto_neto', 'monto_acumulado',
@@ -20,6 +20,7 @@ class EspecialistaConsultoria extends Model
 
     protected $casts = [
         'fecha_inicio' => 'date',
+        'fecha_contrato_cp' => 'date',
         'fecha_suspension' => 'date',
         'fecha_reinicio' => 'date',
         'fecha_culminacion' => 'date',

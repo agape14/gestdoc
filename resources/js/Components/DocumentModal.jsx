@@ -2,11 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 
+const humanizeValidationMessage = (msg) => {
+    if (typeof msg !== 'string') return msg;
+    if (msg === 'validation.uploaded') {
+        return 'La subida falló antes de validar el PDF (tamaño del archivo o límites del servidor: PHP upload_max_filesize / post_max_size o nginx client_max_body_size). Si el archivo es grande, pida al administrador subir esos límites (p. ej. 32M) o comprima el PDF.';
+    }
+    return msg;
+};
+
 const showValidationErrors = (errors) => {
     if (!errors || typeof errors !== 'object') return;
     const entries = Object.entries(errors);
     if (entries.length === 0) return;
-    const html = entries.map(([k, v]) => `<strong>${k.replace(/_/g, ' ')}</strong>: ${v}`).join('<br>');
+    const html = entries
+        .map(([k, v]) => {
+            const text = Array.isArray(v) ? v.map(humanizeValidationMessage).join(', ') : humanizeValidationMessage(v);
+            return `<strong>${k.replace(/_/g, ' ')}</strong>: ${text}`;
+        })
+        .join('<br>');
     Swal.fire({
         icon: 'error',
         title: 'Errores de validación',

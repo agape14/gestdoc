@@ -70,7 +70,7 @@ export default function ExperienciaForm({
     cancelUrl,
     title,
 }) {
-    const isEspecialistasEjecucion = ['especialistas-ejecucion', 'municipalidades-funcionario-publico'].includes(variant);
+    const isEspecialistasConEstadoContrato = ['especialistas-ejecucion', 'especialistas-consultoria', 'municipalidades-funcionario-publico'].includes(variant);
     const allowDeleteExistingDocuments = variant === 'municipalidades-funcionario-publico' && method === 'PUT';
     const isProveedorBienes = structure === 3;
     const isProveedorServicios = structure === 2;
@@ -95,7 +95,7 @@ export default function ExperienciaForm({
             tipo_documento_adjunto: initialData.tipo_documento_adjunto ?? '',
             archivo_contrato: null,
         };
-        if (isEspecialistasEjecucion) {
+        if (isEspecialistasConEstadoContrato) {
             base.fecha_contrato_cp = initialData.fecha_contrato_cp ? toDDMMYYYY(initialData.fecha_contrato_cp) : '';
             base.estado = initialData.estado ?? 'EN CURSO';
         }
@@ -245,7 +245,7 @@ export default function ExperienciaForm({
                         <div className="invalid-feedback">{errors.numero_contrato_os_comprobante || errors.numero_contrato_oc_comprobante}</div>
                     )}
                 </div>
-                {isEspecialistasEjecucion && (
+                {isEspecialistasConEstadoContrato && (
                     <>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">FECHA DE CONTRATO O CP</label>
@@ -447,7 +447,7 @@ export default function ExperienciaForm({
                         )}
                 </>
                 <div className="col-md-6">
-                    <label className="form-label fw-medium">{isEspecialistasEjecucion ? 'Monto Contratado *' : 'Monto Neto *'}</label>
+                    <label className="form-label fw-medium">{isEspecialistasConEstadoContrato ? 'Monto Contratado *' : 'Monto Neto *'}</label>
                     <input
                         type="text"
                         placeholder="S/. 1,000.00"

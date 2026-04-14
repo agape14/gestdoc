@@ -386,7 +386,7 @@ class CurriculumController extends Controller
             $cvs = $query->with('files')->whereIn('id', $ids)->get();
         }
 
-        $filesToZip = [];
+        $entries = [];
         foreach ($cvs as $cv) {
             foreach ($cv->files as $file) {
                 $disk = storage_disk_for_path($file->path);
@@ -394,18 +394,17 @@ class CurriculumController extends Controller
                     continue;
                 }
                 if ($disk === 'public') {
-                    $filesToZip[] = [
+                    $entries[] = [
+                        'type' => 'local',
                         'path' => Storage::disk('public')->path($file->path),
                         'nombre_archivo' => $file->nombre_archivo,
                     ];
                 } else {
-                    $content = Storage::disk($disk)->get($file->path);
-                    $tmpPath = storage_path('app/cvs_temp_' . uniqid() . '.pdf');
-                    file_put_contents($tmpPath, $content);
-                    $filesToZip[] = [
-                        'path' => $tmpPath,
+                    $entries[] = [
+                        'type' => 'remote',
+                        'disk' => $disk,
+                        'path' => $file->path,
                         'nombre_archivo' => $file->nombre_archivo,
-                        'temp' => true,
                     ];
                 }
             }
@@ -413,54 +412,58 @@ class CurriculumController extends Controller
                 $disk = storage_disk_for_path($cv->archivo_cv);
                 if (Storage::disk($disk)->exists($cv->archivo_cv)) {
                     if ($disk === 'public') {
-                        $filesToZip[] = [
+                        $entries[] = [
+                            'type' => 'local',
                             'path' => Storage::disk('public')->path($cv->archivo_cv),
                             'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
                         ];
                     } else {
-                        $content = Storage::disk($disk)->get($cv->archivo_cv);
-                        $tmpPath = storage_path('app/cvs_temp_' . uniqid() . '.pdf');
-                        file_put_contents($tmpPath, $content);
-                        $filesToZip[] = [
-                            'path' => $tmpPath,
+                        $entries[] = [
+                            'type' => 'remote',
+                            'disk' => $disk,
+                            'path' => $cv->archivo_cv,
                             'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
-                            'temp' => true,
                         ];
                     }
                 }
             }
         }
 
-        if (empty($filesToZip)) {
+        if (empty($entries)) {
             return redirect()->back()->with('error', 'No hay archivos PDF para descargar.');
         }
 
         $usedBaseNames = [];
         $zip = new ZipArchive();
-        $zipPath = storage_path('app/public/cvs_temp_' . uniqid() . '.zip');
+        $zipPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'gestdoc-cvs-' . uniqid('', true) . '.zip';
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return redirect()->back()->with('error', 'No se pudo crear el archivo ZIP.');
         }
-        foreach ($filesToZip as $item) {
+        foreach ($entries as $item) {
             $baseName = \Str::slug($item['nombre_archivo']);
             if (empty($baseName)) {
                 $baseName = 'documento';
             }
-            $ext = 'pdf';
+            $ext = $item['type'] === 'local'
+                ? (pathinfo($item['path'], PATHINFO_EXTENSION) ?: 'pdf')
+                : 'pdf';
             if (!isset($usedBaseNames[$baseName])) {
                 $usedBaseNames[$baseName] = 0;
             }
             $usedBaseNames[$baseName]++;
             $fileName = $usedBaseNames[$baseName] === 1 ? $baseName . '.' . $ext : $baseName . '-' . $usedBaseNames[$baseName] . '.' . $ext;
-            $zip->addFile($item['path'], $fileName);
-        }
-        $zip->close();
-
-        foreach ($filesToZip as $item) {
-            if (!empty($item['temp']) && file_exists($item['path'])) {
-                @unlink($item['path']);
+            if ($item['type'] === 'local') {
+                $zip->addFile($item['path'], $fileName);
+            } else {
+                $content = Storage::disk($item['disk'])->get($item['path']);
+                if ($content === null || $content === false) {
+                    continue;
+                }
+                $zip->addFromString($fileName, $content);
+                unset($content);
             }
         }
+        $zip->close();
 
         $downloadName = 'cvs-' . ($folderId ? 'carpeta-' . $folderId . '-' : '') . now()->format('Y-m-d-His') . '.zip';
         return response()->download($zipPath, $downloadName, ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);
