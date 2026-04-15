@@ -166,9 +166,6 @@ class CurriculumController extends Controller
         ]);
 
         $archivos = $this->parseArchivosFromRequest($request);
-        if (empty($archivos)) {
-            return redirect()->back()->withErrors(['archivos' => 'Debe adjuntar al menos un archivo PDF con su nombre.'])->withInput();
-        }
 
         $data = [
             'user_id' => auth()->id(),

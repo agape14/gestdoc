@@ -33,6 +33,7 @@ export default function Edit({ bien }) {
                 <ExperienciaForm
                     key={bien?.id ?? 'edit'}
                     structure={3}
+                    variant="proveedor-bienes"
                     initialData={initialData}
                     submitRoute={bien?.id != null ? `/proveedor-bienes/${bien.id}` : '#'}
                     method="PUT"

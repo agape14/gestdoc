@@ -135,9 +135,6 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
             });
         } else {
             const conArchivo = archivos.filter((a) => a.nombre_archivo && a.file);
-            if (conArchivo.length === 0) {
-                return;
-            }
             conArchivo.forEach((a, i) => {
                 formData.append(`archivos[${i}][nombre_archivo]`, a.nombre_archivo);
                 formData.append(`archivos[${i}][file]`, a.file);
@@ -153,9 +150,6 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
             });
         }
     };
-
-    const archivosConDatos = archivos.filter((a) => a.nombre_archivo && a.file);
-    const puedeEnviarCrear = !isEditing && archivosConDatos.length > 0;
 
     if (!show) return null;
 
@@ -298,7 +292,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                 <div className="col-12">
                                     <label className="form-label fw-semibold">
                                         {isEditing ? 'Añadir más archivos PDF' : 'Archivos PDF (nombre + archivo)'}
-                                        {!isEditing && <span className="text-danger ms-1">* al menos uno</span>}
+                                        {!isEditing && <span className="text-secondary ms-1">(opcional)</span>}
                                     </label>
                                     <div className="small text-secondary mb-2">Máx. 25 MB por archivo, formato PDF.</div>
                                     {archivos.map((a, i) => (
@@ -342,7 +336,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                             <button
                                 type="submit"
                                 className="btn btn-primary"
-                                disabled={processing || submitting || (!isEditing && !puedeEnviarCrear)}
+                                disabled={processing || submitting}
                             >
                                 {(processing || submitting) ? (
                                     <>

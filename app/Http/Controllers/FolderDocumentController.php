@@ -37,9 +37,6 @@ class FolderDocumentController extends Controller
         }
 
         $archivosData = $this->parseArchivosFromRequest($request);
-        if (empty($archivosData)) {
-            return redirect()->back()->withErrors(['archivos' => 'Debe adjuntar al menos un archivo PDF con su nombre.'])->withInput();
-        }
 
         $document = Document::create([
             'folder_id' => $validated['folder_id'],
@@ -55,6 +52,9 @@ class FolderDocumentController extends Controller
         ]);
 
         foreach ($archivosData as $index => $item) {
+            if (empty($item['file'])) {
+                continue;
+            }
             $request->validate([
                 "archivos.{$index}.file" => 'required|file|mimes:pdf|max:25600',
             ], [

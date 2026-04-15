@@ -31,10 +31,6 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
     const submit = (e) => {
         e.preventDefault();
         const conArchivo = archivos.filter((a) => a.nombre_archivo && a.file);
-        if (conArchivo.length === 0) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Debe adjuntar al menos un archivo PDF con su nombre.' });
-            return;
-        }
         const formData = new FormData();
         formData.append('nombre_candidato', data.nombre_candidato);
         if (data.nombre != null && data.nombre !== '') formData.append('nombre', data.nombre);
@@ -53,7 +49,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
     };
 
     const cancelUrl = folderId ? route('cvs.index', { folder_id: folderId }) : route('cvs.index');
-    const puedeEnviar = data.nombre_candidato.trim() && archivos.some((a) => a.nombre_archivo && a.file);
+    const puedeEnviar = Boolean(data.nombre_candidato.trim());
 
     return (
         <MainLayout>
@@ -105,7 +101,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
 
                     <div className="col-12 mb-4">
                         <label className="form-label fw-semibold">
-                            Archivos PDF (nombre + archivo) <span className="text-danger ms-1">* al menos uno</span>
+                            Archivos PDF (nombre + archivo) <span className="text-secondary ms-1">(opcional)</span>
                         </label>
                         <div className="small text-secondary mb-2">Máx. 25 MB por archivo, formato PDF.</div>
                         {archivos.map((a, i) => (

@@ -195,20 +195,29 @@ class ProveedorServicioController extends Controller
             'cliente' => 'required|string|max:500',
             'objeto_del_contrato' => 'required|string',
             'numero_contrato_os_comprobante' => 'required|string|max:255',
+            'fecha_contrato_cp' => 'nullable|string',
             'fecha_inicio' => 'required|string',
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0.01',
+            'estado_contrato' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
             'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'archivo_suspension' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'archivo_reinicio' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
-            'documentos' => 'required|array|min:1',
-            'documentos.*.tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos' => 'nullable|array',
+            'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
+        foreach ($request->input('documentos', []) as $i => $doc) {
+            if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "documentos.{$i}.nombre_otro" => ['El nombre del documento es obligatorio cuando el tipo es Otros.'],
+                ]);
+            }
+        }
 
         $data = $this->prepareExperienciaDataServicios($request, null);
         $data['user_id'] = auth()->id();
@@ -251,10 +260,16 @@ class ProveedorServicioController extends Controller
         $fechaSuspension = parse_fecha_dd_mm_yyyy($request->input('fecha_suspension'));
         $fechaReinicio = parse_fecha_dd_mm_yyyy($request->input('fecha_reinicio'));
 
+        $estadosContrato = ['COMPLETO', 'INCOMPLETO', 'EN CURSO', 'ARCHIVADO'];
+        $estadoContrato = $request->input('estado_contrato');
+        $estadoContrato = in_array((string) $estadoContrato, $estadosContrato, true) ? $estadoContrato : 'EN CURSO';
+
         $data = [
             'cliente' => $request->input('cliente'),
             'objeto_del_contrato' => $request->input('objeto_del_contrato'),
             'numero_contrato_os_comprobante' => $request->input('numero_contrato_os_comprobante'),
+            'fecha_contrato_cp' => parse_fecha_dd_mm_yyyy($request->input('fecha_contrato_cp')),
+            'estado_contrato' => $estadoContrato,
             'fecha_inicio' => $fechaInicio,
             'fecha_suspension' => $fechaSuspension,
             'fecha_reinicio' => $fechaReinicio,
@@ -371,6 +386,10 @@ class ProveedorServicioController extends Controller
             'cliente' => $s->cliente,
             'objeto_del_contrato' => $s->objeto_del_contrato,
             'numero_contrato_os_comprobante' => $s->numero_contrato_os_comprobante,
+            'fecha_contrato_cp' => $s->fecha_contrato_cp?->format('Y-m-d'),
+            'estado_contrato' => in_array((string) ($s->estado_contrato ?? ''), ['COMPLETO', 'INCOMPLETO', 'EN CURSO', 'ARCHIVADO'], true)
+                ? $s->estado_contrato
+                : 'EN CURSO',
             'fecha_inicio' => $s->fecha_inicio?->format('Y-m-d'),
             'fecha_suspension' => $s->fecha_suspension?->format('Y-m-d'),
             'fecha_reinicio' => $s->fecha_reinicio?->format('Y-m-d'),
@@ -409,11 +428,13 @@ class ProveedorServicioController extends Controller
             'cliente' => 'required|string|max:500',
             'objeto_del_contrato' => 'required|string',
             'numero_contrato_os_comprobante' => 'required|string|max:255',
+            'fecha_contrato_cp' => 'nullable|string',
             'fecha_inicio' => 'required|string',
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0.01',
+            'estado_contrato' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
             'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'archivo_suspension' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
@@ -423,6 +444,13 @@ class ProveedorServicioController extends Controller
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
             'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
         ]);
+        foreach ($request->input('documentos', []) as $i => $doc) {
+            if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "documentos.{$i}.nombre_otro" => ['El nombre del documento es obligatorio cuando el tipo es Otros.'],
+                ]);
+            }
+        }
 
         $data = $this->prepareExperienciaDataServicios($request, $proveedorServicio);
         $proveedorServicio->update($data);

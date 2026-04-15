@@ -10,6 +10,7 @@ class ProveedorBien extends Model
         'titulo', 'entidad', 'categoria', 'estado', 'costo', 'user_id',
         'anulado', 'folder_id', 'clasificacion',
         'cliente', 'objeto_del_contrato', 'numero_contrato_oc_comprobante',
+        'fecha_contrato_cp', 'estado_contrato',
         'fecha_inicio', 'fecha_culminacion',
         'total_meses', 'total_dias', 'traslape', 'total_dias_sin_traslape',
         'monto_neto', 'monto_acumulado',
@@ -18,6 +19,7 @@ class ProveedorBien extends Model
     ];
 
     protected $casts = [
+        'fecha_contrato_cp' => 'date',
         'fecha_inicio' => 'date',
         'fecha_culminacion' => 'date',
     ];

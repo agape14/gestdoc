@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateEjecutorObraRequest extends FormRequest
 {
@@ -54,42 +53,9 @@ class UpdateEjecutorObraRequest extends FormRequest
             'archivo_acta_suspension' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_acta_reinicio' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_acta_entrega_terreno' => 'nullable|file|mimes:pdf|max:25600',
-            'archivo_acta_adicional' => [
-                'nullable',
-                'file',
-                'mimes:pdf',
-                'max:25600',
-                Rule::requiredIf(function () use ($obra) {
-                    if (($this->input('tiene_adicional_obra') ?? '') !== 'SI') {
-                        return false;
-                    }
-                    return !$obra || !$obra->archivo_acta_adicional;
-                }),
-            ],
-            'archivo_acta_deductivo' => [
-                'nullable',
-                'file',
-                'mimes:pdf',
-                'max:25600',
-                Rule::requiredIf(function () use ($obra) {
-                    if (($this->input('tiene_deductivo_obra') ?? '') !== 'SI') {
-                        return false;
-                    }
-                    return !$obra || !$obra->archivo_acta_deductivo;
-                }),
-            ],
-            'archivo_aprobacion_acto_resolutivo' => [
-                'nullable',
-                'file',
-                'mimes:pdf',
-                'max:25600',
-                Rule::requiredIf(function () use ($obra) {
-                    if (($this->input('tiene_aprobacion_acto_resolutivo') ?? '') !== 'SI') {
-                        return false;
-                    }
-                    return !$obra || !$obra->archivo_aprobacion_acto_resolutivo;
-                }),
-            ],
+            'archivo_acta_adicional' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_acta_deductivo' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_aprobacion_acto_resolutivo' => 'nullable|file|mimes:pdf|max:25600',
             'documentos' => 'nullable|array',
             'documentos.*.nombre' => 'nullable|string|max:255',
             'documentos.*.archivo' => 'nullable|file|mimes:pdf|max:25600',
@@ -97,32 +63,10 @@ class UpdateEjecutorObraRequest extends FormRequest
             'documento_delete_ids.*' => 'integer|exists:ejecutor_obra_documentos,id',
         ];
 
-        if (!$obra || !$obra->archivo_contrato) {
-            $rules['archivo_contrato'] = 'required|file|mimes:pdf|max:25600';
-        }
-
         $tieneSuspension = $this->input('tiene_suspension');
         if ($tieneSuspension === 'SI' || $tieneSuspension === '1' || $tieneSuspension === true) {
             $rules['fecha_suspension'] = 'required|date';
             $rules['fecha_reinicio'] = 'required|date';
-            $rules['archivo_acta_suspension'] = [
-                'nullable',
-                'file',
-                'mimes:pdf',
-                'max:25600',
-                Rule::requiredIf(function () use ($obra) {
-                    return !$obra || !$obra->archivo_acta_suspension;
-                }),
-            ];
-            $rules['archivo_acta_reinicio'] = [
-                'nullable',
-                'file',
-                'mimes:pdf',
-                'max:25600',
-                Rule::requiredIf(function () use ($obra) {
-                    return !$obra || !$obra->archivo_acta_reinicio;
-                }),
-            ];
         }
 
         return $rules;
@@ -140,13 +84,10 @@ class UpdateEjecutorObraRequest extends FormRequest
             'fecha_firma_contrato.required' => 'La fecha de firma del contrato es obligatoria.',
             'monto_total.required' => 'El monto total es obligatorio.',
             'plazo.required' => 'El plazo (días) es obligatorio.',
-            'archivo_contrato.required' => 'Debe subir el archivo del contrato (PDF).',
             'archivo_contrato.mimes' => 'El contrato debe ser un archivo PDF.',
             'archivo_contrato.max' => 'El archivo del contrato no debe superar 25 MB.',
             'fecha_suspension.required' => 'Si indicó suspensión, la fecha de suspensión es obligatoria.',
             'fecha_reinicio.required' => 'Si indicó suspensión, la fecha de reinicio es obligatoria.',
-            'archivo_acta_suspension.required' => 'Si indicó suspensión, debe subir el acta de suspensión (PDF).',
-            'archivo_acta_reinicio.required' => 'Si indicó suspensión, debe subir el acta de reinicio (PDF).',
             'fecha_adicional_obra.required_if' => 'Si indicó adicional de obra, la fecha es obligatoria.',
             'fecha_deductivo_obra.required_if' => 'Si indicó deductivo de obra, la fecha es obligatoria.',
             'fecha_aprobacion_acto_resolutivo.required_if' => 'Si indicó aprobación mediante acto resolutivo, la fecha es obligatoria.',

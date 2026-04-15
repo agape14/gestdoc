@@ -205,7 +205,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                             <Input name="fecha_firma_contrato" label="FECHA DE FIRMA DE CONTRATO" type="date" required data={data} setData={setData} errors={errors} />
                         </div>
                         <div className="col-12 col-md-6">
-                            <FileInput name="archivo_contrato" label="Subir Contrato PDF" required data={data} setData={setData} errors={errors} />
+                            <FileInput name="archivo_contrato" label="Subir Contrato PDF" data={data} setData={setData} errors={errors} />
                         </div>
                         <div className="col-12 col-md-6">
                             <label className="form-label fw-bold small text-secondary">Monto Total *</label>
@@ -262,7 +262,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                     <Input name="fecha_adicional_obra" label="Fecha (adicional)" type="date" required data={data} setData={setData} errors={errors} />
                                 </div>
                                 <div className="col-12 col-md-6">
-                                    <FileInput name="archivo_acta_adicional" label="Subir acta (adicional) PDF" required data={data} setData={setData} errors={errors} />
+                                    <FileInput name="archivo_acta_adicional" label="Subir acta (adicional) PDF" data={data} setData={setData} errors={errors} />
                                 </div>
                                 <div className="col-12 col-md-6">
                                     <label className="form-label fw-bold small text-secondary">Monto adicional (S/)</label>
@@ -299,7 +299,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                     <Input name="fecha_deductivo_obra" label="Fecha (deductivo)" type="date" required data={data} setData={setData} errors={errors} />
                                 </div>
                                 <div className="col-12 col-md-6">
-                                    <FileInput name="archivo_acta_deductivo" label="Subir acta (deductivo) PDF" required data={data} setData={setData} errors={errors} />
+                                    <FileInput name="archivo_acta_deductivo" label="Subir acta (deductivo) PDF" data={data} setData={setData} errors={errors} />
                                 </div>
                                 <div className="col-12 col-md-6">
                                     <label className="form-label fw-bold small text-secondary">Monto deductivo (S/)</label>
@@ -335,13 +335,13 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                 <Input name="fecha_suspension" label="FECHA DE SUSPENSION" type="date" required data={data} setData={setData} errors={errors} />
                             </div>
                             <div className="col-12 col-md-6">
-                                <FileInput name="archivo_acta_suspension" label="Subir Acta de Suspensión de Obra (PDF)" required data={data} setData={setData} errors={errors} />
+                                <FileInput name="archivo_acta_suspension" label="Subir Acta de Suspensión de Obra (PDF)" data={data} setData={setData} errors={errors} />
                             </div>
                             <div className="col-12 col-md-6">
                                 <Input name="fecha_reinicio" label="FECHA DE REINICIO" type="date" required data={data} setData={setData} errors={errors} />
                             </div>
                             <div className="col-12 col-md-6">
-                                <FileInput name="archivo_acta_reinicio" label="Subir Acta de Reinicio de Obra (PDF)" required data={data} setData={setData} errors={errors} />
+                                <FileInput name="archivo_acta_reinicio" label="Subir Acta de Reinicio de Obra (PDF)" data={data} setData={setData} errors={errors} />
                             </div>
                         </div>
                     )}
@@ -368,7 +368,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                 <Input name="fecha_aprobacion_acto_resolutivo" label="Fecha de aprobación (acto resolutivo)" type="date" required data={data} setData={setData} errors={errors} />
                             </div>
                             <div className="col-12 col-md-6">
-                                <FileInput name="archivo_aprobacion_acto_resolutivo" label="Subir resolución (PDF)" required data={data} setData={setData} errors={errors} />
+                                <FileInput name="archivo_aprobacion_acto_resolutivo" label="Subir resolución (PDF)" data={data} setData={setData} errors={errors} />
                             </div>
                             <div className="col-12 col-md-6">
                                 <label className="form-label fw-bold small text-secondary">Monto (S/)</label>

@@ -180,19 +180,19 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
-            'monto_neto' => 'required|numeric|min:0.01',
+            'monto_neto' => 'required|numeric|min:0',
             'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
             'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
-            'documentos' => 'required|array|min:1',
-            'documentos.*.tipo_documento_adjunto' => 'required|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
+            'documentos' => 'nullable|array',
+            'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
         ], $this->mensajesValidacion());
         foreach ($request->input('documentos', []) as $i => $doc) {
-            if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && empty(trim($doc['nombre_otro'] ?? ''))) {
+            if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     "documentos.{$i}.nombre_otro" => ['El nombre del documento es obligatorio cuando el tipo es Otros.'],
                 ]);
@@ -287,7 +287,7 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'fecha_suspension' => 'nullable|string',
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
-            'monto_neto' => 'required|numeric|min:0.01',
+            'monto_neto' => 'required|numeric|min:0',
             'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',

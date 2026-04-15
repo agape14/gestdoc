@@ -71,6 +71,8 @@ export default function ExperienciaForm({
     title,
 }) {
     const isEspecialistasConEstadoContrato = ['especialistas-ejecucion', 'especialistas-consultoria', 'municipalidades-funcionario-publico'].includes(variant);
+    const isProveedorExperiencia = ['proveedor-bienes', 'proveedor-servicios'].includes(variant);
+    const showFechaContratoYEstado = isEspecialistasConEstadoContrato || isProveedorExperiencia;
     const allowDeleteExistingDocuments = variant === 'municipalidades-funcionario-publico' && method === 'PUT';
     const isProveedorBienes = structure === 3;
     const isProveedorServicios = structure === 2;
@@ -95,9 +97,13 @@ export default function ExperienciaForm({
             tipo_documento_adjunto: initialData.tipo_documento_adjunto ?? '',
             archivo_contrato: null,
         };
-        if (isEspecialistasConEstadoContrato) {
+        if (showFechaContratoYEstado) {
             base.fecha_contrato_cp = initialData.fecha_contrato_cp ? toDDMMYYYY(initialData.fecha_contrato_cp) : '';
-            base.estado = initialData.estado ?? 'EN CURSO';
+            if (isProveedorExperiencia) {
+                base.estado_contrato = initialData.estado_contrato ?? 'EN CURSO';
+            } else {
+                base.estado = initialData.estado ?? 'EN CURSO';
+            }
         }
         if (useMultiDocumentos) {
             base.documentos = Array.isArray(initialData.documentos) && initialData.documentos.length > 0
@@ -245,7 +251,7 @@ export default function ExperienciaForm({
                         <div className="invalid-feedback">{errors.numero_contrato_os_comprobante || errors.numero_contrato_oc_comprobante}</div>
                     )}
                 </div>
-                {isEspecialistasConEstadoContrato && (
+                {showFechaContratoYEstado && (
                     <>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">FECHA DE CONTRATO O CP</label>
@@ -260,16 +266,18 @@ export default function ExperienciaForm({
                         <div className="col-md-6">
                             <label className="form-label fw-medium">ESTADO</label>
                             <select
-                                className={`form-select ${errors.estado ? 'is-invalid' : ''}`}
-                                value={data.estado || 'EN CURSO'}
-                                onChange={e => setData('estado', e.target.value)}
+                                className={`form-select ${isProveedorExperiencia ? (errors.estado_contrato ? 'is-invalid' : '') : (errors.estado ? 'is-invalid' : '')}`}
+                                value={isProveedorExperiencia ? (data.estado_contrato || 'EN CURSO') : (data.estado || 'EN CURSO')}
+                                onChange={e => setData(isProveedorExperiencia ? 'estado_contrato' : 'estado', e.target.value)}
                             >
                                 <option value="COMPLETO">COMPLETO</option>
                                 <option value="INCOMPLETO">INCOMPLETO</option>
                                 <option value="EN CURSO">EN CURSO</option>
                                 <option value="ARCHIVADO">ARCHIVADO</option>
                             </select>
-                            {errors.estado && <div className="invalid-feedback">{errors.estado}</div>}
+                            {(isProveedorExperiencia ? errors.estado_contrato : errors.estado) && (
+                                <div className="invalid-feedback">{isProveedorExperiencia ? errors.estado_contrato : errors.estado}</div>
+                            )}
                         </div>
                     </>
                 )}
@@ -509,12 +517,11 @@ export default function ExperienciaForm({
                         <div key={index} className="col-12 border rounded-3 p-3 bg-light bg-opacity-50">
                             <div className="row g-2 align-items-end">
                                 <div className="col-md-4">
-                                    <label className="form-label small mb-1">Tipo de documento *</label>
+                                    <label className="form-label small mb-1">Tipo de documento</label>
                                     <select
                                         className={`form-select form-select-sm ${errors[`documentos.${index}.tipo_documento_adjunto`] ? 'is-invalid' : ''}`}
                                         value={doc.tipo_documento_adjunto}
                                         onChange={e => updateDocumento(index, 'tipo_documento_adjunto', e.target.value)}
-                                        required={method !== 'PUT' || Boolean(doc.archivo)}
                                     >
                                         <option value="">Seleccione...</option>
                                         {TIPOS_DOCUMENTO.map(t => (
@@ -532,19 +539,17 @@ export default function ExperienciaForm({
                                             placeholder="Ej. Acta de entrega"
                                             value={doc.nombre_otro}
                                             onChange={e => updateDocumento(index, 'nombre_otro', e.target.value)}
-                                            required={doc.tipo_documento_adjunto === 'OTROS' && (method !== 'PUT' || Boolean(doc.archivo))}
                                         />
                                         {errors[`documentos.${index}.nombre_otro`] && <div className="invalid-feedback d-block">{errors[`documentos.${index}.nombre_otro`]}</div>}
                                     </div>
                                 )}
                                 <div className="col-md-4">
-                                    <label className="form-label small mb-1">Adjuntar archivo{method !== 'PUT' ? ' *' : ''}</label>
+                                    <label className="form-label small mb-1">Adjuntar archivo</label>
                                     <input
                                         type="file"
                                         accept={FILE_ACCEPT}
                                         className={`form-control form-control-sm ${errors[`documentos.${index}.archivo`] ? 'is-invalid' : ''}`}
                                         onChange={e => updateDocumento(index, 'archivo', e.target.files[0] || null)}
-                                        required={method !== 'PUT'}
                                     />
                                     {errors[`documentos.${index}.archivo`] && <div className="invalid-feedback d-block">{explainValidationError(errors[`documentos.${index}.archivo`], `El archivo adjunto excede el tamaño máximo permitido (${MAX_FILE_SIZE_MB} MB).`)}</div>}
                                 </div>
@@ -565,12 +570,11 @@ export default function ExperienciaForm({
             ) : (
                 <div className="row g-3 mt-2">
                     <div className="col-md-6">
-                        <label className="form-label fw-medium">Tipo de documento *</label>
+                        <label className="form-label fw-medium">Tipo de documento</label>
                         <select
                             className={`form-select ${errors.tipo_documento_adjunto ? 'is-invalid' : ''}`}
                             value={data.tipo_documento_adjunto}
                             onChange={e => setData('tipo_documento_adjunto', e.target.value)}
-                            required
                         >
                             <option value="">Seleccione...</option>
                             {TIPOS_DOCUMENTO.map(t => (
@@ -580,7 +584,7 @@ export default function ExperienciaForm({
                         {errors.tipo_documento_adjunto && <div className="invalid-feedback">{errors.tipo_documento_adjunto}</div>}
                     </div>
                     <div className="col-md-6">
-                        <label className="form-label fw-medium">Adjuntar archivo {method !== 'PUT' ? '*' : ''}</label>
+                        <label className="form-label fw-medium">Adjuntar archivo</label>
                         {method === 'PUT' && initialData.archivo_contrato_url && (
                             <div className="mb-2 p-2 rounded bg-light border border-opacity-25">
                                 <span className="small fw-medium text-muted d-block mb-1">Archivo actual:</span>
@@ -595,7 +599,6 @@ export default function ExperienciaForm({
                             accept={FILE_ACCEPT}
                             className={`form-control ${errors.archivo_contrato ? 'is-invalid' : ''}`}
                             onChange={e => setData('archivo_contrato', e.target.files[0] || null)}
-                            required={method !== 'PUT'}
                         />
                         {method === 'PUT' && initialData.archivo_contrato_url && (
                             <div className="form-text">Dejar vacío para mantener el archivo actual, o elegir otro para reemplazarlo.</div>
