@@ -23,6 +23,21 @@ export function parseDateDDMMYYYY(str) {
 }
 
 /**
+ * Parsea fecha en DD/MM/YYYY o ISO (YYYY-MM-DD) a Date.
+ */
+export function parseDateFlexible(str) {
+    if (!str || typeof str !== 'string') return null;
+    const trimmed = str.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        const [year, month, day] = trimmed.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
+        if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+        return d;
+    }
+    return parseDateDDMMYYYY(trimmed);
+}
+
+/**
  * Formatea fecha ISO (Y-m-d o con hora) o Date a DD/MM/YYYY para mostrar.
  */
 export function formatDateDisplay(value) {
@@ -63,11 +78,23 @@ export function formatDateToDDMMYYYY(date) {
  * TOTAL DE DIAS = FECHA CULMINACION - FECHA INICIO + 1
  */
 export function calcTotalDias(fechaInicio, fechaCulminacion) {
-    const start = typeof fechaInicio === 'string' ? parseDateDDMMYYYY(fechaInicio) : (fechaInicio instanceof Date ? fechaInicio : null);
-    const end = typeof fechaCulminacion === 'string' ? parseDateDDMMYYYY(fechaCulminacion) : (fechaCulminacion instanceof Date ? fechaCulminacion : null);
+    const start = typeof fechaInicio === 'string' ? parseDateFlexible(fechaInicio) : (fechaInicio instanceof Date ? fechaInicio : null);
+    const end = typeof fechaCulminacion === 'string' ? parseDateFlexible(fechaCulminacion) : (fechaCulminacion instanceof Date ? fechaCulminacion : null);
     if (!start || !end) return null;
     const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
     return diff + 1;
+}
+
+/**
+ * Suma total de meses y total de días para el campo PLAZO.
+ */
+export function calcPlazoSum(totalMeses, totalDias) {
+    if (totalMeses == null && totalDias == null) return '';
+    const meses = totalMeses != null && totalMeses !== '' ? Number(totalMeses) : 0;
+    const dias = totalDias != null && totalDias !== '' ? Number(totalDias) : 0;
+    if (isNaN(meses) || isNaN(dias)) return '';
+    const suma = meses + dias;
+    return Number.isInteger(suma) ? String(suma) : suma.toFixed(2);
 }
 
 /**
@@ -123,7 +150,8 @@ export function formatMonedaPeruana(value) {
  */
 export function parseMonedaToNumber(str) {
     if (str == null || str === '') return null;
-    const cleaned = String(str).replace(/,/g, '').trim();
+    const cleaned = String(str).replace(/[^\d.]/g, '').replace(/,/g, '').trim();
+    if (cleaned === '' || cleaned === '.') return 0;
     const n = parseFloat(cleaned);
     return isNaN(n) ? null : n;
 }

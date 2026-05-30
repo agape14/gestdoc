@@ -170,6 +170,7 @@ class MunicipalidadFuncionarioPublicoController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeMontoNetoRequest($request);
         $request->validate([
             'cliente' => 'required|string|max:500',
             'objeto_del_contrato' => 'required|string',
@@ -277,6 +278,7 @@ class MunicipalidadFuncionarioPublicoController extends Controller
         if (!$this->canEdit($municipalidadFuncionarioPublico, $user)) {
             return redirect()->back()->with('error', 'No tienes permiso para editar este registro.');
         }
+        $this->normalizeMontoNetoRequest($request);
         $request->validate([
             'cliente' => 'required|string|max:500',
             'objeto_del_contrato' => 'required|string',
@@ -395,7 +397,7 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'total_dias' => $totalDias,
             'traslape' => $traslape,
             'total_dias_sin_traslape' => $totalDiasSinTraslape,
-            'monto_neto' => $request->input('monto_neto') !== null && $request->input('monto_neto') !== '' ? (float) preg_replace('/[^\d.]/', '', $request->input('monto_neto')) : null,
+            'monto_neto' => $this->parseMontoNeto($request->input('monto_neto')),
             'estado' => in_array((string) $request->input('estado'), self::ESTADOS_VALIDOS, true) ? $request->input('estado') : 'EN CURSO',
         ];
 
@@ -544,6 +546,9 @@ class MunicipalidadFuncionarioPublicoController extends Controller
     private function mensajesValidacion(): array
     {
         return [
+            'monto_neto.required' => 'El monto contratado es obligatorio.',
+            'monto_neto.numeric' => 'El monto contratado debe ser un valor numérico válido.',
+            'monto_neto.min' => 'El monto contratado no puede ser negativo.',
             'archivo_contrato.max' => 'El archivo supera el peso máximo permitido de 25 MB.',
             'archivo_suspension.max' => 'El archivo de suspensión supera el peso máximo permitido de 25 MB.',
             'archivo_reinicio.max' => 'El archivo de reinicio supera el peso máximo permitido de 25 MB.',
@@ -551,5 +556,33 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'archivo_contrato.mimes' => 'El archivo de contrato debe ser PDF, JPG, JPEG o PNG.',
             'documentos.*.archivo.mimes' => 'Cada archivo adjunto debe ser PDF, JPG, JPEG o PNG.',
         ];
+    }
+
+    private function normalizeMontoNetoRequest(Request $request): void
+    {
+        if (!$request->has('monto_neto')) {
+            return;
+        }
+        $parsed = $this->parseMontoNeto($request->input('monto_neto'));
+        if ($parsed !== null) {
+            $request->merge(['monto_neto' => $parsed]);
+        }
+    }
+
+    private function parseMontoNeto(mixed $raw): ?float
+    {
+        if ($raw === null) {
+            return null;
+        }
+        $value = trim((string) $raw);
+        if ($value === '') {
+            return null;
+        }
+        $parsed = preg_replace('/[^\d.]/', '', $value);
+        if ($parsed === '' || $parsed === '.') {
+            return 0.0;
+        }
+
+        return (float) $parsed;
     }
 }

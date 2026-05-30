@@ -7,6 +7,7 @@ import {
     calcTotalDias,
     calcTotalMeses,
     calcTotalDiasSinTraslape,
+    calcPlazoSum,
 } from '@/Utils/experienciaCalculations';
 
 const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png';
@@ -71,6 +72,7 @@ export default function ExperienciaForm({
     title,
 }) {
     const isEspecialistasConEstadoContrato = ['especialistas-ejecucion', 'especialistas-consultoria', 'municipalidades-funcionario-publico'].includes(variant);
+    const isMunicipalidades = variant === 'municipalidades-funcionario-publico';
     const isProveedorExperiencia = ['proveedor-bienes', 'proveedor-servicios'].includes(variant);
     const showFechaContratoYEstado = isEspecialistasConEstadoContrato || isProveedorExperiencia;
     const allowDeleteExistingDocuments = variant === 'municipalidades-funcionario-publico' && method === 'PUT';
@@ -91,7 +93,7 @@ export default function ExperienciaForm({
             fecha_inicio: initialData.fecha_inicio ? toDDMMYYYY(initialData.fecha_inicio) : '',
             fecha_culminacion: initialData.fecha_culminacion ? toDDMMYYYY(initialData.fecha_culminacion) : '',
             traslape: initialData.traslape != null ? Number(initialData.traslape) : 0,
-            monto_neto: initialData.monto_neto != null ? initialData.monto_neto : '',
+            monto_neto: initialData.monto_neto ?? '',
             folder_id: initialData.folder_id ?? '',
             clasificacion: initialData.clasificacion ?? '',
             tipo_documento_adjunto: initialData.tipo_documento_adjunto ?? '',
@@ -131,7 +133,7 @@ export default function ExperienciaForm({
 
     const initial = getInitialFormData();
     if (method === 'PUT') initial._method = 'PUT';
-    const { data, setData, post, put, processing, errors } = useForm(initial);
+    const { data, setData, post, processing, errors } = useForm(initial);
 
     const [documentosExistentesVista, setDocumentosExistentesVista] = useState(() =>
         allowDeleteExistingDocuments && Array.isArray(initialData.documentos_existentes)
@@ -157,6 +159,7 @@ export default function ExperienciaForm({
     }, [data.fecha_inicio, data.fecha_culminacion]);
 
     const totalMeses = useMemo(() => calcTotalMeses(totalDias), [totalDias]);
+    const plazoSum = useMemo(() => calcPlazoSum(totalMeses, totalDias), [totalMeses, totalDias]);
     const totalDiasSinTraslape = useMemo(
         () => {
             if (hasCUI || isProveedorBienes || isProveedorServicios) return totalDias;
@@ -404,7 +407,7 @@ export default function ExperienciaForm({
                     </>
                 )}
                 <>
-                        <div className="col-md-6">
+                        <div className={isMunicipalidades ? 'col-md-4' : 'col-md-6'}>
                             <label className="form-label fw-medium">FECHA DE INICIO *</label>
                             <input
                                 type="date"
@@ -415,7 +418,7 @@ export default function ExperienciaForm({
                             />
                             {errors.fecha_inicio && <div className="invalid-feedback">{errors.fecha_inicio}</div>}
                         </div>
-                        <div className="col-md-6">
+                        <div className={isMunicipalidades ? 'col-md-4' : 'col-md-6'}>
                             <label className="form-label fw-medium">FECHA DE CULMINACION *</label>
                             <input
                                 type="date"
@@ -426,6 +429,12 @@ export default function ExperienciaForm({
                             />
                             {errors.fecha_culminacion && <div className="invalid-feedback">{errors.fecha_culminacion}</div>}
                         </div>
+                        {isMunicipalidades && (
+                            <div className="col-md-4">
+                                <label className="form-label fw-medium">PLAZO</label>
+                                <input type="text" className="form-control bg-light" value={plazoSum} readOnly />
+                            </div>
+                        )}
                         <div className="col-md-4">
                             <label className="form-label fw-medium">TOTAL DE MESES</label>
                             <input type="text" className="form-control bg-light" value={totalMeses != null ? Number(totalMeses).toFixed(2) : ''} readOnly />
