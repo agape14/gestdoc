@@ -56,12 +56,32 @@ class RegistroExpedientesExport implements FromArray, WithEvents
         return [1, $s];
     }
 
+    /** Orden natural de etiqueta: 04, 07, 10, 100. */
+    protected static function etiquetaSortKey($etiqueta): array
+    {
+        $s = trim((string) ($etiqueta ?? ''));
+        if (preg_match('/^(\d+)/', $s, $m)) {
+            return [0, (int) $m[1], $s];
+        }
+
+        return [1, PHP_INT_MAX, $s];
+    }
+
+    protected static function archivoNombre(?string $path): string
+    {
+        if (!$path) {
+            return '';
+        }
+
+        return basename(str_replace('\\', '/', $path));
+    }
+
     public function array(): array
     {
         $sorted = $this->expedientes->sortBy(function ($e) {
             return [
                 (string) ($e->tipo_inversion ?? ''),
-                (string) ($e->etiqueta ?? ''),
+                self::etiquetaSortKey($e->etiqueta ?? ''),
                 (string) ($e->proyecto ?? ''),
                 (string) ($e->cui ?? ''),
                 self::numeroSortKey($e->numero ?? ''),
@@ -74,6 +94,8 @@ class RegistroExpedientesExport implements FromArray, WithEvents
             'ETIQUETA',
             'PROYECTO',
             'CUI',
+            'ESTADO',
+            'DESCRIPCIÓN',
             'N° DE FOLIO',
             'TOMOS',
             'AÑO',
@@ -86,6 +108,8 @@ class RegistroExpedientesExport implements FromArray, WithEvents
             'SUPERVISIÓN',
             'TOTAL',
             'TIPO ACCIÓN',
+            'CONTRATO (ARCHIVO)',
+            'RESOLUCIÓN (ARCHIVO)',
         ];
 
         $rows = [$headings];
@@ -113,11 +137,15 @@ class RegistroExpedientesExport implements FromArray, WithEvents
 
             $tipoAccion = self::labelAccion($e->tipo_accion ?? null);
 
+            $estado = $e->estado ?: (($e->tipo_accion ?? null) === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO');
+
             $rows[] = [
                 $firstOfGroup ? ($e->tipo_inversion ?? '') : '',
                 $firstOfGroup ? ($e->etiqueta ?? '') : '',
                 $firstOfGroup ? ($e->proyecto ?? '') : '',
                 $firstOfGroup ? ($e->cui ?? '') : '',
+                $estado,
+                $e->descripcion ?? '',
                 $e->numero_folio ?? '',
                 $e->tomos ?? '',
                 $e->anio ?? '',
@@ -130,6 +158,8 @@ class RegistroExpedientesExport implements FromArray, WithEvents
                 self::fmtMoney($e->monto_supervision),
                 self::fmtMoney($total),
                 $tipoAccion,
+                self::archivoNombre($e->contrato ?? null),
+                self::archivoNombre($e->resolucion_archivo ?? null),
             ];
         }
 
@@ -142,7 +172,7 @@ class RegistroExpedientesExport implements FromArray, WithEvents
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
-                $highestCol = 'P';
+                $highestCol = 'T';
 
                 $sheet->getStyle('A1:' . $highestCol . '1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 10],
@@ -187,7 +217,9 @@ class RegistroExpedientesExport implements FromArray, WithEvents
                     $w = match ($col) {
                         'C' => 42,
                         'B' => 12,
-                        'P' => 22,
+                        'F' => 28,
+                        'R' => 22,
+                        'S', 'T' => 24,
                         default => 14,
                     };
                     $sheet->getColumnDimension($col)->setWidth($w);

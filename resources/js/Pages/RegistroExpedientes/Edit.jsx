@@ -28,8 +28,9 @@ function toInputDate(val) {
     return s;
 }
 
-export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipoInversion = [] }) {
-    const { data, setData, put, processing, errors } = useForm({
+export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipoInversion = [], opcionesEstado = ['EN CURSO', 'SOLO EXPEDIENTE', 'PROCESO DE EJECUCION', 'ARCHIVADO'] }) {
+    const { data, setData, post, processing, errors, transform } = useForm({
+        _method: 'PUT',
         tipo_inversion: expediente?.tipo_inversion ?? '',
         numero: expediente?.numero ?? '',
         etiqueta: expediente?.etiqueta ?? '',
@@ -66,18 +67,21 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
 
     const submit = (e) => {
         e.preventDefault();
-        const payload = { ...data };
-        payload.numero = expediente?.numero ?? '';
-        if (payload.tipo_accion === '') payload.tipo_accion = null;
-        ['monto_o', 'monto_p', 'monto_s', 'monto_supervision'].forEach(k => {
-            if (payload[k] === '' || payload[k] == null) payload[k] = null;
-            else payload[k] = Number(payload[k]) || 0;
+        transform((d) => {
+            const payload = { ...d };
+            payload.numero = expediente?.numero ?? '';
+            if (payload.tipo_accion === '') payload.tipo_accion = null;
+            ['monto_o', 'monto_p', 'monto_s', 'monto_supervision'].forEach((k) => {
+                if (payload[k] === '' || payload[k] == null) payload[k] = null;
+                else payload[k] = Number(payload[k]) || 0;
+            });
+            if (payload.anio === '') payload.anio = null;
+            else payload.anio = parseInt(payload.anio, 10) || null;
+            if (!(payload.contrato instanceof File)) delete payload.contrato;
+            if (!(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
+            return payload;
         });
-        if (payload.anio === '') payload.anio = null;
-        else payload.anio = parseInt(payload.anio, 10) || null;
-        if (!payload.contrato || !(payload.contrato instanceof File)) delete payload.contrato;
-        if (!payload.resolucion_archivo || !(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
-        put(route('registro-expedientes.update', expediente.id), payload);
+        post(route('registro-expedientes.update', expediente.id), { forceFormData: true });
     };
 
     return (
@@ -167,8 +171,9 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                         <div className="col-md-3">
                             <label className="form-label fw-medium">Estado</label>
                             <select className={`form-select ${errors.estado ? 'is-invalid' : ''}`} value={data.estado} onChange={e => setData('estado', e.target.value)}>
-                                <option value="EN CURSO">EN CURSO</option>
-                                <option value="ARCHIVADO">ARCHIVADO</option>
+                                {opcionesEstado.map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
                             </select>
                             {errors.estado && <div className="invalid-feedback">{errors.estado}</div>}
                         </div>

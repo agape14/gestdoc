@@ -25,6 +25,27 @@ const ACCIONES_CREAR = [
     { key: 'LIQUIDACION', label: 'LIQUIDACIÓN', title: 'Nuevo registro: LIQUIDACIÓN', btnClass: 'btn-secondary' },
 ];
 
+const ESTADOS = ['EN CURSO', 'SOLO EXPEDIENTE', 'PROCESO DE EJECUCION', 'ARCHIVADO'];
+
+const estadoBadgeClass = (estado) => {
+    switch (String(estado || '').toUpperCase()) {
+        case 'SOLO EXPEDIENTE':
+            return 'text-bg-info';
+        case 'PROCESO DE EJECUCION':
+            return 'text-bg-primary';
+        case 'ARCHIVADO':
+            return 'text-bg-secondary';
+        default:
+            return 'text-bg-warning';
+    }
+};
+
+const fileBasename = (path) => {
+    if (!path) return '';
+    const parts = String(path).replace(/\\/g, '/').split('/');
+    return parts[parts.length - 1] || '';
+};
+
 export default function Index({ expedientes, filters = {}, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], operadores = [] }) {
     const sortBy = filters?.sort_by || 'etiqueta';
     const sortDir = filters?.sort_dir || 'asc';
@@ -63,9 +84,9 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
     );
 
     const getEstado = (item) => {
-        if (item?.estado === 'ARCHIVADO' || item?.estado === 'EN CURSO') return item.estado;
-        if (!item?.tipo_accion) return 'EN CURSO';
-        return item.tipo_accion === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO';
+        const estado = String(item?.estado || '').toUpperCase();
+        if (ESTADOS.includes(estado)) return estado;
+        return item?.tipo_accion === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO';
     };
 
     const handleDelete = (item) => {
@@ -100,6 +121,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
                 label: 'Contrato',
                 path: item.contrato || '',
                 url: item.contrato_url || null,
+                filename: fileBasename(item.contrato),
             });
         }
         if (item.resolucion_archivo || item.resolucion_archivo_url) {
@@ -107,6 +129,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
                 label: 'Resolución',
                 path: item.resolucion_archivo || '',
                 url: item.resolucion_archivo_url || null,
+                filename: fileBasename(item.resolucion_archivo),
             });
         }
         return docs;
@@ -134,30 +157,71 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             render: (item) => {
                 const estado = getEstado(item);
                 return (
-                    <span className={`badge rounded-pill ${estado === 'ARCHIVADO' ? 'text-bg-secondary' : 'text-bg-warning'}`}>
+                    <span className={`badge rounded-pill px-3 py-2 ${estadoBadgeClass(estado)}`}>
                         {estado}
                     </span>
                 );
             },
+        },
+        {
+            header: 'DESCRIPCIÓN',
+            accessor: 'descripcion',
+            render: (item) => (
+                <span
+                    className="d-inline-block text-wrap"
+                    style={{ maxWidth: '200px', minWidth: '140px', whiteSpace: 'normal', wordBreak: 'break-word' }}
+                >
+                    {item.descripcion || '-'}
+                </span>
+            ),
         },
         { header: sortHeader('FECHA APROB.', 'fecha_aprobacion'), accessor: 'fecha_aprobacion', render: (item) => formatDateDisplay(item.fecha_aprobacion) },
         { header: sortHeader('MONTOS', 'monto_total'), accessor: 'monto_total', render: (item) => formatMonedaPeruana(item.monto_total) },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
-    const getDetailFields = (item) => {
+    const archivoField = (item, context, label, path, url) => {
+        if (!path && !url) return null;
+        const name = fileBasename(path) || 'Ver documento';
+        const isPdf = /\.pdf(\?|$)/i.test(String(path || '')) || /\.pdf(\?|$)/i.test(String(url || ''));
+        return {
+            label,
+            noTruncate: true,
+            value: (
+                <button
+                    type="button"
+                    className="btn btn-link btn-sm p-0 align-baseline text-decoration-none"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (isPdf && context?.openPdfInModal) {
+                            context.openPdfInModal(label, path, url);
+                        } else if (context?.openDocumentsModal) {
+                            context.openDocumentsModal(item);
+                        } else if (url) {
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                        }
+                    }}
+                    title="Ver documento"
+                >
+                    <i className="bi bi-eye me-1"></i>
+                    {name}
+                </button>
+            ),
+        };
+    };
+
+    const getDetailFields = (item, context = {}) => {
         const accion = item.tipo_accion ? (TIPO_ACCION_LABEL[item.tipo_accion] || item.tipo_accion) : null;
         const fields = [
             { label: 'Estado', value: getEstado(item) },
             { label: 'Tipo de acción', value: accion },
-            { label: 'Descripción', value: item.descripcion },
             { label: 'N° de folio', value: item.numero_folio },
             { label: 'Tomos', value: item.tomos },
             { label: 'Año', value: item.anio },
             { label: 'Tipo unidad conservación', value: item.tipo_unidad_conservacion },
             { label: 'Resolución', value: item.resolucion },
-            { label: 'Contrato', value: item.contrato ? 'Sí (archivo cargado)' : 'No' },
-            { label: 'Resolución (archivo)', value: item.resolucion_archivo ? 'Sí (archivo cargado)' : 'No' },
+            archivoField(item, context, 'Contrato (archivo)', item.contrato, item.contrato_url),
+            archivoField(item, context, 'Resolución (archivo)', item.resolucion_archivo, item.resolucion_archivo_url),
             { label: 'EXPEDIENTE TECNICO (S/)', value: formatMonedaPeruana(item.monto_o ?? 0) },
             { label: 'EVALUACION (S/)', value: formatMonedaPeruana(item.monto_p ?? 0) },
             { label: 'PPTO DE OBRA (S/)', value: formatMonedaPeruana(item.monto_s ?? 0) },
@@ -165,7 +229,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             { label: 'Total montos', value: formatMonedaPeruana(item.monto_total ?? 0) },
             { label: 'Proyecto (completo)', value: item.proyecto },
         ];
-        return fields.filter((f) => f.value != null && f.value !== '');
+        return fields.filter((f) => f && f.value != null && f.value !== '');
     };
 
     const extraActionsFor = (item) =>
@@ -180,7 +244,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         <ModuleIndexRowDetail
             item={item}
             userRole={userRole}
-            fields={getDetailFields(item)}
+            fields={getDetailFields(item, context)}
             editHref={`/registro-expedientes/${item.id}/edit`}
             onDelete={handleDelete}
             extraActions={extraActionsFor(item)}

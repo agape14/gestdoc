@@ -53,6 +53,13 @@ class RegistroExpediente extends Model
         'anio' => 'integer',
     ];
 
+    public const ESTADOS = [
+        'EN CURSO',
+        'SOLO EXPEDIENTE',
+        'PROCESO DE EJECUCION',
+        'ARCHIVADO',
+    ];
+
     protected $appends = ['monto_total', 'contrato_url', 'resolucion_archivo_url'];
 
     public function folder()
@@ -85,6 +92,30 @@ class RegistroExpediente extends Model
     public function getResolucionArchivoUrlAttribute(): ?string
     {
         return \storage_url_for_path($this->resolucion_archivo);
+    }
+
+    /**
+     * Catálogo de estados del expediente (formularios, validación y badges).
+     */
+    public static function opcionesEstado(): array
+    {
+        return self::ESTADOS;
+    }
+
+    /**
+     * Orden natural/numérico de etiqueta (04, 07, 10, 100) en MySQL 8+.
+     */
+    public static function etiquetaNaturalOrderSql(string $direction = 'asc'): string
+    {
+        $dir = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+
+        return 'CAST(REGEXP_SUBSTR(COALESCE(etiqueta, \'\'), \'^[0-9]+\') AS UNSIGNED) ' . $dir
+            . ', COALESCE(etiqueta, \'\') ' . $dir;
+    }
+
+    public function scopeOrderByEtiquetaNatural($query, string $direction = 'asc')
+    {
+        return $query->orderByRaw(self::etiquetaNaturalOrderSql($direction));
     }
 
     /**

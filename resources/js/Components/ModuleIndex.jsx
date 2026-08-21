@@ -182,7 +182,7 @@ export default function ModuleIndex({ title, description, items, columns, create
 
     const openDocumentsModal = (item) => {
         if (!getDocumentLinks) return;
-        const links = (getDocumentLinks(item) || []).filter(d => d.path);
+        const links = (getDocumentLinks(item) || []).filter((d) => d.path || d.url);
         setListDocumentLinks(links);
         setShowDocumentsModal(true);
     };
@@ -579,7 +579,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                         <tr className="bg-light animate-fade-in">
                                             <td colSpan={columns.length + (hasMove && moveBulkRouteName ? 1 : 0)} className="p-0 border-0">
                                                 <div className="p-4 border-bottom border-light shadow-inner">
-                                                    {typeof renderDetail === 'function' ? renderDetail(item, getDocumentLinks ? { openDocumentsModal } : {}) : renderDetail(item)}
+                                                    {typeof renderDetail === 'function' ? renderDetail(item, { openDocumentsModal, openPdfInModal }) : renderDetail(item)}
                                                 </div>
                                             </td>
                                         </tr>
@@ -643,7 +643,10 @@ export default function ModuleIndex({ title, description, items, columns, create
                                         const pdf = isLikelyPdf(doc.path) || isLikelyPdf(doc.url);
                                         return (
                                             <li key={idx} className="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 px-0 py-2">
-                                                <span className="text-break me-2">{doc.label}</span>
+                                                <span className="text-break me-2">
+                                                    {doc.label}
+                                                    {doc.filename ? <span className="text-secondary"> — {doc.filename}</span> : null}
+                                                </span>
                                                 <div className="d-flex flex-wrap gap-2">
                                                     {pdf ? (
                                                         <button

@@ -92,7 +92,7 @@ class RegistroExpedienteController extends Controller
 
         $sortBy = (string) $request->input('sort_by', 'etiqueta');
         $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $sortable = ['etiqueta', 'tipo_inversion', 'proyecto', 'cui', 'estado', 'fecha_aprobacion', 'monto_total'];
+        $sortable = ['etiqueta', 'tipo_inversion', 'proyecto', 'cui', 'estado', 'descripcion', 'fecha_aprobacion', 'monto_total'];
         if (!in_array($sortBy, $sortable, true)) {
             $sortBy = 'etiqueta';
         }
@@ -104,7 +104,7 @@ class RegistroExpedienteController extends Controller
         if ($sortBy === 'monto_total') {
             $query->orderByRaw('COALESCE(monto_o,0) + COALESCE(monto_p,0) + COALESCE(monto_s,0) + COALESCE(monto_supervision,0) ' . strtoupper($sortDir));
         } elseif ($sortBy === 'etiqueta') {
-            $query->orderByRaw('COALESCE(etiqueta, "") ' . strtoupper($sortDir));
+            $query->orderByEtiquetaNatural($sortDir);
         } else {
             $query->orderBy($sortBy, $sortDir);
         }
@@ -168,7 +168,7 @@ class RegistroExpedienteController extends Controller
             }
         }
 
-        $expedientes = $query->orderByRaw('COALESCE(etiqueta, "") ASC')->orderBy('id')->get();
+        $expedientes = $query->orderByEtiquetaNatural('asc')->orderBy('id')->get();
         $filename = 'registro-expedientes_' . date('Y-m-d_H-i-s') . '.xlsx';
 
         return Excel::download(new RegistroExpedientesExport($expedientes), $filename);
@@ -246,6 +246,7 @@ class RegistroExpedienteController extends Controller
             'breadcrumbLabel' => $breadcrumbLabel,
             'opcionesTipoUnidad' => RegistroExpediente::opcionesTipoUnidadConservacion(),
             'opcionesTipoInversion' => RegistroExpediente::opcionesTipoInversion(),
+            'opcionesEstado' => RegistroExpediente::opcionesEstado(),
             'nextNumero' => $nextNumero,
             'prefillProyecto' => $prefillProyecto ?? '',
             'prefillCui' => $prefillCui ?? '',
@@ -276,7 +277,7 @@ class RegistroExpedienteController extends Controller
             $query->whereNull('folder_id');
         }
 
-        $expedientes = $query->orderByRaw('COALESCE(etiqueta, "") ASC')->orderBy('id')->limit(100)->get();
+        $expedientes = $query->orderByEtiquetaNatural('asc')->orderBy('id')->limit(100)->get();
 
         $list = $expedientes->map(function ($e) {
             return [
@@ -322,7 +323,7 @@ class RegistroExpedienteController extends Controller
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
             'tipo_accion' => 'nullable|string|in:' . implode(',', self::TIPOS_ACCION),
-            'estado' => 'nullable|string|in:EN CURSO,ARCHIVADO',
+            'estado' => 'nullable|string|in:' . implode(',', RegistroExpediente::ESTADOS),
             'monto_o' => 'nullable|numeric',
             'monto_p' => 'nullable|numeric',
             'monto_r' => 'nullable|numeric',
@@ -414,6 +415,7 @@ class RegistroExpedienteController extends Controller
             'expediente' => $expediente,
             'opcionesTipoUnidad' => RegistroExpediente::opcionesTipoUnidadConservacion(),
             'opcionesTipoInversion' => RegistroExpediente::opcionesTipoInversion(),
+            'opcionesEstado' => RegistroExpediente::opcionesEstado(),
         ]);
     }
 
@@ -438,7 +440,7 @@ class RegistroExpedienteController extends Controller
             'resolucion' => 'nullable|string|max:100',
             'fecha_aprobacion' => 'nullable|string',
             'tipo_accion' => 'nullable|string|in:' . implode(',', self::TIPOS_ACCION),
-            'estado' => 'nullable|string|in:EN CURSO,ARCHIVADO',
+            'estado' => 'nullable|string|in:' . implode(',', RegistroExpediente::ESTADOS),
             'monto_o' => 'nullable|numeric',
             'monto_p' => 'nullable|numeric',
             'monto_r' => 'nullable|numeric',
@@ -507,6 +509,7 @@ class RegistroExpedienteController extends Controller
     private function prepareData(array $validated, Request $request): array
     {
         $data = $validated;
+        unset($data['contrato'], $data['resolucion_archivo']);
 
         $fecha = $request->input('fecha_aprobacion');
         if ($fecha && is_string($fecha)) {
@@ -536,7 +539,7 @@ class RegistroExpedienteController extends Controller
         }
 
         $estado = strtoupper(trim((string) ($request->input('estado') ?? '')));
-        if ($estado !== 'EN CURSO' && $estado !== 'ARCHIVADO') {
+        if (!in_array($estado, RegistroExpediente::ESTADOS, true)) {
             $estado = (($data['tipo_accion'] ?? null) === 'LIQUIDACION') ? 'ARCHIVADO' : 'EN CURSO';
         }
         $data['estado'] = $estado;

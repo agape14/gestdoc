@@ -19,6 +19,7 @@ export default function Create({
     breadcrumbLabel = '',
     opcionesTipoUnidad = [],
     opcionesTipoInversion = [],
+    opcionesEstado = ['EN CURSO', 'SOLO EXPEDIENTE', 'PROCESO DE EJECUCION', 'ARCHIVADO'],
     nextNumero = '1',
     prefillProyecto = '',
     prefillCui = '',
@@ -29,7 +30,7 @@ export default function Create({
     tipoAccion = null,
     lockPrefill = false,
 }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         folder_id: folderId || '',
         tipo_inversion: prefillTipoInversion || '',
         numero: nextNumero,
@@ -65,19 +66,22 @@ export default function Create({
 
     const submit = (e) => {
         e.preventDefault();
-        const payload = { ...data };
-        if (payload.folder_id === '') payload.folder_id = null;
-        payload.numero = nextNumero;
-        if (!payload.tipo_accion) delete payload.tipo_accion;
-        ['monto_o', 'monto_p', 'monto_s', 'monto_supervision'].forEach(k => {
-            if (payload[k] === '' || payload[k] == null) payload[k] = null;
-            else payload[k] = Number(payload[k]) || 0;
+        transform((d) => {
+            const payload = { ...d };
+            if (payload.folder_id === '') payload.folder_id = null;
+            payload.numero = nextNumero;
+            if (!payload.tipo_accion) delete payload.tipo_accion;
+            ['monto_o', 'monto_p', 'monto_s', 'monto_supervision'].forEach((k) => {
+                if (payload[k] === '' || payload[k] == null) payload[k] = null;
+                else payload[k] = Number(payload[k]) || 0;
+            });
+            if (payload.anio === '') payload.anio = null;
+            else payload.anio = parseInt(payload.anio, 10) || null;
+            if (!(payload.contrato instanceof File)) delete payload.contrato;
+            if (!(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
+            return payload;
         });
-        if (payload.anio === '') payload.anio = null;
-        else payload.anio = parseInt(payload.anio, 10) || null;
-        if (!payload.contrato || !(payload.contrato instanceof File)) delete payload.contrato;
-        if (!payload.resolucion_archivo || !(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
-        post(route('registro-expedientes.store'), payload);
+        post(route('registro-expedientes.store'), { forceFormData: true });
     };
 
     const ro = lockPrefill;
@@ -166,8 +170,9 @@ export default function Create({
                         <div className="col-md-3">
                             <label className="form-label fw-medium">Estado</label>
                             <select className={`form-select ${errors.estado ? 'is-invalid' : ''}`} value={data.estado} onChange={e => setData('estado', e.target.value)}>
-                                <option value="EN CURSO">EN CURSO</option>
-                                <option value="ARCHIVADO">ARCHIVADO</option>
+                                {opcionesEstado.map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
                             </select>
                             {errors.estado && <div className="invalid-feedback">{errors.estado}</div>}
                         </div>
