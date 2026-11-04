@@ -189,7 +189,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                     <input
                                         type="file"
                                         className="form-control form-control-sm"
-                                        accept=".pdf,.doc,.docx"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                         onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)}
                                     />
                                     {doc.archivo && typeof doc.archivo === 'object' && doc.archivo.name && (
@@ -275,7 +275,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                 <input
                                     type="file"
                                     className="form-control form-control-sm"
-                                    accept=".pdf,.doc,.docx"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                     onChange={e => setData('promesa_consorcio', e.target.files[0] || null)}
                                 />
                             </div>

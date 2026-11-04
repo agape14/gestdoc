@@ -294,7 +294,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                         {isEditing ? 'Añadir más archivos PDF' : 'Archivos PDF (nombre + archivo)'}
                                         {!isEditing && <span className="text-secondary ms-1">(opcional)</span>}
                                     </label>
-                                    <div className="small text-secondary mb-2">Máx. 25 MB por archivo, formato PDF.</div>
+                                    <div className="small text-secondary mb-2">Máx. 25 MB. PDF, Word, Excel, DWG, ZIP/RAR o imagen.</div>
                                     {archivos.map((a, i) => (
                                         <div key={i} className="d-flex gap-2 align-items-center mb-2">
                                             <input
@@ -307,7 +307,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                             <input
                                                 type="file"
                                                 className="form-control"
-                                                accept=".pdf"
+                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                                 onChange={(e) => setArchivoFile(i, e.target.files?.[0] || null)}
                                             />
                                             <button

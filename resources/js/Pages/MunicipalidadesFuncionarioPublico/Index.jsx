@@ -68,6 +68,25 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
         },
         { header: 'T. DÍAS', accessor: 'total_dias', sortable: true, render: (item) => (item.total_dias != null && item.total_dias !== '' ? item.total_dias : '-') },
         { header: 'MONTO NETO', accessor: 'monto_neto', sortable: true, render: (item) => formatMonedaPeruana(item.monto_neto) },
+        {
+            header: 'ARCHIVOS',
+            accessor: '_archivos',
+            render: (item) => {
+                const docs = getDocumentLinks(item);
+                const hasContrato = docs.some((d) => /contrato/i.test(d.label || '')) || !!(item.archivo_contrato || item.archivo_contrato_url);
+                const hasResolucion = docs.some((d) => /conformidad|resoluc/i.test(d.label || '')) || !!(item.archivo_conformidad_servicio || item.archivo_conformidad_servicio_url);
+                return (
+                    <div className="d-flex gap-1 justify-content-center">
+                        <span className={`badge rounded-pill ${hasContrato ? 'text-bg-success' : 'text-bg-light text-muted border'}`} title={hasContrato ? 'Contrato cargado' : 'Contrato pendiente'}>
+                            <i className="bi bi-file-earmark-text me-1"></i>C
+                        </span>
+                        <span className={`badge rounded-pill ${hasResolucion ? 'text-bg-primary' : 'text-bg-light text-muted border'}`} title={hasResolucion ? 'Conformidad cargada' : 'Conformidad pendiente'}>
+                            <i className="bi bi-file-earmark-check me-1"></i>R
+                        </span>
+                    </div>
+                );
+            },
+        },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
@@ -141,6 +160,7 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
             operadores={operadores}
             renderDetail={renderDetail}
             sortEnabled
+            zipDownloadRoute="municipalidades-funcionario-publico.download-zip"
         />
     );
 }

@@ -40,7 +40,7 @@ const FileInput = ({ name, label, required = false, data, setData, errors }) => 
         <label className="form-label fw-bold small text-secondary">{label}{required && ' *'}</label>
         <input
             type="file"
-            accept=".pdf,application/pdf"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
             className={`form-control w-100 ${errors[name] ? 'is-invalid' : ''}`}
             onChange={e => setData(name, e.target.files[0] || null)}
             required={required}
@@ -441,7 +441,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                     <div className="col-12 col-md-5">
                                         <input
                                             type="file"
-                                            accept=".pdf,application/pdf"
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                             className="form-control"
                                             onChange={e => setDocumento(index, 'archivo', e.target.files[0] || null)}
                                         />

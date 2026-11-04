@@ -117,7 +117,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
                                     <input
                                         type="file"
                                         className="form-control flex-grow-1"
-                                        accept=".pdf"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                         onChange={(e) => setArchivoFile(i, e.target.files?.[0] || null)}
                                     />
                                     <button

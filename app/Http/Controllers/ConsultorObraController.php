@@ -15,10 +15,12 @@ use App\Exports\ConsultorObrasExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 use App\Support\GridPagination;
+use App\Http\Controllers\Concerns\DownloadsModuleZip;
+use Illuminate\Database\Eloquent\Builder;
 
 class ConsultorObraController extends Controller
 {
-    use HasRoleBasedAccess, MovesToFolder;
+    use HasRoleBasedAccess, MovesToFolder, DownloadsModuleZip;
 
     const MODULE = 'consultor-obras';
 
@@ -223,6 +225,19 @@ class ConsultorObraController extends Controller
             'monto_facturado_acumulado' => 'nullable|numeric',
             'numero_resolucion' => 'nullable|string|max:50',
             'fecha_aprobacion' => 'nullable|date',
+            'contrato_archivo' => \App\Support\AllowedUploads::rule(),
+            'tdr_archivo' => \App\Support\AllowedUploads::rule(),
+            'personal_clave' => \App\Support\AllowedUploads::rule(),
+            'producto_tecnico' => 'nullable|array',
+            'producto_tecnico.*' => \App\Support\AllowedUploads::rule(),
+            'actas_resoluciones' => \App\Support\AllowedUploads::rule(),
+            'conformidad_tecnica' => \App\Support\AllowedUploads::rule(),
+            'documentos' => 'nullable|array',
+            'documentos.*.nombre' => 'nullable|string|max:255',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
+        ], [
+            'documentos.*.archivo.extensions' => 'Cada archivo debe ser PDF, Word, Excel, DWG, ZIP/RAR o imagen.',
+            'documentos.*.archivo.max' => 'Cada archivo no debe superar 25 MB.',
         ]);
 
         $data = $request->except(['contrato_archivo', 'tdr_archivo', 'personal_clave', 'producto_tecnico', 'actas_resoluciones', 'conformidad_tecnica', 'documentos']);
@@ -324,6 +339,19 @@ class ConsultorObraController extends Controller
             'monto_facturado_acumulado' => 'nullable|numeric',
             'numero_resolucion' => 'nullable|string|max:50',
             'fecha_aprobacion' => 'nullable|date',
+            'contrato_archivo' => \App\Support\AllowedUploads::rule(),
+            'tdr_archivo' => \App\Support\AllowedUploads::rule(),
+            'personal_clave' => \App\Support\AllowedUploads::rule(),
+            'producto_tecnico' => 'nullable|array',
+            'producto_tecnico.*' => \App\Support\AllowedUploads::rule(),
+            'actas_resoluciones' => \App\Support\AllowedUploads::rule(),
+            'conformidad_tecnica' => \App\Support\AllowedUploads::rule(),
+            'documentos' => 'nullable|array',
+            'documentos.*.nombre' => 'nullable|string|max:255',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
+        ], [
+            'documentos.*.archivo.extensions' => 'Cada archivo debe ser PDF, Word, Excel, DWG, ZIP/RAR o imagen.',
+            'documentos.*.archivo.max' => 'Cada archivo no debe superar 25 MB.',
         ]);
 
         $fillable = [
@@ -493,5 +521,22 @@ class ConsultorObraController extends Controller
     public function moveBulk(Request $request)
     {
         return $this->moveBulkItems($request, ConsultorObra::class, self::MODULE, 'item_ids', 'consultor-obras.index');
+    }
+
+    protected function zipModuleQuery(Request $request): Builder
+    {
+        $query = $this->applyRoleBasedFilter(ConsultorObra::query()->active(), auth()->user());
+        if ($request->filled('folder_id')) {
+            $query->where('folder_id', (int) $request->folder_id);
+        } else {
+            $query->whereNull('folder_id');
+        }
+
+        return $query;
+    }
+
+    protected function zipDownloadBasename(): string
+    {
+        return 'consultor-obras';
     }
 }

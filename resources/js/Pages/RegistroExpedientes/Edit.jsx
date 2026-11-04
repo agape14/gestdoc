@@ -3,6 +3,7 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 import { formatMonedaPeruana } from '@/Utils/experienciaCalculations';
+import Swal from 'sweetalert2';
 
 const OPCIONES_TIPO_ACCION = [
     { value: '', label: '— Sin clasificar —' },
@@ -81,7 +82,15 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
             if (!(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
             return payload;
         });
-        post(route('registro-expedientes.update', expediente.id), { forceFormData: true });
+        post(route('registro-expedientes.update.post', expediente.id), {
+            forceFormData: true,
+            preserveScroll: true,
+            onError: (errs) => {
+                const first = Object.values(errs || {})[0];
+                const msg = Array.isArray(first) ? first[0] : first;
+                Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: msg || 'Revise los campos y los archivos adjuntos (máx. 25 MB).' });
+            },
+        });
     };
 
     return (
@@ -192,7 +201,7 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                                         <tr>
                                             <td className="align-middle">Contrato</td>
                                             <td>
-                                                <input type="file" className={`form-control form-control-sm ${errors.contrato ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('contrato', e.target.files?.[0] || null)} />
+                                                <input type="file" className={`form-control form-control-sm ${errors.contrato ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => setData('contrato', e.target.files?.[0] || null)} />
                                                 {expediente?.contrato_url && (
                                                     <a href={expediente.contrato_url} target="_blank" rel="noopener noreferrer" className="small d-inline-block mt-1 text-decoration-none">
                                                         Ver archivo cargado <i className="bi bi-box-arrow-up-right ms-1"></i>
@@ -205,7 +214,7 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                                         <tr>
                                             <td className="align-middle">Resolución</td>
                                             <td>
-                                                <input type="file" className={`form-control form-control-sm ${errors.resolucion_archivo ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('resolucion_archivo', e.target.files?.[0] || null)} />
+                                                <input type="file" className={`form-control form-control-sm ${errors.resolucion_archivo ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => setData('resolucion_archivo', e.target.files?.[0] || null)} />
                                                 {expediente?.resolucion_archivo_url && (
                                                     <a href={expediente.resolucion_archivo_url} target="_blank" rel="noopener noreferrer" className="small d-inline-block mt-1 text-decoration-none">
                                                         Ver archivo cargado <i className="bi bi-box-arrow-up-right ms-1"></i>

@@ -13,10 +13,12 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 use App\Support\GridPagination;
+use App\Http\Controllers\Concerns\DownloadsModuleZip;
+use Illuminate\Database\Eloquent\Builder;
 
 class EspecialistaConsultoriaController extends Controller
 {
-    use HasRoleBasedAccess, MovesToFolder;
+    use HasRoleBasedAccess, MovesToFolder, DownloadsModuleZip;
 
     const MODULE = 'especialistas-consultoria';
     private const ESTADOS_VALIDOS = ['COMPLETO', 'INCOMPLETO', 'EN CURSO', 'ARCHIVADO'];
@@ -183,14 +185,14 @@ class EspecialistaConsultoriaController extends Controller
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_contrato' => \App\Support\AllowedUploads::rule(),
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
-            'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
-            'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_suspension' => \App\Support\AllowedUploads::rule(),
+            'archivo_reinicio' => \App\Support\AllowedUploads::rule(),
             'documentos' => 'nullable|array',
             'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
             'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
         ]);
         foreach ($request->input('documentos', []) as $i => $doc) {
@@ -435,14 +437,14 @@ class EspecialistaConsultoriaController extends Controller
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0.01',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_contrato' => \App\Support\AllowedUploads::rule(),
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
-            'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
-            'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_suspension' => \App\Support\AllowedUploads::rule(),
+            'archivo_reinicio' => \App\Support\AllowedUploads::rule(),
             'documentos' => 'nullable|array',
             'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
             'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
         ]);
         foreach ($request->input('documentos', []) as $i => $doc) {
@@ -502,5 +504,22 @@ class EspecialistaConsultoriaController extends Controller
     public function moveBulk(Request $request)
     {
         return $this->moveBulkItems($request, EspecialistaConsultoria::class, self::MODULE, 'item_ids', 'especialistas-consultoria.index');
+    }
+
+    protected function zipModuleQuery(Request $request): Builder
+    {
+        $query = $this->applyRoleBasedFilter(EspecialistaConsultoria::query()->active(), auth()->user());
+        if ($request->filled('folder_id')) {
+            $query->where('folder_id', (int) $request->folder_id);
+        } else {
+            $query->whereNull('folder_id');
+        }
+
+        return $query;
+    }
+
+    protected function zipDownloadBasename(): string
+    {
+        return 'especialistas-consultoria';
     }
 }

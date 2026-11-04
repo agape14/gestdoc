@@ -2,94 +2,43 @@
 
 namespace App\Exports;
 
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class RegistroExpedientesExport implements FromArray, WithEvents
+class RegistroExpedientesExport extends DefaultValueBinder implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithEvents, WithCustomValueBinder
 {
     protected Collection $expedientes;
 
-    public function __construct(Collection $expedientes)
+    protected string $sortBy;
+
+    public function __construct(Collection $expedientes, string $sortBy = 'etiqueta')
     {
         $this->expedientes = $expedientes;
+        $this->sortBy = $sortBy;
     }
 
-    protected static function fmtMoney($v): string
+    public function collection(): Collection
     {
-        if ($v === null || $v === '') {
-            return '';
-        }
-        $n = (float) $v;
-
-        return number_format($n, 2, ',', ' ');
+        return $this->expedientes->values();
     }
 
-    protected static function labelAccion(?string $tipo): string
+    public function headings(): array
     {
-        if (!$tipo) {
-            return '—';
-        }
-        $map = [
-            'ADICIONAL' => 'ADICIONAL',
-            'ADICIONAL_CON_DEDUCTIVO' => 'ADICIONAL CON DEDUCTIVO',
-            'DEDUCTIVO' => 'DEDUCTIVO',
-            'ACTUALIZACION_PRECIOS' => 'ACTUALIZACIÓN DE PRECIOS',
-            'REFORMULACION' => 'REFORMULACIÓN',
-        ];
-
-        return $map[$tipo] ?? $tipo;
-    }
-
-    /** Orden numérico del N° para listar 4, 5, 1005 de forma lógica. */
-    protected static function numeroSortKey($numero): array
-    {
-        $s = trim((string) ($numero ?? ''));
-        if ($s !== '' && ctype_digit($s)) {
-            return [0, (int) $s];
-        }
-
-        return [1, $s];
-    }
-
-    /** Orden natural de etiqueta: 04, 07, 10, 100. */
-    protected static function etiquetaSortKey($etiqueta): array
-    {
-        $s = trim((string) ($etiqueta ?? ''));
-        if (preg_match('/^(\d+)/', $s, $m)) {
-            return [0, (int) $m[1], $s];
-        }
-
-        return [1, PHP_INT_MAX, $s];
-    }
-
-    protected static function archivoNombre(?string $path): string
-    {
-        if (!$path) {
-            return '';
-        }
-
-        return basename(str_replace('\\', '/', $path));
-    }
-
-    public function array(): array
-    {
-        $sorted = $this->expedientes->sortBy(function ($e) {
-            return [
-                (string) ($e->tipo_inversion ?? ''),
-                self::etiquetaSortKey($e->etiqueta ?? ''),
-                (string) ($e->proyecto ?? ''),
-                (string) ($e->cui ?? ''),
-                self::numeroSortKey($e->numero ?? ''),
-                $e->id,
-            ];
-        })->values();
-
-        $headings = [
+        return [
             'TIPO DE INVERSIÓN',
             'ETIQUETA',
             'PROYECTO',
@@ -111,65 +60,105 @@ class RegistroExpedientesExport implements FromArray, WithEvents
             'CONTRATO (ARCHIVO)',
             'RESOLUCIÓN (ARCHIVO)',
         ];
+    }
 
-        $rows = [$headings];
-        $prevGroupKey = null;
+    public function map($e): array
+    {
+        $o = (float) ($e->monto_o ?? 0);
+        $p = (float) ($e->monto_p ?? 0);
+        $s = (float) ($e->monto_s ?? 0);
+        $sup = (float) ($e->monto_supervision ?? 0);
+        $total = $o + $p + $s + $sup;
 
-        foreach ($sorted as $e) {
-            $groupKey = implode("\x1e", [
-                (string) ($e->tipo_inversion ?? ''),
-                (string) ($e->etiqueta ?? ''),
-                (string) ($e->proyecto ?? ''),
-                (string) ($e->cui ?? ''),
-            ]);
-            $firstOfGroup = $groupKey !== $prevGroupKey;
-            $prevGroupKey = $groupKey;
-
-            $fecha = $e->fecha_aprobacion
-                ? \Carbon\Carbon::parse($e->fecha_aprobacion)->format('d/m/Y')
-                : '';
-
-            $o = (float) ($e->monto_o ?? 0);
-            $p = (float) ($e->monto_p ?? 0);
-            $s = (float) ($e->monto_s ?? 0);
-            $sup = (float) ($e->monto_supervision ?? 0);
-            $total = $o + $p + $s + $sup;
-
-            $tipoAccion = self::labelAccion($e->tipo_accion ?? null);
-
-            $estado = $e->estado ?: (($e->tipo_accion ?? null) === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO');
-
-            $rows[] = [
-                $firstOfGroup ? ($e->tipo_inversion ?? '') : '',
-                $firstOfGroup ? ($e->etiqueta ?? '') : '',
-                $firstOfGroup ? ($e->proyecto ?? '') : '',
-                $firstOfGroup ? ($e->cui ?? '') : '',
-                $estado,
-                $e->descripcion ?? '',
-                $e->numero_folio ?? '',
-                $e->tomos ?? '',
-                $e->anio ?? '',
-                $e->tipo_unidad_conservacion ?? '',
-                $e->resolucion ?? '',
-                $fecha,
-                self::fmtMoney($e->monto_o),
-                self::fmtMoney($e->monto_p),
-                self::fmtMoney($e->monto_s),
-                self::fmtMoney($e->monto_supervision),
-                self::fmtMoney($total),
-                $tipoAccion,
-                self::archivoNombre($e->contrato ?? null),
-                self::archivoNombre($e->resolucion_archivo ?? null),
-            ];
+        $fecha = null;
+        if (! empty($e->fecha_aprobacion)) {
+            try {
+                $fecha = ExcelDate::PHPToExcel(Carbon::parse($e->fecha_aprobacion));
+            } catch (\Throwable) {
+                $fecha = null;
+            }
         }
 
-        return $rows;
+        $estado = $e->estado ?: (($e->tipo_accion ?? null) === 'LIQUIDACION' ? 'ARCHIVADO' : 'EN CURSO');
+
+        return [
+            $e->tipo_inversion ?? '',
+            $e->etiqueta ?? '',
+            $e->proyecto ?? '',
+            (string) ($e->cui ?? ''),
+            $estado,
+            $e->descripcion ?? '',
+            $e->numero_folio ?? '',
+            $e->tomos ?? '',
+            $e->anio !== null && $e->anio !== '' ? (int) $e->anio : '',
+            $e->tipo_unidad_conservacion ?? '',
+            $e->resolucion ?? '',
+            $fecha,
+            $e->monto_o === null || $e->monto_o === '' ? null : $o,
+            $e->monto_p === null || $e->monto_p === '' ? null : $p,
+            $e->monto_s === null || $e->monto_s === '' ? null : $s,
+            $e->monto_supervision === null || $e->monto_supervision === '' ? null : $sup,
+            $total,
+            self::labelAccion($e->tipo_accion ?? null),
+            self::archivoNombre($e->contrato ?? null),
+            self::archivoNombre($e->resolucion_archivo ?? null),
+        ];
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'L' => 'DD/MM/YYYY',
+            'M' => '"S/" #,##0.00',
+            'N' => '"S/" #,##0.00',
+            'O' => '"S/" #,##0.00',
+            'P' => '"S/" #,##0.00',
+            'Q' => '"S/" #,##0.00',
+        ];
+    }
+
+    public function bindValue(Cell $cell, $value)
+    {
+        if ($cell->getColumn() === 'D' && $cell->getRow() > 1) {
+            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
+    }
+
+    protected static function labelAccion(?string $tipo): string
+    {
+        if (! $tipo) {
+            return '—';
+        }
+        $map = [
+            'ADICIONAL' => 'ADICIONAL',
+            'ADICIONAL_CON_DEDUCTIVO' => 'ADICIONAL CON DEDUCTIVO',
+            'DEDUCTIVO' => 'DEDUCTIVO',
+            'ACTUALIZACION_PRECIOS' => 'ACTUALIZACIÓN DE PRECIOS',
+            'REFORMULACION' => 'REFORMULACIÓN',
+        ];
+
+        return $map[$tipo] ?? $tipo;
+    }
+
+    protected static function archivoNombre(?string $path): string
+    {
+        if (! $path) {
+            return '';
+        }
+
+        return basename(str_replace('\\', '/', $path));
     }
 
     public function registerEvents(): array
     {
+        $sortBy = $this->sortBy;
+
         return [
-            AfterSheet::class => function (AfterSheet $event) {
+            AfterSheet::class => function (AfterSheet $event) use ($sortBy) {
                 $sheet = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
                 $highestCol = 'T';
@@ -192,24 +181,28 @@ class RegistroExpedientesExport implements FromArray, WithEvents
                     ]);
                 }
 
-                // Combinar A–D (tipo, etiqueta, proyecto, CUI) cuando varias filas comparten el mismo grupo.
-                $mergeCols = ['A', 'B', 'C', 'D'];
-                $start = 2;
-                for ($r = 3; $r <= $highestRow + 1; $r++) {
-                    $newGroup = $r > $highestRow
-                        || (string) $sheet->getCell('A' . $r)->getValue() !== '';
-                    if ($newGroup) {
-                        $end = $r - 1;
-                        if ($end > $start) {
-                            foreach ($mergeCols as $col) {
-                                $sheet->mergeCells($col . $start . ':' . $col . $end);
-                                $sheet->getStyle($col . $start)->getAlignment()
-                                    ->setVertical(Alignment::VERTICAL_CENTER)
-                                    ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                                    ->setWrapText(true);
+                if (in_array($sortBy, ['etiqueta', 'tipo_inversion'], true)) {
+                    $mergeCols = ['A', 'B', 'C', 'D'];
+                    $start = 2;
+                    for ($r = 3; $r <= $highestRow + 1; $r++) {
+                        $sameGroup = $r <= $highestRow
+                            && (string) $sheet->getCell('A' . $r)->getValue() === (string) $sheet->getCell('A' . $start)->getValue()
+                            && (string) $sheet->getCell('B' . $r)->getValue() === (string) $sheet->getCell('B' . $start)->getValue()
+                            && (string) $sheet->getCell('C' . $r)->getValue() === (string) $sheet->getCell('C' . $start)->getValue()
+                            && (string) $sheet->getCell('D' . $r)->getValue() === (string) $sheet->getCell('D' . $start)->getValue();
+                        if (! $sameGroup) {
+                            $end = $r - 1;
+                            if ($end > $start) {
+                                foreach ($mergeCols as $col) {
+                                    $sheet->mergeCells($col . $start . ':' . $col . $end);
+                                    $sheet->getStyle($col . $start)->getAlignment()
+                                        ->setVertical(Alignment::VERTICAL_CENTER)
+                                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                                        ->setWrapText(true);
+                                }
                             }
+                            $start = $r;
                         }
-                        $start = $r;
                     }
                 }
 

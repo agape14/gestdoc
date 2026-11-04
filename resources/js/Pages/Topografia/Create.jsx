@@ -38,7 +38,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                         </div>
                         <div className="col-md-12">
                             <label className="form-label fw-medium">Archivo</label>
-                            <input type="file" className="form-control" accept=".pdf,.doc,.docx" onChange={e => setData('archivo', e.target.files[0])} />
+                            <input type="file" className="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => setData('archivo', e.target.files[0])} />
                         </div>
                     </div>
                     <div className="d-flex justify-content-end mt-5 pt-3 border-top gap-2">

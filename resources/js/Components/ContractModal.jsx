@@ -394,7 +394,7 @@ export default function ContractModal({ show, onClose, contract = null, folderId
                                             type="file"
                                             id="file"
                                             className={`form-control ${errors.file ? 'is-invalid' : ''}`}
-                                            accept=".pdf"
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                             onChange={(e) => setData('file', e.target.files[0])}
                                             required={!isEditing}
                                         />

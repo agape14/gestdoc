@@ -85,7 +85,7 @@ export default function Create() {
                             <input
                                 type="file"
                                 className={`form-control ${errors.archivo ? 'is-invalid' : ''}`}
-                                accept=".pdf"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                 onChange={e => setData('archivo', e.target.files[0])}
                             />
                             {errors.archivo && <div className="invalid-feedback">{errors.archivo}</div>}

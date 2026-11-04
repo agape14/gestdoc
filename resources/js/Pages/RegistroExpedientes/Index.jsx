@@ -27,6 +27,36 @@ const ACCIONES_CREAR = [
 
 const ESTADOS = ['EN CURSO', 'SOLO EXPEDIENTE', 'PROCESO DE EJECUCION', 'ARCHIVADO'];
 
+const tipoAccionBadgeClass = (tipo) => {
+    switch (tipo) {
+        case 'ADICIONAL': return 'text-bg-success';
+        case 'ADICIONAL_CON_DEDUCTIVO': return 'text-bg-warning';
+        case 'DEDUCTIVO': return 'text-bg-danger';
+        case 'ACTUALIZACION_PRECIOS': return 'text-bg-info';
+        case 'REFORMULACION': return 'text-bg-dark';
+        case 'VALORIZACION': return 'text-bg-primary';
+        case 'LIQUIDACION': return 'text-bg-secondary';
+        default: return 'text-bg-light text-dark border';
+    }
+};
+
+const FileStatusIcons = ({ hasContrato, hasResolucion }) => (
+    <div className="d-flex gap-1 justify-content-center" onClick={(e) => e.stopPropagation()}>
+        <span
+            className={`badge rounded-pill ${hasContrato ? 'text-bg-success' : 'text-bg-light text-muted border'}`}
+            title={hasContrato ? 'Contrato cargado' : 'Contrato pendiente'}
+        >
+            <i className="bi bi-file-earmark-text me-1"></i>C
+        </span>
+        <span
+            className={`badge rounded-pill ${hasResolucion ? 'text-bg-primary' : 'text-bg-light text-muted border'}`}
+            title={hasResolucion ? 'Resolución cargada' : 'Resolución pendiente'}
+        >
+            <i className="bi bi-file-earmark-check me-1"></i>R
+        </span>
+    </div>
+);
+
 const estadoBadgeClass = (estado) => {
     switch (String(estado || '').toUpperCase()) {
         case 'SOLO EXPEDIENTE':
@@ -156,10 +186,18 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             accessor: 'estado',
             render: (item) => {
                 const estado = getEstado(item);
+                const accion = item.tipo_accion;
                 return (
-                    <span className={`badge rounded-pill px-3 py-2 ${estadoBadgeClass(estado)}`}>
-                        {estado}
-                    </span>
+                    <div className="d-flex flex-column align-items-start gap-1">
+                        <span className={`badge rounded-pill px-3 py-2 ${estadoBadgeClass(estado)}`}>
+                            {estado}
+                        </span>
+                        {accion ? (
+                            <span className={`badge rounded-pill ${tipoAccionBadgeClass(accion)}`} title={TIPO_ACCION_LABEL[accion] || accion}>
+                                {TIPO_ACCION_LABEL[accion] || accion}
+                            </span>
+                        ) : null}
+                    </div>
                 );
             },
         },
@@ -177,6 +215,16 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         },
         { header: sortHeader('FECHA APROB.', 'fecha_aprobacion'), accessor: 'fecha_aprobacion', render: (item) => formatDateDisplay(item.fecha_aprobacion) },
         { header: sortHeader('MONTOS', 'monto_total'), accessor: 'monto_total', render: (item) => formatMonedaPeruana(item.monto_total) },
+        {
+            header: 'ARCHIVOS',
+            accessor: '_archivos',
+            render: (item) => (
+                <FileStatusIcons
+                    hasContrato={!!(item.contrato || item.contrato_url)}
+                    hasResolucion={!!(item.resolucion_archivo || item.resolucion_archivo_url)}
+                />
+            ),
+        },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 
@@ -299,6 +347,11 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             anulados={null}
             renderDetail={renderDetail}
             renderHeader={renderHeader}
+            zipDownloadRoute="registro-expedientes.download-zip"
+            zipTypes={[
+                { id: 'CONTRATOS', label: 'Contratos' },
+                { id: 'RESOLUCIONES_CONFORMIDADES', label: 'Resoluciones' },
+            ]}
             getDocumentLinks={getDocumentLinks}
         />
     );

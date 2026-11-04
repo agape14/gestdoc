@@ -122,6 +122,7 @@ export default function Index({ bienes, experienceTotals = {}, filters, userRole
             renderDetail={renderDetail}
             renderHeader={renderHeader}
             sortEnabled
+            zipDownloadRoute="proveedor-bienes.download-zip"
         />
     );
 }

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import FolderModal from '@/Components/FolderModal';
 import DocumentModal from '@/Components/DocumentModal';
 import DocumentPdfModal from '@/Components/DocumentPdfModal';
+import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 
 export default function Index({
@@ -28,6 +29,7 @@ export default function Index({
     const [editingDocument, setEditingDocument] = useState(null);
     const [viewingFile, setViewingFile] = useState(null);
     const [viewingDocument, setViewingDocument] = useState(null);
+    const [zipMode, setZipMode] = useState(null);
     const [movingDocument, setMovingDocument] = useState(null);
     const [movingDocumentIds, setMovingDocumentIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
@@ -178,7 +180,19 @@ export default function Index({
         }
     };
 
-    const getDownloadZipUrl = (all = false) => {
+    const zipTypes = useMemo(() => {
+        const map = new Map();
+        (docRows || []).forEach((doc) => {
+            (doc.files || []).forEach((f) => {
+                const n = String(f.nombre_archivo || 'DOCUMENTO').trim();
+                if (n) map.set(n, n);
+            });
+        });
+        const list = [...map.entries()].map(([id, label]) => ({ id, label }));
+        return list.length ? list : [{ id: 'DOCUMENTO', label: 'Documento' }];
+    }, [docRows]);
+
+    const getDownloadZipUrl = (all = false, types = []) => {
         if (!currentFolder) return '#';
         const base = route('folders.documents.download-zip', currentFolder.id);
         const params = new URLSearchParams();
@@ -187,6 +201,7 @@ export default function Index({
         } else {
             selectedDocIds.forEach((id) => params.append('ids[]', id));
         }
+        types.forEach((t) => params.append('types[]', t));
         return `${base}?${params.toString()}`;
     };
 
@@ -205,7 +220,13 @@ export default function Index({
     const handleDownloadZip = (all) => {
         if (!currentFolder) return;
         if (!all && selectedDocIds.length === 0) return;
-        window.location.href = getDownloadZipUrl(all);
+        setZipMode(all ? 'all' : 'selected');
+    };
+
+    const confirmDownloadZip = (types) => {
+        if (!currentFolder) return;
+        window.location.href = getDownloadZipUrl(zipMode === 'all', types);
+        setZipMode(null);
     };
 
     const clearFilters = () => {
@@ -826,6 +847,14 @@ export default function Index({
                 onClose={() => { setShowPdfModal(false); setViewingDocument(null); setViewingFile(null); }}
                 document={viewingDocument}
                 file={viewingFile}
+            />
+
+            <ZipTypePickerModal
+                show={!!zipMode}
+                title={zipMode === 'all' ? 'Descargar todos (ZIP)' : `Descargar ${selectedDocIds.length} documento(s) (ZIP)`}
+                types={zipTypes}
+                onClose={() => setZipMode(null)}
+                onConfirm={confirmDownloadZip}
             />
 
             {(movingDocument || movingDocumentIds.length > 0) && (

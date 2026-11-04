@@ -15,10 +15,12 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 use App\Support\GridPagination;
+use App\Http\Controllers\Concerns\DownloadsModuleZip;
+use Illuminate\Database\Eloquent\Builder;
 
 class MunicipalidadFuncionarioPublicoController extends Controller
 {
-    use HasRoleBasedAccess, MovesToFolder;
+    use HasRoleBasedAccess, MovesToFolder, DownloadsModuleZip;
 
     const MODULE = 'municipalidades-funcionario-publico';
     private const ESTADOS_VALIDOS = ['COMPLETO', 'INCOMPLETO', 'EN CURSO', 'ARCHIVADO'];
@@ -182,14 +184,14 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_contrato' => \App\Support\AllowedUploads::rule(),
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
-            'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
-            'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_suspension' => \App\Support\AllowedUploads::rule(),
+            'archivo_reinicio' => \App\Support\AllowedUploads::rule(),
             'documentos' => 'nullable|array',
             'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
             'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
         ], $this->mensajesValidacion());
         foreach ($request->input('documentos', []) as $i => $doc) {
@@ -290,10 +292,10 @@ class MunicipalidadFuncionarioPublicoController extends Controller
             'fecha_reinicio' => 'nullable|string',
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_contrato' => \App\Support\AllowedUploads::rule(),
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
-            'archivo_suspension' => 'nullable|file|mimes:pdf|max:25600',
-            'archivo_reinicio' => 'nullable|file|mimes:pdf|max:25600',
+            'archivo_suspension' => \App\Support\AllowedUploads::rule(),
+            'archivo_reinicio' => \App\Support\AllowedUploads::rule(),
             'documentos' => 'nullable|array',
             'documentos.*.tipo_documento_adjunto' => [
                 'nullable',
@@ -301,7 +303,7 @@ class MunicipalidadFuncionarioPublicoController extends Controller
                 Rule::in(['', 'CONTRATO', 'COMPROBANTE_DE_PAGO', 'CONFORMIDAD_DE_SERVICIO', 'OTROS']),
             ],
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
             'documentos_eliminar_ids' => 'nullable|array',
             'documentos_eliminar_ids.*' => 'integer|exists:municipalidad_funcionario_publico_documentos,id',
             'estado' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
@@ -584,5 +586,30 @@ class MunicipalidadFuncionarioPublicoController extends Controller
         }
 
         return (float) $parsed;
+    }
+
+    protected function zipModuleQuery(Request $request): Builder
+    {
+        $user = auth()->user();
+        $query = MunicipalidadFuncionarioPublico::query()->active();
+        $query = $this->applyRoleBasedFilter($query, $user);
+        if ($request->filled('folder_id')) {
+            $query->where('folder_id', (int) $request->folder_id);
+        } else {
+            $query->whereNull('folder_id');
+        }
+        if ($request->filled('search')) {
+            $s = '%' . $request->search . '%';
+            $query->where(function ($q) use ($s) {
+                $q->where('nombre', 'like', $s)->orWhere('cliente', 'like', $s)->orWhere('objeto_del_contrato', 'like', $s);
+            });
+        }
+
+        return $query;
+    }
+
+    protected function zipDownloadBasename(): string
+    {
+        return 'municipalidades';
     }
 }

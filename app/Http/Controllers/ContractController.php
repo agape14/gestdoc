@@ -70,7 +70,7 @@ class ContractController extends Controller
             'conformity_date' => 'nullable|date',
             'exchange_rate' => 'nullable|numeric|min:0',
             'status' => 'required|in:completo,incompleto',
-            'file' => 'required|file|mimes:pdf|max:25600',
+            'file' => \App\Support\AllowedUploads::rule('required'),
         ]);
 
         $path = null;
@@ -125,7 +125,7 @@ class ContractController extends Controller
             'conformity_date' => 'nullable|date',
             'exchange_rate' => 'nullable|numeric|min:0',
             'status' => 'required|in:completo,incompleto',
-            'file' => 'nullable|file|mimes:pdf|max:25600',
+            'file' => \App\Support\AllowedUploads::rule(),
         ]);
 
         // Update Contract File if new one uploaded
@@ -183,6 +183,10 @@ class ContractController extends Controller
         if (!Storage::disk($disk)->exists($contract->file_path)) {
             return response()->json(['error' => 'El archivo no existe.'], 404);
         }
-        return redirect(Storage::disk($disk)->url($contract->file_path));
+        $name = basename(str_replace('\\', '/', $contract->file_path)) ?: 'contrato.pdf';
+
+        return Storage::disk($disk)->response($contract->file_path, $name, [
+            'Content-Disposition' => 'inline; filename="' . $name . '"',
+        ], 'inline');
     }
 }

@@ -53,7 +53,7 @@ const FileField = ({ name, label, required = false, obra, data, setData, errors 
             )}
             <input
                 type="file"
-                accept=".pdf,application/pdf"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                 className={`form-control w-100 ${errors[name] ? 'is-invalid' : ''}`}
                 onChange={e => setData(name, e.target.files[0] || null)}
                 required={false}
@@ -485,7 +485,7 @@ export default function Edit({ obra, folderId = null, canDelete = false }) {
                                     <div className="col-12 col-md-5">
                                         <input
                                             type="file"
-                                            accept=".pdf,application/pdf"
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                             className="form-control"
                                             onChange={e => setDocumento(index, 'archivo', e.target.files[0] || null)}
                                         />

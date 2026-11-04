@@ -130,6 +130,7 @@ export default function Index({ servicios, experienceTotals = {}, filters, userR
             renderDetail={renderDetail}
             renderHeader={renderHeader}
             sortEnabled
+            zipDownloadRoute="proveedor-servicios.download-zip"
         />
     );
 }

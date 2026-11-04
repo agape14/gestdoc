@@ -160,7 +160,7 @@ const DetailForm = ({ item, onClose }) => {
                             <input type="text" className="form-control form-control-sm" placeholder="Nombre" value={doc.nombre || ''} onChange={e => handleDocumentoChange(index, 'nombre', e.target.value)} />
                         </div>
                         <div className="col-md-6">
-                            <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)} />
+                            <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)} />
                             {doc.archivo && typeof doc.archivo === 'object' && doc.archivo.name && <small className="text-success">{doc.archivo.name}</small>}
                         </div>
                         <div className="col-md-2">
@@ -210,7 +210,7 @@ const DetailForm = ({ item, onClose }) => {
                     </button>
                     <div className="mt-3">
                         <label className="form-label fw-bold small text-secondary">Promesa de Consorcio</label>
-                        <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('promesa_consorcio', e.target.files[0])} />
+                        <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => setData('promesa_consorcio', e.target.files[0])} />
                     </div>
                 </div>
             )}

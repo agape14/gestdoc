@@ -1,15 +1,16 @@
 import React, { useEffect } from 'react';
+import useViewerHistory from '@/Hooks/useViewerHistory';
 
 export default function PdfModal({ show, onClose, pdfUrl, title = 'Ver PDF', large = false }) {
+    useViewerHistory(show, onClose);
+
     useEffect(() => {
         if (show) {
-            // Agregar clase al body para prevenir scroll cuando el modal está abierto
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = '';
         }
 
-        // Cleanup
         return () => {
             document.body.style.overflow = '';
         };

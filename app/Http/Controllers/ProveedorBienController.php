@@ -13,10 +13,12 @@ use App\Exports\ProveedorBienesExport;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 use App\Support\GridPagination;
+use App\Http\Controllers\Concerns\DownloadsModuleZip;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProveedorBienController extends Controller
 {
-    use HasRoleBasedAccess, MovesToFolder;
+    use HasRoleBasedAccess, MovesToFolder, DownloadsModuleZip;
 
     const MODULE = 'proveedor-bienes';
 
@@ -174,12 +176,12 @@ class ProveedorBienController extends Controller
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0.01',
             'estado_contrato' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_contrato' => \App\Support\AllowedUploads::rule(),
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos' => 'nullable|array',
             'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
         ]);
         foreach ($request->input('documentos', []) as $i => $doc) {
             if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {
@@ -357,12 +359,12 @@ class ProveedorBienController extends Controller
             'fecha_culminacion' => 'required|string',
             'monto_neto' => 'required|numeric|min:0.01',
             'estado_contrato' => 'nullable|string|in:COMPLETO,INCOMPLETO,EN CURSO,ARCHIVADO',
-            'archivo_contrato' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'archivo_contrato' => \App\Support\AllowedUploads::rule(),
             'tipo_documento_adjunto' => 'nullable|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos' => 'nullable|array',
             'documentos.*.tipo_documento_adjunto' => 'required_with:documentos.*.archivo|string|in:CONTRATO,COMPROBANTE_DE_PAGO,CONFORMIDAD_DE_SERVICIO,OTROS',
             'documentos.*.nombre_otro' => 'nullable|string|max:255',
-            'documentos.*.archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:25600',
+            'documentos.*.archivo' => \App\Support\AllowedUploads::rule(),
         ]);
         foreach ($request->input('documentos', []) as $i => $doc) {
             if (($doc['tipo_documento_adjunto'] ?? '') === 'OTROS' && $request->hasFile("documentos.{$i}.archivo") && empty(trim($doc['nombre_otro'] ?? ''))) {
@@ -406,6 +408,23 @@ class ProveedorBienController extends Controller
     public function moveBulk(Request $request)
     {
         return $this->moveBulkItems($request, ProveedorBien::class, self::MODULE, 'item_ids', 'proveedor-bienes.index');
+    }
+
+    protected function zipModuleQuery(Request $request): Builder
+    {
+        $query = $this->applyRoleBasedFilter(ProveedorBien::query()->active(), auth()->user());
+        if ($request->filled('folder_id')) {
+            $query->where('folder_id', (int) $request->folder_id);
+        } else {
+            $query->whereNull('folder_id');
+        }
+
+        return $query;
+    }
+
+    protected function zipDownloadBasename(): string
+    {
+        return 'proveedor-bienes';
     }
 }
 

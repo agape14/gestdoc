@@ -3,6 +3,7 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 import { formatMonedaPeruana } from '@/Utils/experienciaCalculations';
+import Swal from 'sweetalert2';
 
 const TIPO_ACCION_LABEL = {
     ADICIONAL: 'ADICIONAL',
@@ -81,7 +82,15 @@ export default function Create({
             if (!(payload.resolucion_archivo instanceof File)) delete payload.resolucion_archivo;
             return payload;
         });
-        post(route('registro-expedientes.store'), { forceFormData: true });
+        post(route('registro-expedientes.store'), {
+            forceFormData: true,
+            preserveScroll: true,
+            onError: (errs) => {
+                const first = Object.values(errs || {})[0];
+                const msg = Array.isArray(first) ? first[0] : first;
+                Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: msg || 'Revise los campos y los archivos adjuntos (máx. 25 MB).' });
+            },
+        });
     };
 
     const ro = lockPrefill;
@@ -191,7 +200,7 @@ export default function Create({
                                         <tr>
                                             <td className="align-middle">Contrato</td>
                                             <td>
-                                                <input type="file" className={`form-control form-control-sm ${errors.contrato ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('contrato', e.target.files?.[0] || null)} />
+                                                <input type="file" className={`form-control form-control-sm ${errors.contrato ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => setData('contrato', e.target.files?.[0] || null)} />
                                                 <small className="text-muted">PDF o documento (máx. 25 MB)</small>
                                                 {errors.contrato && <div className="invalid-feedback d-block">{errors.contrato}</div>}
                                             </td>
@@ -199,7 +208,7 @@ export default function Create({
                                         <tr>
                                             <td className="align-middle">Resolución</td>
                                             <td>
-                                                <input type="file" className={`form-control form-control-sm ${errors.resolucion_archivo ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx" onChange={e => setData('resolucion_archivo', e.target.files?.[0] || null)} />
+                                                <input type="file" className={`form-control form-control-sm ${errors.resolucion_archivo ? 'is-invalid' : ''}`} accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => setData('resolucion_archivo', e.target.files?.[0] || null)} />
                                                 <small className="text-muted">PDF o documento (máx. 25 MB)</small>
                                                 {errors.resolucion_archivo && <div className="invalid-feedback d-block">{errors.resolucion_archivo}</div>}
                                             </td>

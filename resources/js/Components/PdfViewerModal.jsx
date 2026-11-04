@@ -1,7 +1,10 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
+import useViewerHistory from '@/Hooks/useViewerHistory';
 
 export default function PdfViewerModal({ show, onClose, contract }) {
+    useViewerHistory(!!(show && contract), onClose);
+
     if (!show || !contract) return null;
 
     const handleDownload = () => {

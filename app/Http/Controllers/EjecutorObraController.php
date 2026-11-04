@@ -16,10 +16,12 @@ use App\Exports\EjecutorObrasExport;
 use App\Http\Requests\StoreEjecutorObraRequest;
 use App\Http\Requests\UpdateEjecutorObraRequest;
 use App\Support\GridPagination;
+use App\Http\Controllers\Concerns\DownloadsModuleZip;
+use Illuminate\Database\Eloquent\Builder;
 
 class EjecutorObraController extends Controller
 {
-    use HasRoleBasedAccess, MovesToFolder;
+    use HasRoleBasedAccess, MovesToFolder, DownloadsModuleZip;
 
     const MODULE = 'ejecutor-obra';
 
@@ -448,5 +450,27 @@ class EjecutorObraController extends Controller
     public function moveBulk(Request $request)
     {
         return $this->moveBulkItems($request, EjecutorObra::class, self::MODULE, 'item_ids', 'ejecutor-obra.index');
+    }
+
+    protected function zipModuleQuery(Request $request): Builder
+    {
+        $query = $this->applyRoleBasedFilter(EjecutorObra::query()->active(), auth()->user());
+        if ($request->filled('folder_id')) {
+            $query->where('folder_id', (int) $request->folder_id);
+        } else {
+            $query->whereNull('folder_id');
+        }
+
+        return $query;
+    }
+
+    protected function zipEagerLoads(): array
+    {
+        return ['documentosLiquidacion'];
+    }
+
+    protected function zipDownloadBasename(): string
+    {
+        return 'ejecutor-obra';
     }
 }

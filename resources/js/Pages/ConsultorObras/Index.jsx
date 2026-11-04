@@ -6,12 +6,13 @@ import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
+import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
+import { CONSULTOR_ZIP_TYPES, FILE_ACCEPT } from '@/Utils/allowedUploads';
 
 const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
 
 const DetailForm = ({ item, onClose }) => {
     const { data, setData, post, processing, errors } = useForm({
-        _method: 'PUT',
         titulo: item.titulo || '',
         entidad: item.entidad || '',
         modalidad: item.modalidad || '',
@@ -45,12 +46,22 @@ const DetailForm = ({ item, onClose }) => {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('consultor-obras.update', item.id), {
+        post(route('consultor-obras.update.post', item.id), {
             forceFormData: true,
+            preserveScroll: true,
             onSuccess: () => {
                 Swal.fire('Éxito', 'Registro actualizado correctamente', 'success');
                 onClose();
-            }
+            },
+            onError: (errs) => {
+                const first = Object.values(errs || {})[0];
+                const msg = Array.isArray(first) ? first[0] : first;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No se pudo guardar',
+                    text: msg || 'Revise los campos y el tamaño/formato de los archivos.',
+                });
+            },
         });
     };
 
@@ -194,7 +205,7 @@ const DetailForm = ({ item, onClose }) => {
             <div className="row g-3 mb-3">
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Contrato</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('contrato_archivo', e.target.files[0])} />
+                    <input type="file" className="form-control form-control-sm" accept={FILE_ACCEPT} onChange={e => setData('contrato_archivo', e.target.files[0])} />
                     {item.contrato_archivo && (
                         <a href={item.contrato_archivo_url || `/storage/${item.contrato_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
@@ -203,7 +214,7 @@ const DetailForm = ({ item, onClose }) => {
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">TDR</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('tdr_archivo', e.target.files[0])} />
+                    <input type="file" className="form-control form-control-sm" accept={FILE_ACCEPT} onChange={e => setData('tdr_archivo', e.target.files[0])} />
                     {item.tdr_archivo && (
                         <a href={item.tdr_archivo_url || `/storage/${item.tdr_archivo}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
@@ -221,7 +232,7 @@ const DetailForm = ({ item, onClose }) => {
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Producto Técnico</label>
-                    <input type="file" className="form-control form-control-sm" multiple accept=".pdf,.doc,.docx" onChange={e => setData('producto_tecnico', Array.from(e.target.files))} />
+                    <input type="file" className="form-control form-control-sm" multiple accept={FILE_ACCEPT} onChange={e => setData('producto_tecnico', Array.from(e.target.files))} />
                     {item.producto_tecnico && Array.isArray(item.producto_tecnico) && item.producto_tecnico.length > 0 && (
                         <div className="small mt-1">
                             {item.producto_tecnico.map((file, idx) => (
@@ -234,7 +245,7 @@ const DetailForm = ({ item, onClose }) => {
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Actas y Resoluciones</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('actas_resoluciones', e.target.files[0])} />
+                    <input type="file" className="form-control form-control-sm" accept={FILE_ACCEPT} onChange={e => setData('actas_resoluciones', e.target.files[0])} />
                     {item.actas_resoluciones && (
                         <a href={item.actas_resoluciones_url || `/storage/${item.actas_resoluciones}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
@@ -243,7 +254,7 @@ const DetailForm = ({ item, onClose }) => {
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Conformidad Técnica</label>
-                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => setData('conformidad_tecnica', e.target.files[0])} />
+                    <input type="file" className="form-control form-control-sm" accept={FILE_ACCEPT} onChange={e => setData('conformidad_tecnica', e.target.files[0])} />
                     {item.conformidad_tecnica && (
                         <a href={item.conformidad_tecnica_url || `/storage/${item.conformidad_tecnica}`} target="_blank" className="small text-primary mt-1 d-block">
                             <i className="bi bi-file-earmark-pdf"></i> Ver archivo actual
@@ -259,7 +270,8 @@ const DetailForm = ({ item, onClose }) => {
                 <div className="d-flex gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
                     <button type="submit" disabled={processing} className="btn btn-primary">
-                        <i className="bi bi-save me-2"></i> Guardar
+                        {processing ? <span className="spinner-border spinner-border-sm me-2" role="status"></span> : <i className="bi bi-save me-2"></i>}
+                        {processing ? 'Guardando...' : 'Guardar'}
                     </button>
                 </div>
             </div>
@@ -283,6 +295,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     const [editingFolder, setEditingFolder] = useState(null);
     const [tabActivo, setTabActivo] = useState('activos');
     const [selectedIds, setSelectedIds] = useState([]);
+    const [showZipModal, setShowZipModal] = useState(false);
     const [movingItem, setMovingItem] = useState(null);
     const [movingIds, setMovingIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
@@ -441,6 +454,21 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
         });
     };
 
+    const confirmZipDownload = (types) => {
+        const params = new URLSearchParams();
+        if (selectedIds.length > 0) {
+            selectedIds.forEach((id) => params.append('ids[]', id));
+        } else {
+            params.set('all', '1');
+        }
+        if (currentFolder?.id) params.set('folder_id', currentFolder.id);
+        if (search) params.set('search', search);
+        if (isAdmin && operatorId) params.set('user_id', operatorId);
+        types.forEach((t) => params.append('types[]', t));
+        window.location.href = route('consultor-obras.download-zip') + '?' + params.toString();
+        setShowZipModal(false);
+    };
+
     const handleExport = () => {
         const params = new URLSearchParams();
         if (filters.tipo) params.append('tipo', filters.tipo);
@@ -529,6 +557,9 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                     )}
                     {currentUserRole !== 'Visualizador' && (
                         <>
+                            <button type="button" onClick={() => setShowZipModal(true)} className="btn btn-outline-primary rounded-pill px-4">
+                                <i className="bi bi-file-zip me-2"></i> {selectedIds.length > 0 ? `ZIP (${selectedIds.length})` : 'Descargar ZIP'}
+                            </button>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
                                 <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
                             </button>
@@ -859,6 +890,14 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
             {editingFolder && (
                 <ModuleFolderEditModal show={!!editingFolder} onClose={() => setEditingFolder(null)} folder={editingFolder} />
             )}
+
+            <ZipTypePickerModal
+                show={showZipModal}
+                title={selectedIds.length > 0 ? `Descargar ZIP (${selectedIds.length})` : 'Descargar ZIP'}
+                types={CONSULTOR_ZIP_TYPES}
+                onClose={() => setShowZipModal(false)}
+                onConfirm={confirmZipDownload}
+            />
             </div>
         </MainLayout>
     );

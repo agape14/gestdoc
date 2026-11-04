@@ -209,7 +209,7 @@ class LicitacionController extends Controller
             'nombre_rc' => 'nullable|string|max:255',
             'nombre_consorcio' => 'nullable|string|max:255',
             'consorciados' => 'nullable|array',
-            'promesa_consorcio' => 'nullable|file|mimes:pdf,doc,docx|max:25600',
+            'promesa_consorcio' => \App\Support\AllowedUploads::rule(),
         ]);
 
         $data = $request->except(['promesa_consorcio', 'documentos']);
@@ -300,7 +300,7 @@ class LicitacionController extends Controller
             'consorciados' => 'nullable|array',
             'documento_delete_ids' => 'nullable|array',
             'documento_delete_ids.*' => 'integer|exists:licitacion_documentos,id',
-            'promesa_consorcio' => 'nullable|file|mimes:pdf,doc,docx|max:25600',
+            'promesa_consorcio' => \App\Support\AllowedUploads::rule(),
         ]);
 
         $data = $request->except(['promesa_consorcio', 'documentos', 'documento_delete_ids']);

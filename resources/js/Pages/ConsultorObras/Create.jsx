@@ -2,9 +2,12 @@ import React from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
+import Swal from 'sweetalert2';
+import { FILE_ACCEPT } from '@/Utils/allowedUploads';
 
 export default function Create({ folderId = null, breadcrumbLabel = '' }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const [sending, setSending] = React.useState(false);
+    const { data, setData, errors } = useForm({
         titulo: '',
         entidad: '',
         categoria: 'Privada',
@@ -79,7 +82,16 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                 formData.append(`documentos[${i}][archivo]`, doc.archivo);
             }
         });
-        router.post(route('consultor-obras.store'), formData, { forceFormData: true });
+        setSending(true);
+        router.post(route('consultor-obras.store'), formData, {
+            forceFormData: true,
+            onFinish: () => setSending(false),
+            onError: (errs) => {
+                const first = Object.values(errs || {})[0];
+                const msg = Array.isArray(first) ? first[0] : first;
+                Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: msg || 'Revise los campos y los archivos adjuntos.' });
+            },
+        });
     };
 
     return (
@@ -223,7 +235,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
                                     <input type="text" className="form-control form-control-sm" placeholder="Nombre" value={doc.nombre || ''} onChange={e => handleDocumentoChange(index, 'nombre', e.target.value)} />
                                 </div>
                                 <div className="col-md-6">
-                                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx,image/*" onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)} />
+                                    <input type="file" className="form-control form-control-sm" accept={FILE_ACCEPT} onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)} />
                                     {doc.archivo && typeof doc.archivo === 'object' && doc.archivo.name && <small className="text-success">{doc.archivo.name}</small>}
                                 </div>
                                 <div className="col-md-2">
@@ -238,7 +250,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '' }) {
 
                     <div className="d-flex justify-content-end gap-2">
                         <Link href={cancelUrl} className="btn btn-outline-secondary">Cancelar</Link>
-                        <SubmitButton processing={processing} icon="bi-save" className="btn btn-primary">Guardar</SubmitButton>
+                        <SubmitButton processing={sending} icon="bi-save" className="btn btn-primary">Guardar</SubmitButton>
                     </div>
                 </form>
             </div>

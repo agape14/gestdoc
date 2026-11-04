@@ -83,7 +83,7 @@ export default function Edit({ contract }) {
                             <input
                                 type="file"
                                 className={`form-control ${errors.archivo ? 'is-invalid' : ''}`}
-                                accept=".pdf"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
                                 onChange={e => setData('archivo', e.target.files[0])}
                             />
                             <div className="form-text">Dejar vacío para mantener el archivo actual.</div>

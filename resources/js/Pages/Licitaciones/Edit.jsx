@@ -133,7 +133,7 @@ export default function Edit({ licitacion }) {
                                     <input type="text" className="form-control form-control-sm" placeholder="Nombre del documento" value={doc.nombre || ''} onChange={e => handleDocumentoChange(index, 'nombre', e.target.value)} />
                                 </div>
                                 <div className="col-md-6">
-                                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx" onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)} />
+                                    <input type="file" className="form-control form-control-sm" accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg" onChange={e => handleDocumentoChange(index, 'archivo', e.target.files[0] || null)} />
                                     {doc.archivo && doc.archivo.name && <small className="text-success">{doc.archivo.name}</small>}
                                 </div>
                                 <div className="col-md-2">

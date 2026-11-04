@@ -7,6 +7,8 @@ import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
+import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
+import { EJECUTOR_ZIP_TYPES } from '@/Utils/allowedUploads';
 
 const fmtDate = (d) => (!d ? '-' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
 
@@ -89,6 +91,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
     const [pdfModalUrl, setPdfModalUrl] = useState('');
     const [pdfModalTitle, setPdfModalTitle] = useState('');
     const [selectedIds, setSelectedIds] = useState([]);
+    const [showZipModal, setShowZipModal] = useState(false);
     const [movingItem, setMovingItem] = useState(null);
     const [movingIds, setMovingIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
@@ -129,6 +132,20 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
         setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
     };
     const closeMoveModal = () => { setMovingItem(null); setMovingIds([]); setMoveTargetFolderId(''); };
+    const confirmZipDownload = (types) => {
+        const params = new URLSearchParams();
+        if (selectedIds.length > 0) {
+            selectedIds.forEach((id) => params.append('ids[]', id));
+        } else {
+            params.set('all', '1');
+        }
+        if (currentFolder?.id) params.set('folder_id', currentFolder.id);
+        if (search) params.set('search', search);
+        if (isAdmin && operatorId) params.set('user_id', operatorId);
+        types.forEach((t) => params.append('types[]', t));
+        window.location.href = route('ejecutor-obra.download-zip') + '?' + params.toString();
+        setShowZipModal(false);
+    };
     const handleMove = () => {
         if (!moveTargetFolderId) return;
         if (movingItem) {
@@ -304,6 +321,9 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                     )}
                     {currentUserRole !== 'Visualizador' && (
                         <>
+                            <button type="button" onClick={() => setShowZipModal(true)} className="btn btn-outline-secondary rounded-pill px-4">
+                                <i className="bi bi-file-earmark-zip me-2"></i> Descargar ZIP{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+                            </button>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
                                 <i className="bi bi-file-earmark-excel me-2"></i> Exportar Excel
                             </button>
@@ -558,6 +578,13 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                 </div>
             )}
 
+            <ZipTypePickerModal
+                show={showZipModal}
+                title="Descargar ZIP de Ejecutor de Obra"
+                types={EJECUTOR_ZIP_TYPES}
+                onConfirm={confirmZipDownload}
+                onClose={() => setShowZipModal(false)}
+            />
             <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} />
             </div>
         </MainLayout>

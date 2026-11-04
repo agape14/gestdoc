@@ -11,7 +11,7 @@ export default function SubmitButton({ processing, icon, children, className = '
             {processing ? (
                 <>
                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Processing...
+                    Guardando...
                 </>
             ) : (
                 <>

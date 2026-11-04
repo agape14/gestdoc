@@ -1,14 +1,13 @@
 import React from 'react';
+import useViewerHistory from '@/Hooks/useViewerHistory';
 
 export default function DocumentPdfModal({ show, onClose, document: doc, file: selectedFile }) {
+    useViewerHistory(!!(show && doc && selectedFile), onClose);
+
     if (!show || !doc || !selectedFile) return null;
 
     const viewUrl = route('folders.documents.files.view', { document: doc.id, file: selectedFile.id });
     const downloadUrl = route('folders.documents.files.download', { document: doc.id, file: selectedFile.id });
-
-    const handleDownload = () => {
-        window.location.href = downloadUrl;
-    };
 
     return (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>

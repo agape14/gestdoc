@@ -12,10 +12,12 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
 use App\Support\GridPagination;
+use App\Http\Controllers\Concerns\DownloadsModuleZip;
+use Illuminate\Database\Eloquent\Builder;
 
 class RegistroExpedienteController extends Controller
 {
-    use HasRoleBasedAccess, MovesToFolder;
+    use HasRoleBasedAccess, MovesToFolder, DownloadsModuleZip;
 
     const MODULE = 'registro-expedientes';
 
@@ -90,25 +92,11 @@ class RegistroExpedienteController extends Controller
             }
         }
 
-        $sortBy = (string) $request->input('sort_by', 'etiqueta');
-        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $sortable = ['etiqueta', 'tipo_inversion', 'proyecto', 'cui', 'estado', 'descripcion', 'fecha_aprobacion', 'monto_total'];
-        if (!in_array($sortBy, $sortable, true)) {
-            $sortBy = 'etiqueta';
-        }
+        [$sortBy] = $this->applyExpedienteSort($query, $request);
 
         $operadores = $user->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name', 'email'])
             : collect();
-
-        if ($sortBy === 'monto_total') {
-            $query->orderByRaw('COALESCE(monto_o,0) + COALESCE(monto_p,0) + COALESCE(monto_s,0) + COALESCE(monto_supervision,0) ' . strtoupper($sortDir));
-        } elseif ($sortBy === 'etiqueta') {
-            $query->orderByEtiquetaNatural($sortDir);
-        } else {
-            $query->orderBy($sortBy, $sortDir);
-        }
-        $query->orderBy('id', 'asc');
 
         $expedientes = GridPagination::paginate($query, $request);
 
@@ -168,10 +156,11 @@ class RegistroExpedienteController extends Controller
             }
         }
 
-        $expedientes = $query->orderByEtiquetaNatural('asc')->orderBy('id')->get();
+        [$sortBy] = $this->applyExpedienteSort($query, $request);
+        $expedientes = $query->get();
         $filename = 'registro-expedientes_' . date('Y-m-d_H-i-s') . '.xlsx';
 
-        return Excel::download(new RegistroExpedientesExport($expedientes), $filename);
+        return Excel::download(new RegistroExpedientesExport($expedientes, $sortBy), $filename);
     }
 
     public function storeFolder(Request $request)
@@ -329,9 +318,14 @@ class RegistroExpedienteController extends Controller
             'monto_r' => 'nullable|numeric',
             'monto_s' => 'nullable|numeric',
             'monto_supervision' => 'nullable|numeric',
-            'contrato' => 'nullable|file|max:25600',
-            'resolucion_archivo' => 'nullable|file|max:25600',
-        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
+            'contrato' => \App\Support\AllowedUploads::rule(),
+            'resolucion_archivo' => \App\Support\AllowedUploads::rule(),
+        ], [
+            'contrato.extensions' => 'El contrato debe ser PDF, Word, Excel, DWG, ZIP/RAR o imagen.',
+            'resolucion_archivo.extensions' => 'La resolución debe ser PDF, Word, Excel, DWG, ZIP/RAR o imagen.',
+            'contrato.max' => 'El contrato no debe superar 25 MB.',
+            'resolucion_archivo.max' => 'La resolución no debe superar 25 MB.',
+        ], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
 
         $data = $this->prepareData($validated, $request);
         $data['tiene_actualizacion_precios'] = null;
@@ -446,9 +440,14 @@ class RegistroExpedienteController extends Controller
             'monto_r' => 'nullable|numeric',
             'monto_s' => 'nullable|numeric',
             'monto_supervision' => 'nullable|numeric',
-            'contrato' => 'nullable|file|max:25600',
-            'resolucion_archivo' => 'nullable|file|max:25600',
-        ], [], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
+            'contrato' => \App\Support\AllowedUploads::rule(),
+            'resolucion_archivo' => \App\Support\AllowedUploads::rule(),
+        ], [
+            'contrato.extensions' => 'El contrato debe ser PDF, Word, Excel, DWG, ZIP/RAR o imagen.',
+            'resolucion_archivo.extensions' => 'La resolución debe ser PDF, Word, Excel, DWG, ZIP/RAR o imagen.',
+            'contrato.max' => 'El contrato no debe superar 25 MB.',
+            'resolucion_archivo.max' => 'La resolución no debe superar 25 MB.',
+        ], ['resolucion_archivo' => 'subir resolución', 'contrato' => 'subir contrato']);
 
         $data = $this->prepareData($validated, $request);
         $data['tiene_actualizacion_precios'] = null;
@@ -545,5 +544,51 @@ class RegistroExpedienteController extends Controller
         $data['estado'] = $estado;
 
         return $data;
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    protected function applyExpedienteSort($query, Request $request): array
+    {
+        $sortBy = (string) $request->input('sort_by', 'etiqueta');
+        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $sortable = ['etiqueta', 'tipo_inversion', 'proyecto', 'cui', 'estado', 'descripcion', 'fecha_aprobacion', 'monto_total'];
+        if (! in_array($sortBy, $sortable, true)) {
+            $sortBy = 'etiqueta';
+        }
+
+        if ($sortBy === 'monto_total') {
+            $query->orderByRaw('COALESCE(monto_o,0) + COALESCE(monto_p,0) + COALESCE(monto_s,0) + COALESCE(monto_supervision,0) ' . strtoupper($sortDir));
+        } elseif ($sortBy === 'etiqueta') {
+            $query->orderByEtiquetaNatural($sortDir);
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
+        $query->orderBy('id', 'asc');
+
+        return [$sortBy, $sortDir];
+    }
+
+    protected function zipModuleQuery(Request $request): Builder
+    {
+        $query = $this->applyRoleBasedFilter(RegistroExpediente::query(), auth()->user());
+        if ($request->filled('folder_id')) {
+            $query->where('folder_id', (int) $request->folder_id);
+        } else {
+            $query->whereNull('folder_id');
+        }
+
+        return $query;
+    }
+
+    protected function zipEagerLoads(): array
+    {
+        return [];
+    }
+
+    protected function zipDownloadBasename(): string
+    {
+        return 'registro-expedientes';
     }
 }

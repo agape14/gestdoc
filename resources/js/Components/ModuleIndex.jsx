@@ -6,14 +6,16 @@ import PdfModal from '@/Components/PdfModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
+import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
 import { GridPerPageSelect } from '@/Components/GridTableControls';
+import { EXPERIENCIA_ZIP_TYPES } from '@/Utils/allowedUploads';
 
 const getIconClass = (iconName) => {
     const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
     return iconMap[iconName] || 'bi-folder-fill';
 };
 
-export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null, moveRouteName = null, moveBulkRouteName = null, sortEnabled = false }) {
+export default function ModuleIndex({ title, description, items, columns, createRoute, onCreate, filters, routeParams = {}, renderDetail, editRoute, deleteRoute, userRole, folders = [], moveTargetFolders = null, currentFolder = null, breadcrumb = [], storeFolderRoute, indexRoute, indexTitle, operadores = [], getDocumentLinks = null, anulados = [], renderHeader = null, renderFooter = null, moveRouteName = null, moveBulkRouteName = null, sortEnabled = false, zipDownloadRoute = null, zipTypes = EXPERIENCIA_ZIP_TYPES }) {
     const { auth, flash } = usePage().props;
     const currentUserRole = userRole || auth?.user?.role || 'Visualizador';
     const isAdmin = currentUserRole === 'Administrador';
@@ -33,6 +35,7 @@ export default function ModuleIndex({ title, description, items, columns, create
     const [movingItem, setMovingItem] = useState(null);
     const [movingIds, setMovingIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
+    const [showZipModal, setShowZipModal] = useState(false);
 
     const routeParamsSerialized = JSON.stringify(routeParams ?? {});
     useEffect(() => {
@@ -199,6 +202,22 @@ export default function ModuleIndex({ title, description, items, columns, create
         setShowPdfModal(true);
     };
 
+    const confirmZipDownload = (types) => {
+        if (!zipDownloadRoute) return;
+        const params = new URLSearchParams();
+        if (selectedIds.length > 0) {
+            selectedIds.forEach((id) => params.append('ids[]', id));
+        } else {
+            params.set('all', '1');
+        }
+        if (currentFolder?.id) params.set('folder_id', currentFolder.id);
+        if (routeParams?.search) params.set('search', routeParams.search);
+        if (routeParams?.user_id) params.set('user_id', routeParams.user_id);
+        types.forEach((t) => params.append('types[]', t));
+        window.location.href = route(zipDownloadRoute) + '?' + params.toString();
+        setShowZipModal(false);
+    };
+
     const hasMove = Boolean(hasFolders && (moveRouteName || moveBulkRouteName) && currentUserRole !== 'Visualizador');
     const toggleSelectOne = (id) => {
         setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -316,6 +335,17 @@ export default function ModuleIndex({ title, description, items, columns, create
                             >
                                 <i className="bi bi-folder-symlink me-2"></i>
                                 Mover seleccionados ({selectedIds.length})
+                            </button>
+                        )}
+                        {zipDownloadRoute && (
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary shadow-sm rounded-pill px-4"
+                                onClick={() => setShowZipModal(true)}
+                                title={selectedIds.length === 0 ? 'Descargar todos los archivos en ZIP estructurado' : `Descargar ${selectedIds.length} registro(s) en ZIP`}
+                            >
+                                <i className="bi bi-file-zip me-2"></i>
+                                {selectedIds.length > 0 ? `ZIP (${selectedIds.length})` : 'Descargar ZIP'}
                             </button>
                         )}
                         {renderHeader}
@@ -675,6 +705,14 @@ export default function ModuleIndex({ title, description, items, columns, create
             )}
 
             <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} large />
+
+            <ZipTypePickerModal
+                show={showZipModal}
+                title={selectedIds.length > 0 ? `Descargar ZIP (${selectedIds.length} registro${selectedIds.length === 1 ? '' : 's'})` : 'Descargar ZIP de la carpeta'}
+                types={zipTypes}
+                onClose={() => setShowZipModal(false)}
+                onConfirm={confirmZipDownload}
+            />
 
             {(movingItem || movingIds.length > 0) && hasMove && (
                 <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>

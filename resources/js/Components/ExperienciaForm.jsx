@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { useForm } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import SubmitButton from '@/Components/SubmitButton';
+import { FILE_ACCEPT } from '@/Utils/allowedUploads';
 import {
     parseDateDDMMYYYY,
     formatDateToDDMMYYYY,
@@ -10,7 +12,6 @@ import {
     calcPlazoSum,
 } from '@/Utils/experienciaCalculations';
 
-const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png';
 const MAX_FILE_SIZE_MB = 25;
 
 const explainValidationError = (message, fallback) => {
@@ -133,7 +134,7 @@ export default function ExperienciaForm({
 
     const initial = getInitialFormData();
     if (method === 'PUT') initial._method = 'PUT';
-    const { data, setData, post, processing, errors } = useForm(initial);
+    const { data, setData, post, processing, errors, transform } = useForm(initial);
 
     const [documentosExistentesVista, setDocumentosExistentesVista] = useState(() =>
         allowDeleteExistingDocuments && Array.isArray(initialData.documentos_existentes)
@@ -195,9 +196,36 @@ export default function ExperienciaForm({
 
     const submit = (e) => {
         e.preventDefault();
-        // Usar siempre POST con FormData para que PHP reciba los campos (PUT + multipart no rellena $_POST).
-        // En edición, data ya incluye _method: 'PUT' para que Laravel enrute al update.
-        post(submitRoute, { forceFormData: true });
+        transform((d) => {
+            const payload = { ...d };
+            if (payload.monto_neto != null && payload.monto_neto !== '') {
+                payload.monto_neto = String(payload.monto_neto).replace(/[^\d.]/g, '');
+            }
+            if (Array.isArray(payload.documentos)) {
+                payload.documentos = payload.documentos.map((doc) => {
+                    const next = { ...doc };
+                    if (!(next.archivo instanceof File)) delete next.archivo;
+                    return next;
+                });
+            }
+            if (!(payload.archivo_contrato instanceof File)) delete payload.archivo_contrato;
+            if (!(payload.archivo_suspension instanceof File)) delete payload.archivo_suspension;
+            if (!(payload.archivo_reinicio instanceof File)) delete payload.archivo_reinicio;
+            return payload;
+        });
+        post(submitRoute, {
+            forceFormData: true,
+            preserveScroll: true,
+            onError: (errs) => {
+                const first = Object.values(errs || {})[0];
+                const msg = Array.isArray(first) ? first[0] : first;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No se pudo guardar',
+                    text: msg || 'Revise los campos, el formato del archivo (máx. 25 MB) e intente de nuevo.',
+                });
+            },
+        });
     };
 
     return (
@@ -327,7 +355,7 @@ export default function ExperienciaForm({
                                                 <input
                                                     type="file"
                                                     name="archivo_suspension"
-                                                    accept={hasCUI ? '.pdf' : FILE_ACCEPT}
+                                                    accept={FILE_ACCEPT}
                                                     className={`form-control form-control-sm ${errors.archivo_suspension ? 'is-invalid' : ''}`}
                                                     onChange={e => setData('archivo_suspension', e.target.files?.[0] || null)}
                                                 />
@@ -386,7 +414,7 @@ export default function ExperienciaForm({
                                                 <input
                                                     type="file"
                                                     name="archivo_reinicio"
-                                                    accept={hasCUI ? '.pdf' : FILE_ACCEPT}
+                                                    accept={FILE_ACCEPT}
                                                     className={`form-control form-control-sm ${errors.archivo_reinicio ? 'is-invalid' : ''}`}
                                                     onChange={e => setData('archivo_reinicio', e.target.files?.[0] || null)}
                                                 />

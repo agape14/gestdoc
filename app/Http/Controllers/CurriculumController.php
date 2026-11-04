@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Traits\HasRoleBasedAccess;
 use App\Traits\MovesToFolder;
-use ZipArchive;
+use App\Services\StructuredZipService;
+use App\Support\AllowedUploads;
 use App\Support\GridPagination;
 
 class CurriculumController extends Controller
@@ -184,7 +185,7 @@ class CurriculumController extends Controller
 
         foreach ($archivos as $index => $item) {
             $request->validate([
-                "archivos.{$index}.file" => 'required|file|mimes:pdf|max:25600',
+                "archivos.{$index}.file" => AllowedUploads::rule('required'),
             ], [], ["archivos.{$index}.file" => 'archivo PDF']);
             $nombre = \Str::limit($item['nombre_archivo'], 255);
             $path = $item['file']->store('expedientes/cvs', 'r2');
@@ -223,7 +224,7 @@ class CurriculumController extends Controller
             'archivos_existentes.*.nombre_archivo' => 'required|string|max:255',
             'archivos' => 'nullable|array',
             'archivos.*.nombre_archivo' => 'required_with:archivos.*.file|string|max:255',
-            'archivos.*.file' => 'nullable|file|mimes:pdf|max:25600',
+            'archivos.*.file' => AllowedUploads::rule(),
         ], [], [
             'archivos.*.nombre_archivo' => 'nombre del archivo',
             'archivos.*.file' => 'archivo PDF',
@@ -385,85 +386,29 @@ class CurriculumController extends Controller
 
         $entries = [];
         foreach ($cvs as $cv) {
+            $project = StructuredZipService::projectFolder(null, $cv->nombre_candidato ?: ('cv-' . $cv->id));
             foreach ($cv->files as $file) {
-                $disk = storage_disk_for_path($file->path);
-                if (!Storage::disk($disk)->exists($file->path)) {
-                    continue;
-                }
-                if ($disk === 'public') {
-                    $entries[] = [
-                        'type' => 'local',
-                        'path' => Storage::disk('public')->path($file->path),
-                        'nombre_archivo' => $file->nombre_archivo,
-                    ];
-                } else {
-                    $entries[] = [
-                        'type' => 'remote',
-                        'disk' => $disk,
-                        'path' => $file->path,
-                        'nombre_archivo' => $file->nombre_archivo,
-                    ];
-                }
+                $tipo = StructuredZipService::sanitizeSegment($file->nombre_archivo ?: 'CV', 40);
+                $entries[] = [
+                    'zipPath' => $project . '/' . $tipo . '/' . StructuredZipService::originalFilename($file->path, $file->nombre_archivo),
+                    'storagePath' => $file->path,
+                ];
             }
             if ($cv->files->isEmpty() && $cv->archivo_cv) {
-                $disk = storage_disk_for_path($cv->archivo_cv);
-                if (Storage::disk($disk)->exists($cv->archivo_cv)) {
-                    if ($disk === 'public') {
-                        $entries[] = [
-                            'type' => 'local',
-                            'path' => Storage::disk('public')->path($cv->archivo_cv),
-                            'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
-                        ];
-                    } else {
-                        $entries[] = [
-                            'type' => 'remote',
-                            'disk' => $disk,
-                            'path' => $cv->archivo_cv,
-                            'nombre_archivo' => $cv->nombre_candidato ?: 'CV',
-                        ];
-                    }
-                }
+                $entries[] = [
+                    'zipPath' => $project . '/CV/' . StructuredZipService::originalFilename($cv->archivo_cv, $cv->nombre_candidato ?: 'cv'),
+                    'storagePath' => $cv->archivo_cv,
+                ];
             }
         }
 
         if (empty($entries)) {
-            return redirect()->back()->with('error', 'No hay archivos PDF para descargar.');
+            return redirect()->back()->with('error', 'No hay archivos para descargar.');
         }
-
-        $usedBaseNames = [];
-        $zip = new ZipArchive();
-        $zipPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'gestdoc-cvs-' . uniqid('', true) . '.zip';
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            return redirect()->back()->with('error', 'No se pudo crear el archivo ZIP.');
-        }
-        foreach ($entries as $item) {
-            $baseName = \Str::slug($item['nombre_archivo']);
-            if (empty($baseName)) {
-                $baseName = 'documento';
-            }
-            $ext = $item['type'] === 'local'
-                ? (pathinfo($item['path'], PATHINFO_EXTENSION) ?: 'pdf')
-                : 'pdf';
-            if (!isset($usedBaseNames[$baseName])) {
-                $usedBaseNames[$baseName] = 0;
-            }
-            $usedBaseNames[$baseName]++;
-            $fileName = $usedBaseNames[$baseName] === 1 ? $baseName . '.' . $ext : $baseName . '-' . $usedBaseNames[$baseName] . '.' . $ext;
-            if ($item['type'] === 'local') {
-                $zip->addFile($item['path'], $fileName);
-            } else {
-                $content = Storage::disk($item['disk'])->get($item['path']);
-                if ($content === null || $content === false) {
-                    continue;
-                }
-                $zip->addFromString($fileName, $content);
-                unset($content);
-            }
-        }
-        $zip->close();
 
         $downloadName = 'cvs-' . ($folderId ? 'carpeta-' . $folderId . '-' : '') . now()->format('Y-m-d-His') . '.zip';
-        return response()->download($zipPath, $downloadName, ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);
+
+        return StructuredZipService::streamDownload($entries, $downloadName);
     }
 
     private function parseArchivosFromRequest(Request $request): array
