@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import PdfModal from '@/Components/PdfModal';
+import PdfModal from '@/Components/PdfModal';
+import DateInput from '@/Components/DateInput';
 
 export default function Index({ contratos, filters, flash }) {
     const [search, setSearch] = useState(filters ? filters.search : '');
@@ -91,8 +92,7 @@ export default function Index({ contratos, filters, flash }) {
                         </div>
                     </div>
                     <div className="col-12 col-md-6 col-lg-3">
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Firma Inicio"
                             value={dateStart || ''}
@@ -100,8 +100,7 @@ export default function Index({ contratos, filters, flash }) {
                         />
                     </div>
                     <div className="col-12 col-md-6 col-lg-3">
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Firma Fin"
                             value={dateEnd || ''}

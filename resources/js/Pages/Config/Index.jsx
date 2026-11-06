@@ -3,7 +3,9 @@ import MainLayout from '@/Layouts/MainLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import UserFolderPermissionsModal from '@/Components/UserFolderPermissionsModal';
-import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
+import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
+import DateInput from '@/Components/DateInput';
+import { formatDateDisplay } from '@/Utils/experienciaCalculations';
 
 export default function Index({ users, filters, flash }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -122,8 +124,7 @@ export default function Index({ users, filters, flash }) {
                         </select>
                     </div>
                     <div className="col-12 col-md-6 col-lg-3">
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Inicio"
                             value={dateStart}
@@ -131,8 +132,7 @@ export default function Index({ users, filters, flash }) {
                         />
                     </div>
                     <div className="col-12 col-md-6 col-lg-3">
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Fin"
                             value={dateEnd}
@@ -163,7 +163,7 @@ export default function Index({ users, filters, flash }) {
                                     <td className="ps-4 py-3 fw-medium text-body">{user.name}</td>
                                     <td className="text-secondary">{user.email}</td>
                                     <td><span className="badge bg-secondary-subtle text-secondary border rounded-pill px-3">{user.role}</span></td>
-                                    <td className="text-secondary">{new Date(user.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
+                                    <td className="text-secondary">{formatDateDisplay(user.created_at)}</td>
                                     <td className="text-end pe-4">
                                         <Link href={route('users.edit', user.id)} className="btn btn-sm btn-outline-secondary me-1" title="Editar">
                                             <i className="bi bi-pencil"></i>

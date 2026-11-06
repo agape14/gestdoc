@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 import { formatMonedaPeruana } from '@/Utils/experienciaCalculations';
 import Swal from 'sweetalert2';
+import DateInput from '@/Components/DateInput';
 
 const OPCIONES_TIPO_ACCION = [
     { value: '', label: '— Sin clasificar —' },
@@ -174,7 +175,7 @@ export default function Edit({ expediente, opcionesTipoUnidad = [], opcionesTipo
                         </div>
                         <div className="col-md-3">
                             <label className="form-label fw-medium">Fecha de aprobación</label>
-                            <input type="date" className={`form-control ${errors.fecha_aprobacion ? 'is-invalid' : ''}`} value={data.fecha_aprobacion} onChange={e => setData('fecha_aprobacion', e.target.value)} />
+                            <DateInput className={`form-control ${errors.fecha_aprobacion ? 'is-invalid' : ''}`} value={data.fecha_aprobacion} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                             {errors.fecha_aprobacion && <div className="invalid-feedback">{errors.fecha_aprobacion}</div>}
                         </div>
                         <div className="col-md-3">

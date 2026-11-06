@@ -454,7 +454,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                     <tr key={item.id || idx} className="table-secondary">
                                         {columns.map((col, i) => (
                                             <td key={i} className={`py-3 ${i === 0 ? 'ps-4' : ''} ${i === columns.length - 1 ? 'text-end pe-4' : ''} text-break`} style={{ maxWidth: i === columns.length - 1 ? '1%' : undefined }}>
-                                                {col.header === 'ACCIONES' ? <span className="badge bg-secondary">Anulado</span> : (col.render ? col.render(item, idx) : (item[col.accessor] ?? '-'))}
+                                                {col.header === 'ACCIONES' ? <span className="badge bg-secondary">Anulado</span> : (col.render ? col.render(item, idx, { openPdfInModal, openDocumentsModal }) : (item[col.accessor] ?? '-'))}
                                             </td>
                                         ))}
                                     </tr>
@@ -600,7 +600,7 @@ export default function ModuleIndex({ title, description, items, columns, create
                                                             <i className="bi bi-folder-symlink"></i>
                                                         </button>
                                                     )}
-                                                    {col.render ? col.render(item, idx) : (item[col.accessor] || '-')}
+                                                    {col.render ? col.render(item, idx, { openPdfInModal, openDocumentsModal }) : (item[col.accessor] || '-')}
                                                 </td>
                                             );
                                         })}

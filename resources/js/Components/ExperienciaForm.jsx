@@ -3,6 +3,7 @@ import { useForm } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import SubmitButton from '@/Components/SubmitButton';
 import { FILE_ACCEPT } from '@/Utils/allowedUploads';
+import DateInput from '@/Components/DateInput';
 import {
     parseDateDDMMYYYY,
     formatDateToDDMMYYYY,
@@ -286,8 +287,7 @@ export default function ExperienciaForm({
                     <>
                         <div className="col-md-6">
                             <label className="form-label fw-medium">FECHA DE CONTRATO O CP</label>
-                            <input
-                                type="date"
+                            <DateInput
                                 className={`form-control ${errors.fecha_contrato_cp ? 'is-invalid' : ''}`}
                                 value={toInputDate(data.fecha_contrato_cp)}
                                 onChange={e => setData('fecha_contrato_cp', e.target.value)}
@@ -343,8 +343,7 @@ export default function ExperienciaForm({
                                 </div>
                                 {data.tiene_fecha_suspension === 'SI' && (
                                     <div className="mt-3">
-                                        <input
-                                            type="date"
+                                        <DateInput
                                             className="form-control"
                                             value={toInputDate(data.fecha_suspension)}
                                             onChange={e => setData('fecha_suspension', e.target.value)}
@@ -402,8 +401,7 @@ export default function ExperienciaForm({
                                 </div>
                                 {data.tiene_fecha_reinicio === 'SI' && (
                                     <div className="mt-3">
-                                        <input
-                                            type="date"
+                                        <DateInput
                                             className="form-control"
                                             value={toInputDate(data.fecha_reinicio)}
                                             onChange={e => setData('fecha_reinicio', e.target.value)}
@@ -437,8 +435,7 @@ export default function ExperienciaForm({
                 <>
                         <div className={isMunicipalidades ? 'col-md-4' : 'col-md-6'}>
                             <label className="form-label fw-medium">FECHA DE INICIO *</label>
-                            <input
-                                type="date"
+                            <DateInput
                                 className={`form-control ${errors.fecha_inicio ? 'is-invalid' : ''}`}
                                 value={toInputDate(data.fecha_inicio)}
                                 onChange={e => handleFechaChange('fecha_inicio', e.target.value)}
@@ -448,8 +445,7 @@ export default function ExperienciaForm({
                         </div>
                         <div className={isMunicipalidades ? 'col-md-4' : 'col-md-6'}>
                             <label className="form-label fw-medium">FECHA DE CULMINACION *</label>
-                            <input
-                                type="date"
+                            <DateInput
                                 className={`form-control ${errors.fecha_culminacion ? 'is-invalid' : ''}`}
                                 value={toInputDate(data.fecha_culminacion)}
                                 onChange={e => handleFechaChange('fecha_culminacion', e.target.value)}

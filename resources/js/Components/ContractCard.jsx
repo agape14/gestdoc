@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileTextIcon, DownloadIcon, Edit2Icon, Trash2Icon } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
+import { formatDateDisplay } from '@/Utils/experienciaCalculations';
 
 export default function ContractCard({ contract, onEdit, onDelete }) {
     const isComplete = contract.status === 'completo';
@@ -16,12 +17,8 @@ export default function ContractCard({ contract, onEdit, onDelete }) {
 
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return new Intl.DateTimeFormat('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-        }).format(date);
+        const out = formatDateDisplay(dateString);
+        return out === '-' ? 'N/A' : out;
     };
 
     const handleDownload = () => {

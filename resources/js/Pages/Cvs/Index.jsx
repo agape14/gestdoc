@@ -7,6 +7,8 @@ import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
+import DateInput from '@/Components/DateInput';
+import { formatDateDisplay } from '@/Utils/experienciaCalculations';
 
 const getIconClass = (iconName) => {
     const iconMap = { Lock: 'bi-lock-fill', Globe: 'bi-globe', Folder: 'bi-folder-fill', Building: 'bi-building' };
@@ -304,8 +306,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                         </div>
                     </div>
                     <div className="col-lg-2">
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Inicio"
                             value={dateStart}
@@ -313,8 +314,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                         />
                     </div>
                     <div className="col-lg-2">
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Fin"
                             value={dateEnd}
@@ -369,7 +369,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                 {anulados.length > 0 ? anulados.map(cv => (
                                     <tr key={cv.id} className="table-secondary">
                                         <td className="ps-4 py-3">{cv.nombre ?? '—'}</td>
-                                        <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
+                                        <td className="text-secondary">{formatDateDisplay(cv.created_at)}</td>
                                         <td className="text-center" style={{ minWidth: '260px' }}>
                                             {(cv.files && cv.files.length > 0) ? (
                                                 <span className="d-flex flex-column gap-1 align-items-stretch w-100">
@@ -442,7 +442,7 @@ export default function Index({ cvs, filters, flash, folders = [], currentFolder
                                             }}
                                         />
                                     </td>
-                                    <td className="text-secondary">{new Date(cv.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</td>
+                                    <td className="text-secondary">{formatDateDisplay(cv.created_at)}</td>
                                     <td className="text-center" style={{ minWidth: '260px' }}>
                                         {(cv.files && cv.files.length > 0) ? (
                                             <span className="d-flex flex-column gap-1 align-items-stretch w-100">

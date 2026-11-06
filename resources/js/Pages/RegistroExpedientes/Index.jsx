@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import ModuleIndex from '@/Components/ModuleIndex';
 import ModuleIndexRowDetail from '@/Components/ModuleIndexRowDetail';
+import FileButtons from '@/Components/FileButtons';
 import { formatDateDisplay, formatMonedaPeruana } from '@/Utils/experienciaCalculations';
 
 const TIPO_ACCION_LABEL = {
@@ -10,6 +11,16 @@ const TIPO_ACCION_LABEL = {
     ADICIONAL_CON_DEDUCTIVO: 'ADICIONAL CON DEDUCTIVO',
     DEDUCTIVO: 'DEDUCTIVO',
     ACTUALIZACION_PRECIOS: 'ACTUALIZACIÓN DE PRECIOS',
+    REFORMULACION: 'REFORMULACIÓN',
+    VALORIZACION: 'VALORIZACIÓN',
+    LIQUIDACION: 'LIQUIDACIÓN',
+};
+
+const TIPO_ACCION_BADGE = {
+    ADICIONAL: 'ADICIONAL',
+    ADICIONAL_CON_DEDUCTIVO: 'ADIC. + DED.',
+    DEDUCTIVO: 'DEDUCTIVO',
+    ACTUALIZACION_PRECIOS: 'ACT. PRECIOS',
     REFORMULACION: 'REFORMULACIÓN',
     VALORIZACION: 'VALORIZACIÓN',
     LIQUIDACION: 'LIQUIDACIÓN',
@@ -39,23 +50,6 @@ const tipoAccionBadgeClass = (tipo) => {
         default: return 'text-bg-light text-dark border';
     }
 };
-
-const FileStatusIcons = ({ hasContrato, hasResolucion }) => (
-    <div className="d-flex gap-1 justify-content-center" onClick={(e) => e.stopPropagation()}>
-        <span
-            className={`badge rounded-pill ${hasContrato ? 'text-bg-success' : 'text-bg-light text-muted border'}`}
-            title={hasContrato ? 'Contrato cargado' : 'Contrato pendiente'}
-        >
-            <i className="bi bi-file-earmark-text me-1"></i>C
-        </span>
-        <span
-            className={`badge rounded-pill ${hasResolucion ? 'text-bg-primary' : 'text-bg-light text-muted border'}`}
-            title={hasResolucion ? 'Resolución cargada' : 'Resolución pendiente'}
-        >
-            <i className="bi bi-file-earmark-check me-1"></i>R
-        </span>
-    </div>
-);
 
 const estadoBadgeClass = (estado) => {
     switch (String(estado || '').toUpperCase()) {
@@ -186,18 +180,28 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             accessor: 'estado',
             render: (item) => {
                 const estado = getEstado(item);
-                const accion = item.tipo_accion;
                 return (
-                    <div className="d-flex flex-column align-items-start gap-1">
-                        <span className={`badge rounded-pill px-3 py-2 ${estadoBadgeClass(estado)}`}>
-                            {estado}
-                        </span>
-                        {accion ? (
-                            <span className={`badge rounded-pill ${tipoAccionBadgeClass(accion)}`} title={TIPO_ACCION_LABEL[accion] || accion}>
-                                {TIPO_ACCION_LABEL[accion] || accion}
-                            </span>
-                        ) : null}
-                    </div>
+                    <span className={`badge rounded-pill px-3 py-2 ${estadoBadgeClass(estado)}`}>
+                        {estado}
+                    </span>
+                );
+            },
+        },
+        {
+            header: 'ACCIÓN',
+            accessor: 'tipo_accion',
+            render: (item) => {
+                const accion = item.tipo_accion;
+                if (!accion) {
+                    return <span className="text-secondary">—</span>;
+                }
+                return (
+                    <span
+                        className={`badge rounded-pill px-3 py-2 ${tipoAccionBadgeClass(accion)}`}
+                        title={TIPO_ACCION_LABEL[accion] || accion}
+                    >
+                        {TIPO_ACCION_BADGE[accion] || TIPO_ACCION_LABEL[accion] || accion}
+                    </span>
                 );
             },
         },
@@ -218,12 +222,7 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
         {
             header: 'ARCHIVOS',
             accessor: '_archivos',
-            render: (item) => (
-                <FileStatusIcons
-                    hasContrato={!!(item.contrato || item.contrato_url)}
-                    hasResolucion={!!(item.resolucion_archivo || item.resolucion_archivo_url)}
-                />
-            ),
+            render: (item, idx, ctx) => <FileButtons docs={getDocumentLinks(item)} openPdfInModal={ctx?.openPdfInModal} />,
         },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];

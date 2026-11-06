@@ -9,8 +9,9 @@ import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
 import { EJECUTOR_ZIP_TYPES } from '@/Utils/allowedUploads';
+import { formatDateDisplay } from '@/Utils/experienciaCalculations';
 
-const fmtDate = (d) => (!d ? '-' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
+const fmtDate = formatDateDisplay;
 
 const DetailForm = ({ item, onClose }) => {
     const { auth } = usePage().props;

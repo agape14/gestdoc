@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
+import DateInput from '@/Components/DateInput';
 
 const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
 
@@ -25,14 +26,25 @@ const fileKeys = [
 const Input = ({ name, label, type = 'text', required = false, className = '', data, setData, errors, ...rest }) => (
     <div className={`${className} w-100`}>
         <label className="form-label fw-bold small text-secondary">{label}{required && ' *'}</label>
-        <input
-            type={type}
-            className={`form-control w-100 ${errors[name] ? 'is-invalid' : ''}`}
-            value={data[name] ?? ''}
-            onChange={e => setData(name, e.target.value)}
-            required={required}
-            {...rest}
-        />
+        {type === 'date' ? (
+            <DateInput
+                name={name}
+                className={`form-control w-100 ${errors[name] ? 'is-invalid' : ''}`}
+                value={data[name] ?? ''}
+                onChange={e => setData(name, e.target.value)}
+                required={required}
+                {...rest}
+            />
+        ) : (
+            <input
+                type={type}
+                className={`form-control w-100 ${errors[name] ? 'is-invalid' : ''}`}
+                value={data[name] ?? ''}
+                onChange={e => setData(name, e.target.value)}
+                required={required}
+                {...rest}
+            />
+        )}
         {errors[name] && <div className="invalid-feedback">{errors[name]}</div>}
     </div>
 );

@@ -151,6 +151,20 @@ class StructuredZipService
     }
 
     /**
+     * Nombre legible dentro del ZIP: etiqueta del documento + extensión real del archivo.
+     */
+    public static function readableFilename(string $storagePath, ?string $label = null): string
+    {
+        $ext = strtolower(pathinfo($storagePath, PATHINFO_EXTENSION));
+        $slug = Str::slug(mb_substr(trim((string) $label), 0, 80));
+        if ($slug === '') {
+            return self::originalFilename($storagePath, $label);
+        }
+
+        return $ext !== '' ? $slug . '.' . $ext : $slug;
+    }
+
+    /**
      * Extrae entradas ZIP de un registro de experiencia / consultor / expediente.
      *
      * @param  array<int, string>  $allowedTypes
@@ -173,7 +187,7 @@ class StructuredZipService
                 return;
             }
             $out[] = [
-                'zipPath' => $project . '/' . $typeFolder . '/' . self::originalFilename($path, $label),
+                'zipPath' => $project . '/' . self::readableFilename($path, $label),
                 'storagePath' => $path,
             ];
         };

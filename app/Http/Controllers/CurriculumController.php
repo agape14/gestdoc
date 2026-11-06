@@ -388,15 +388,14 @@ class CurriculumController extends Controller
         foreach ($cvs as $cv) {
             $project = StructuredZipService::projectFolder(null, $cv->nombre_candidato ?: ('cv-' . $cv->id));
             foreach ($cv->files as $file) {
-                $tipo = StructuredZipService::sanitizeSegment($file->nombre_archivo ?: 'CV', 40);
                 $entries[] = [
-                    'zipPath' => $project . '/' . $tipo . '/' . StructuredZipService::originalFilename($file->path, $file->nombre_archivo),
+                    'zipPath' => $project . '/' . StructuredZipService::readableFilename($file->path, $file->nombre_archivo ?: 'cv'),
                     'storagePath' => $file->path,
                 ];
             }
             if ($cv->files->isEmpty() && $cv->archivo_cv) {
                 $entries[] = [
-                    'zipPath' => $project . '/CV/' . StructuredZipService::originalFilename($cv->archivo_cv, $cv->nombre_candidato ?: 'cv'),
+                    'zipPath' => $project . '/' . StructuredZipService::readableFilename($cv->archivo_cv, 'cv'),
                     'storagePath' => $cv->archivo_cv,
                 ];
             }

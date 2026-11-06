@@ -8,6 +8,8 @@ import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
 import { CONSULTOR_ZIP_TYPES, FILE_ACCEPT } from '@/Utils/allowedUploads';
+import { formatDateDisplay } from '@/Utils/experienciaCalculations';
+import DateInput from '@/Components/DateInput';
 
 const fmtDate = (d) => (!d ? '' : (typeof d === 'string' && d.length >= 10 ? d.substring(0, 10) : d));
 
@@ -100,11 +102,11 @@ const DetailForm = ({ item, onClose }) => {
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">FECHA DE CONTRATO O CP</label>
-                    <input type="date" className="form-control" value={data.fecha_contrato_cp || ''} onChange={e => setData('fecha_contrato_cp', e.target.value)} />
+                    <DateInput className="form-control" value={data.fecha_contrato_cp || ''} onChange={e => setData('fecha_contrato_cp', e.target.value)} />
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">FECHA DE LA CONFORMIDAD DE SER EL CASO</label>
-                    <input type="date" className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
+                    <DateInput className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
                 </div>
                 <div className="col-md-12">
                     <label className="form-label fw-bold small text-secondary">EXPERIENCIA PROVENIENTE DE</label>
@@ -166,7 +168,7 @@ const DetailForm = ({ item, onClose }) => {
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">FECHA DE APROBACIÓN</label>
-                    <input type="date" className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
+                    <DateInput className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                 </div>
                 <div className="col-md-6">
                     <label className="form-label fw-bold small text-secondary">Modalidad</label>
@@ -705,7 +707,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                         S/ {parseFloat(consultoria.importe || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </td>
                                                     <td className="text-secondary">{consultoria.numero_resolucion || '-'}</td>
-                                                    <td className="text-secondary">{consultoria.fecha_aprobacion ? (typeof consultoria.fecha_aprobacion === 'string' ? consultoria.fecha_aprobacion.substring(0, 10) : consultoria.fecha_aprobacion) : '-'}</td>
+                                                    <td className="text-secondary">{formatDateDisplay(consultoria.fecha_aprobacion)}</td>
                                                     <td>
                                                         <span className={`badge bg-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${consultoria.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
                                                             {consultoria.estado}
@@ -774,7 +776,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                 S/ {parseFloat(consultoria.importe || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="text-secondary">{consultoria.numero_resolucion || '-'}</td>
-                                            <td className="text-secondary">{consultoria.fecha_aprobacion ? (typeof consultoria.fecha_aprobacion === 'string' ? consultoria.fecha_aprobacion.substring(0, 10) : consultoria.fecha_aprobacion) : '-'}</td>
+                                            <td className="text-secondary">{formatDateDisplay(consultoria.fecha_aprobacion)}</td>
                                             <td>
                                                 <span className={`badge bg-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${consultoria.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${consultoria.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
                                                     {consultoria.estado}

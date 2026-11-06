@@ -6,6 +6,7 @@ import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
+import DateInput from '@/Components/DateInput';
 
 const DetailForm = ({ item, onClose }) => {
     const existingDocs = item.documentos || [];
@@ -524,8 +525,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                     </div>
                     <div className="col-12 col-md-6 col-lg-2">
                         <label className="form-label small text-secondary mb-1 d-none d-lg-block">Desde</label>
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Inicio"
                             value={dateStart}
@@ -534,8 +534,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                     </div>
                     <div className="col-12 col-md-6 col-lg-2">
                         <label className="form-label small text-secondary mb-1 d-none d-lg-block">Hasta</label>
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                             placeholder="Fecha Fin"
                             value={dateEnd}

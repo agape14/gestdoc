@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import DateInput from '@/Components/DateInput';
 
 const humanizeValidationMessage = (msg) => {
     if (typeof msg !== 'string') return msg;
@@ -179,8 +180,7 @@ export default function DocumentModal({ show, onClose, document: doc = null, fol
                                 </div>
                                 <div className="col-md-2">
                                     <label className="form-label fw-semibold">Fecha del documento</label>
-                                    <input
-                                        type="date"
+                                    <DateInput
                                         className={`form-control ${errors.fecha_documento ? 'is-invalid' : ''}`}
                                         value={data.fecha_documento}
                                         onChange={(e) => setData('fecha_documento', e.target.value)}

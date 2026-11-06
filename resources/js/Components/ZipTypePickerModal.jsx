@@ -33,7 +33,7 @@ export default function ZipTypePickerModal({
                     </div>
                     <div className="modal-body">
                         <p className="text-secondary small">
-                            El ZIP se organizará en carpetas <code>PROYECTO_O_CUI / TIPO / archivo</code>. Elija los tipos a incluir.
+                            El ZIP tendrá una carpeta por proyecto (<code>CUI_PROYECTO / archivo</code>) con todos sus archivos dentro. Elija los tipos de archivo a incluir.
                         </p>
                         {types.length > 0 && (
                             <label className="form-check mb-2">

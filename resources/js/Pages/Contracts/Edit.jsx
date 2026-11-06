@@ -1,7 +1,8 @@
 import React from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
-import SubmitButton from '@/Components/SubmitButton';
+import SubmitButton from '@/Components/SubmitButton';
+import DateInput from '@/Components/DateInput';
 
 export default function Edit({ contract }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -70,8 +71,7 @@ export default function Edit({ contract }) {
                     <div className="row g-4">
                         <div className="col-md-6 mb-3">
                             <label className="form-label fw-medium">Fecha de Inicio</label>
-                            <input
-                                type="date"
+                            <DateInput
                                 className={`form-control ${errors.fecha_inicio ? 'is-invalid' : ''}`}
                                 value={data.fecha_inicio}
                                 onChange={e => setData('fecha_inicio', e.target.value)}

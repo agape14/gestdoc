@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
+import DateInput from '@/Components/DateInput';
 
 export default function ContractModal({ show, onClose, contract = null, folderId = null, allFolders = [] }) {
     const isEditing = !!contract;
@@ -315,8 +316,7 @@ export default function ContractModal({ show, onClose, contract = null, folderId
                                         <label htmlFor="contract_date" className="form-label fw-semibold">
                                             Fecha de Contrato / O/S / CP <span className="text-danger">*</span>
                                         </label>
-                                        <input
-                                            type="date"
+                                        <DateInput
                                             id="contract_date"
                                             className={`form-control ${errors.contract_date ? 'is-invalid' : ''}`}
                                             value={data.contract_date}
@@ -333,8 +333,7 @@ export default function ContractModal({ show, onClose, contract = null, folderId
                                         <label htmlFor="conformity_date" className="form-label fw-semibold">
                                             Fecha de la Conformidad
                                         </label>
-                                        <input
-                                            type="date"
+                                        <DateInput
                                             id="conformity_date"
                                             className={`form-control ${errors.conformity_date ? 'is-invalid' : ''}`}
                                             value={data.conformity_date}

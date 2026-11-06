@@ -4,6 +4,7 @@ import { Head, useForm, Link, router } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
 import Swal from 'sweetalert2';
 import { FILE_ACCEPT } from '@/Utils/allowedUploads';
+import DateInput from '@/Components/DateInput';
 
 export default function Edit({ consultorObra, folderId = null, canDelete = false }) {
     const existingDocs = consultorObra.documentos || [];
@@ -134,11 +135,11 @@ export default function Edit({ consultorObra, folderId = null, canDelete = false
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">FECHA DE CONTRATO O CP</label>
-                            <input type="date" className="form-control" value={data.fecha_contrato_cp || ''} onChange={e => setData('fecha_contrato_cp', e.target.value)} />
+                            <DateInput className="form-control" value={data.fecha_contrato_cp || ''} onChange={e => setData('fecha_contrato_cp', e.target.value)} />
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">FECHA DE LA CONFORMIDAD DE SER EL CASO</label>
-                            <input type="date" className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
+                            <DateInput className="form-control" value={data.fecha_conformidad || ''} onChange={e => setData('fecha_conformidad', e.target.value)} />
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">IMPORTE</label>
@@ -207,7 +208,7 @@ export default function Edit({ consultorObra, folderId = null, canDelete = false
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">FECHA DE APROBACIÓN</label>
-                            <input type="date" className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
+                            <DateInput className="form-control" value={data.fecha_aprobacion || ''} onChange={e => setData('fecha_aprobacion', e.target.value)} />
                         </div>
                         <div className="col-md-6">
                             <label className="form-label fw-bold small text-secondary">Especialidad</label>

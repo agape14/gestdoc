@@ -322,22 +322,30 @@ class FolderDocumentController extends Controller
         $typeSet = array_fill_keys(array_map(fn ($t) => mb_strtoupper(trim($t)), $types), true);
 
         $entries = [];
+        $usedFolders = [];
         foreach ($documents as $doc) {
-            $asunto = (string) ($doc->asunto ?? '');
+            $asunto = trim((string) ($doc->asunto ?? ''));
+            $numero = trim((string) ($doc->numero ?? ''));
             $cui = null;
-            if (preg_match('/CUI\s*N?[°º]?\s*([0-9]+)/iu', $asunto, $m)) {
+            if (preg_match('/CUI\s*N?[°º]?\s*([0-9]+)/iu', $asunto . ' ' . $numero, $m)) {
                 $cui = $m[1];
             }
-            $project = StructuredZipService::projectFolder($cui, $asunto !== '' ? $asunto : ($doc->numero ?: 'documento-' . $doc->id));
+            $numeroValido = $numero !== '' && ! preg_match('/^(SD|S\/?N|-+)$/i', $numero);
+            $project = $numeroValido
+                ? StructuredZipService::projectFolder($cui, $numero)
+                : StructuredZipService::projectFolder($cui, 'DOCUMENTO_' . $doc->id . ($asunto !== '' && $asunto !== 'SD' ? ' ' . $asunto : ''));
+            if (isset($usedFolders[$project]) && $usedFolders[$project] !== $doc->id) {
+                $project .= '_' . $doc->id;
+            }
+            $usedFolders[$project] = $doc->id;
 
             foreach ($doc->files as $file) {
                 $tipoNombre = trim((string) ($file->nombre_archivo ?? ''));
                 if ($typeSet && ! isset($typeSet[mb_strtoupper($tipoNombre)])) {
                     continue;
                 }
-                $tipoFolder = StructuredZipService::sanitizeSegment($tipoNombre !== '' ? $tipoNombre : 'DOCUMENTO', 60);
                 $entries[] = [
-                    'zipPath' => $project . '/' . $tipoFolder . '/' . StructuredZipService::originalFilename($file->path, $tipoNombre),
+                    'zipPath' => $project . '/' . StructuredZipService::readableFilename($file->path, $tipoNombre !== '' ? $tipoNombre : 'documento'),
                     'storagePath' => $file->path,
                 ];
             }

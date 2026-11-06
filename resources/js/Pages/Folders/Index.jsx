@@ -7,6 +7,8 @@ import DocumentModal from '@/Components/DocumentModal';
 import DocumentPdfModal from '@/Components/DocumentPdfModal';
 import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
+import DateInput from '@/Components/DateInput';
+import { formatDateDisplay } from '@/Utils/experienciaCalculations';
 
 export default function Index({
     folders = [],
@@ -244,11 +246,8 @@ export default function Index({
 
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
-        return new Intl.DateTimeFormat('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-        }).format(new Date(dateString));
+        const out = formatDateDisplay(dateString);
+        return out === '-' ? 'N/A' : out;
     };
 
     const sortField = filters.sort || 'fecha_documento';
@@ -465,8 +464,7 @@ export default function Index({
                             </div>
                         </div>
                         <div className="col-12 col-lg-3">
-                            <input
-                                type="date"
+                            <DateInput
                                 className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                                 placeholder="Fecha inicio"
                                 value={dateStart}
@@ -474,8 +472,7 @@ export default function Index({
                             />
                         </div>
                         <div className="col-12 col-lg-3">
-                            <input
-                                type="date"
+                            <DateInput
                                 className="form-control rounded-pill bg-body-tertiary border-0 px-3"
                                 placeholder="Fecha fin"
                                 value={dateEnd}
