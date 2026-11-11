@@ -38,13 +38,11 @@ trait DownloadsModuleZip
             $records = $query->whereIn('id', $ids)->get();
         }
 
+        // Sin tipos explícitos se incluyen TODOS los documentos por defecto.
         $types = $request->input('types', []);
         $types = is_array($types) ? array_values(array_filter(array_map('strval', $types))) : [];
 
-        $entries = [];
-        foreach ($records as $record) {
-            $entries = array_merge($entries, StructuredZipService::entriesFromRecord($record, $types));
-        }
+        $entries = StructuredZipService::entriesFromRecords($records, $types);
 
         if ($entries === []) {
             return redirect()->back()->with('error', 'No hay archivos para descargar con los tipos seleccionados.');

@@ -7,8 +7,7 @@ import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
-import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
-import { EJECUTOR_ZIP_TYPES } from '@/Utils/allowedUploads';
+import FileButtons from '@/Components/FileButtons';
 import { formatDateDisplay } from '@/Utils/experienciaCalculations';
 
 const fmtDate = formatDateDisplay;
@@ -92,7 +91,6 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
     const [pdfModalUrl, setPdfModalUrl] = useState('');
     const [pdfModalTitle, setPdfModalTitle] = useState('');
     const [selectedIds, setSelectedIds] = useState([]);
-    const [showZipModal, setShowZipModal] = useState(false);
     const [movingItem, setMovingItem] = useState(null);
     const [movingIds, setMovingIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
@@ -133,7 +131,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
         setMoveTargetFolderId(currentFolder?.id ? String(currentFolder.id) : '');
     };
     const closeMoveModal = () => { setMovingItem(null); setMovingIds([]); setMoveTargetFolderId(''); };
-    const confirmZipDownload = (types) => {
+    const confirmZipDownload = () => {
         const params = new URLSearchParams();
         if (selectedIds.length > 0) {
             selectedIds.forEach((id) => params.append('ids[]', id));
@@ -143,9 +141,8 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
         if (currentFolder?.id) params.set('folder_id', currentFolder.id);
         if (search) params.set('search', search);
         if (isAdmin && operatorId) params.set('user_id', operatorId);
-        types.forEach((t) => params.append('types[]', t));
+        // Sin "types": el backend incluye todos los tipos de documento por defecto.
         window.location.href = route('ejecutor-obra.download-zip') + '?' + params.toString();
-        setShowZipModal(false);
     };
     const handleMove = () => {
         if (!moveTargetFolderId) return;
@@ -322,7 +319,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                     )}
                     {currentUserRole !== 'Visualizador' && (
                         <>
-                            <button type="button" onClick={() => setShowZipModal(true)} className="btn btn-outline-secondary rounded-pill px-4">
+                            <button type="button" onClick={confirmZipDownload} className="btn btn-outline-secondary rounded-pill px-4">
                                 <i className="bi bi-file-earmark-zip me-2"></i> Descargar ZIP{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
                             </button>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
@@ -386,6 +383,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                 <SortTh label="# CONTRATO" field="numero_contrato" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <SortTh label="MONTO TOTAL" field="monto_total" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <SortTh label="PLAZO" field="plazo" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <th scope="col" className="py-3">ARCHIVOS</th>
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>
@@ -411,6 +409,9 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                                 S/ {parseFloat(obra.monto_total || obra.presupuesto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="text-secondary">{obra.plazo ?? obra.plazo_ejecucion ?? '-'}</td>
+                                            <td>
+                                                <FileButtons docs={getDocumentLinks(obra)} openPdfInModal={openPdfInModal} />
+                                            </td>
                                             <td className="text-end pe-4">
                                                 {getDocumentLinks(obra).filter(d => d.path || d.url).length > 0 && (
                                                     <button
@@ -475,7 +476,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                         </tr>
                                         {expandedRow === obra.id && (
                                             <tr>
-                                                <td colSpan={hasMove ? 8 : 7} className="p-0 border-0">
+                                                <td colSpan={hasMove ? 9 : 8} className="p-0 border-0">
                                                     <div className="p-3 bg-light">
                                                         <DetailForm item={obra} onClose={() => setExpandedRow(null)} />
                                                     </div>
@@ -486,7 +487,7 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={hasMove ? 8 : 7} className="text-center py-5 text-muted">No se encontraron registros.</td>
+                                    <td colSpan={hasMove ? 9 : 8} className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -579,13 +580,6 @@ export default function Index({ obras, filters, flash, userRole, operadores = []
                 </div>
             )}
 
-            <ZipTypePickerModal
-                show={showZipModal}
-                title="Descargar ZIP de Ejecutor de Obra"
-                types={EJECUTOR_ZIP_TYPES}
-                onConfirm={confirmZipDownload}
-                onClose={() => setShowZipModal(false)}
-            />
             <PdfModal show={showPdfModal} onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }} pdfUrl={pdfModalUrl} title={pdfModalTitle} />
             </div>
         </MainLayout>

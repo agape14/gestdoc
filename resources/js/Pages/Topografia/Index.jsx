@@ -1,6 +1,7 @@
 import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 import ModuleIndexRowDetail from '@/Components/ModuleIndexRowDetail';
+import FileButtons from '@/Components/FileButtons';
 
 export default function Index({ items, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [], anulados = [] }) {
     const getDocumentLinks = (item) => (item.archivo ? [{ label: 'Archivo adjunto', path: item.archivo, url: item.archivo_url }] : []);
@@ -23,6 +24,11 @@ export default function Index({ items, filters, userRole, folders = [], currentF
     const columns = [
         { header: 'TÍTULO', accessor: 'titulo', sortable: true, render: (item) => (item.titulo ? String(item.titulo).slice(0, 50) + (String(item.titulo).length > 50 ? '…' : '') : '-') },
         { header: 'DESCRIPCIÓN', accessor: 'descripcion', sortable: true, render: (item) => (item.descripcion ? String(item.descripcion).slice(0, 40) + (String(item.descripcion).length > 40 ? '…' : '') : '-') },
+        {
+            header: 'ARCHIVOS',
+            accessor: '_archivos',
+            render: (item, idx, ctx) => <FileButtons docs={getDocumentLinks(item)} openPdfInModal={ctx?.openPdfInModal} />,
+        },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 

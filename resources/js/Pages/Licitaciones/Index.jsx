@@ -7,6 +7,8 @@ import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
 import DateInput from '@/Components/DateInput';
+import FileButtons from '@/Components/FileButtons';
+import PdfModal from '@/Components/PdfModal';
 
 const DetailForm = ({ item, onClose }) => {
     const existingDocs = item.documentos || [];
@@ -248,6 +250,9 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
     const [dateEnd, setDateEnd] = useState(filters.date_end || '');
     const [operatorId, setOperatorId] = useState(filters.user_id || '');
     const [expandedRow, setExpandedRow] = useState(null);
+    const [showPdfModal, setShowPdfModal] = useState(false);
+    const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
+    const [selectedPdfTitle, setSelectedPdfTitle] = useState('');
     const [showGrouped, setShowGrouped] = useState(true);
     const [tab, setTab] = useState('activos');
     const [showFolderModal, setShowFolderModal] = useState(false);
@@ -324,6 +329,28 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
             return item.user_id === auth?.user?.id;
         }
         return false;
+    };
+
+    const getDocumentLinks = (item) => (item.documentos || [])
+        .map((doc, idx) => ({
+            label: doc.nombre || `Documento ${idx + 1}`,
+            path: doc.file_path,
+            url: doc.url || null,
+        }))
+        .filter((doc) => doc.path || doc.url);
+
+    const openPdfInModal = (label, path, url) => {
+        const resolved = url || (path ? `/storage/${path}` : '');
+        if (!resolved) return;
+        setSelectedPdfTitle(label || 'Ver documento');
+        setSelectedPdfUrl(resolved);
+        setShowPdfModal(true);
+    };
+
+    const closePdfModal = () => {
+        setShowPdfModal(false);
+        setSelectedPdfUrl('');
+        setSelectedPdfTitle('');
     };
 
     const canEditOrDeleteFolder = (folder) => {
@@ -594,6 +621,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 <SortTh label="ESPECIALIDAD" field="especialidad" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <SortTh label="PRESUPUESTO" field="presupuesto" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <SortTh label="ESTADO" field="estado" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <th scope="col" className="py-3">ARCHIVOS</th>
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>
@@ -612,6 +640,9 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                             <td>
                                                 <span className="badge bg-secondary rounded-pill px-3">Anulado</span>
                                             </td>
+                                            <td>
+                                                <FileButtons docs={getDocumentLinks(licitacion)} openPdfInModal={openPdfInModal} />
+                                            </td>
                                             <td className="text-end pe-4">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setExpandedRow(expandedRow === licitacion.id ? null : licitacion.id); }}
@@ -625,14 +656,14 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={hasMove ? 7 : 6} className="text-center py-5 text-muted">No hay registros anulados.</td>
+                                        <td colSpan={hasMove ? 8 : 7} className="text-center py-5 text-muted">No hay registros anulados.</td>
                                     </tr>
                                 )
                             ) : showGrouped && Object.keys(grouped).length > 0 ? (
                                 Object.entries(grouped).map(([especialidad, items]) => (
                                     <React.Fragment key={especialidad}>
                                         <tr className="bg-light">
-                                            <td colSpan={hasMove ? 7 : 6} className="ps-4 py-2 fw-bold text-primary">
+                                            <td colSpan={hasMove ? 8 : 7} className="ps-4 py-2 fw-bold text-primary">
                                                 <i className="bi bi-folder-fill me-2"></i>
                                                 {especialidad || 'Sin Especialidad'} ({items.length} {items.length === 1 ? 'registro' : 'registros'})
                                             </td>
@@ -659,6 +690,9 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                         <span className={`badge bg-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${licitacion.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
                                                             {licitacion.estado}
                                                         </span>
+                                                    </td>
+                                                    <td>
+                                                        <FileButtons docs={getDocumentLinks(licitacion)} openPdfInModal={openPdfInModal} />
                                                     </td>
                                                     <td className="text-end pe-4">
                                                         {currentUserRole === 'Visualizador' ? (
@@ -707,7 +741,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                 </tr>
                                                 {expandedRow === licitacion.id && (
                                                     <tr>
-                                                        <td colSpan={hasMove ? 7 : 6} className="p-0 border-0">
+                                                        <td colSpan={hasMove ? 8 : 7} className="p-0 border-0">
                                                             <div className="p-3 bg-light">
                                                                 <DetailForm item={licitacion} onClose={() => setExpandedRow(null)} />
                                                             </div>
@@ -741,6 +775,9 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                                 <span className={`badge bg-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle text-${licitacion.estado === 'En Curso' ? 'warning-emphasis' : 'success'} border border-${licitacion.estado === 'En Curso' ? 'warning' : 'success'}-subtle rounded-pill px-3`}>
                                                     {licitacion.estado}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <FileButtons docs={getDocumentLinks(licitacion)} openPdfInModal={openPdfInModal} />
                                             </td>
                                             <td className="text-end pe-4">
                                                 {currentUserRole === 'Visualizador' ? (
@@ -789,7 +826,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                         </tr>
                                         {expandedRow === licitacion.id && (
                                             <tr>
-                                                <td colSpan={hasMove ? 7 : 6} className="p-0 border-0">
+                                                <td colSpan={hasMove ? 8 : 7} className="p-0 border-0">
                                                     <div className="p-3 bg-light">
                                                         <DetailForm item={licitacion} onClose={() => setExpandedRow(null)} />
                                                     </div>
@@ -800,7 +837,7 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={hasMove ? 7 : 6} className="text-center py-5 text-muted">No se encontraron licitaciones.</td>
+                                    <td colSpan={hasMove ? 8 : 7} className="text-center py-5 text-muted">No se encontraron licitaciones.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -839,6 +876,13 @@ export default function Index({ licitaciones, groupedByEspecialidad, filters, fl
                     folder={editingFolder}
                 />
             )}
+
+            <PdfModal
+                show={showPdfModal}
+                onClose={closePdfModal}
+                pdfUrl={selectedPdfUrl}
+                title={selectedPdfTitle}
+            />
 
             {(movingItem || movingIds.length > 0) && hasMove && (
                 <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>

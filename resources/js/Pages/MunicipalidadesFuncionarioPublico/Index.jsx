@@ -30,10 +30,19 @@ export default function Index({ especialistas, experienceTotals = {}, filters, u
                 path: d.file_path,
                 url: d.url || null,
             })).filter((d) => d.path);
-        } else if (item.archivo_contrato_url) {
-            docs = [{ label: labelTipo(item.tipo_documento_adjunto) || 'Archivo', path: item.archivo_contrato, url: item.archivo_contrato_url }];
-        } else if (item.documento) {
-            docs = [{ label: 'Documento', path: item.documento, url: item.documento_url }];
+        } else {
+            if (item.archivo_contrato_url) {
+                docs.push({ label: labelTipo(item.tipo_documento_adjunto) || 'Contrato', path: item.archivo_contrato, url: item.archivo_contrato_url });
+            }
+            if (item.archivo_comprobante_pago_url) {
+                docs.push({ label: 'PDF comprobante de pago', path: item.archivo_comprobante_pago, url: item.archivo_comprobante_pago_url });
+            }
+            if (item.archivo_conformidad_servicio_url) {
+                docs.push({ label: 'PDF conformidad de servicio', path: item.archivo_conformidad_servicio, url: item.archivo_conformidad_servicio_url });
+            }
+            if (item.documento_url || item.documento) {
+                docs.push({ label: 'Documento', path: item.documento, url: item.documento_url });
+            }
         }
         if (item.archivo_suspension_url) docs.push({ label: 'PDF suspensión', path: item.archivo_suspension, url: item.archivo_suspension_url });
         if (item.archivo_reinicio_url) docs.push({ label: 'PDF reinicio', path: item.archivo_reinicio, url: item.archivo_reinicio_url });

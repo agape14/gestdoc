@@ -347,10 +347,6 @@ export default function Index({ expedientes, filters = {}, userRole, folders = [
             renderDetail={renderDetail}
             renderHeader={renderHeader}
             zipDownloadRoute="registro-expedientes.download-zip"
-            zipTypes={[
-                { id: 'CONTRATOS', label: 'Contratos' },
-                { id: 'RESOLUCIONES_CONFORMIDADES', label: 'Resoluciones' },
-            ]}
             getDocumentLinks={getDocumentLinks}
         />
     );

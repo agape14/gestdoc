@@ -8,24 +8,25 @@ import { formatDateDisplay, formatMonedaPeruana } from '@/Utils/experienciaCalcu
 export default function Index({ especialistas, experienceTotals = {}, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [] }) {
     const labelTipo = (t) => ({ CONTRATO: 'Contrato', COMPROBANTE_DE_PAGO: 'Comprobante de pago', CONFORMIDAD_DE_SERVICIO: 'Conformidad de servicio' }[t] || t);
     const getDocumentLinks = (item) => {
-        let docs = [];
-        if (Array.isArray(item.documentos) && item.documentos.length > 0) {
-            docs = item.documentos.map((d, idx) => ({
+        const docs = Array.isArray(item.documentos)
+            ? item.documentos.map((d, idx) => ({
                 label: d.nombre || `Documento ${idx + 1}`,
                 path: d.file_path,
                 url: d.url || null,
-            })).filter((d) => d.path);
-        } else if (item.archivo_contrato_url) {
-            docs = [{ label: labelTipo(item.tipo_documento_adjunto) || 'Archivo', path: item.archivo_contrato, url: item.archivo_contrato_url }];
-        } else if (item.documento) {
-            docs = [{ label: 'Documento', path: item.documento, url: item.documento_url }];
-        }
-        if (item.archivo_suspension_url) {
-            docs.push({ label: 'PDF suspensión', path: item.archivo_suspension, url: item.archivo_suspension_url });
-        }
-        if (item.archivo_reinicio_url) {
-            docs.push({ label: 'PDF reinicio', path: item.archivo_reinicio, url: item.archivo_reinicio_url });
-        }
+            })).filter((d) => d.path || d.url)
+            : [];
+        [
+            ['archivo_contrato', labelTipo(item.tipo_documento_adjunto) || 'Contrato'],
+            ['archivo_comprobante_pago', 'Comprobante de pago'],
+            ['archivo_conformidad_servicio', 'Conformidad de servicio'],
+            ['archivo_suspension', 'PDF suspensión'],
+            ['archivo_reinicio', 'PDF reinicio'],
+            ['documento', 'Documento'],
+        ].forEach(([key, label]) => {
+            const path = item[key];
+            const url = item[`${key}_url`];
+            if (path || url) docs.push({ label, path: path || '', url: url || null });
+        });
         return docs;
     };
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 import ModuleIndexRowDetail from '@/Components/ModuleIndexRowDetail';
+import FileButtons from '@/Components/FileButtons';
 import ExperienciaPieTabla from '@/Components/ExperienciaPieTabla';
 import { formatDateDisplay, formatMonedaPeruana } from '@/Utils/experienciaCalculations';
 
@@ -12,19 +13,20 @@ export default function Index({ servicios, experienceTotals = {}, filters, userR
                 label: d.nombre || `Documento ${idx + 1}`,
                 path: d.file_path,
                 url: d.url || d.file_url || null,
-            })).filter((d) => d.path)
+            })).filter((d) => d.path || d.url)
             : [];
-        if (item.archivo_suspension_url) {
-            docs.push({ label: 'PDF suspensión', path: item.archivo_suspension, url: item.archivo_suspension_url });
-        }
-        if (item.archivo_reinicio_url) {
-            docs.push({ label: 'PDF reinicio', path: item.archivo_reinicio, url: item.archivo_reinicio_url });
-        }
-        if (docs.length > 0) return docs;
-        if (item.archivo_contrato_url) {
-            return [{ label: labelTipo(item.tipo_documento_adjunto) || 'Archivo', path: item.archivo_contrato, url: item.archivo_contrato_url }];
-        }
-        return [];
+        [
+            ['archivo_contrato', labelTipo(item.tipo_documento_adjunto) || 'Contrato'],
+            ['archivo_comprobante_pago', 'Comprobante de pago'],
+            ['archivo_conformidad_servicio', 'Conformidad de servicio'],
+            ['archivo_suspension', 'PDF suspensión'],
+            ['archivo_reinicio', 'PDF reinicio'],
+        ].forEach(([key, label]) => {
+            const path = item[key];
+            const url = item[`${key}_url`];
+            if (path || url) docs.push({ label, path: path || '', url: url || null });
+        });
+        return docs;
     };
 
     const columns = [
@@ -44,6 +46,11 @@ export default function Index({ servicios, experienceTotals = {}, filters, userR
         { header: 'FECHA CULM.', accessor: 'fecha_culminacion', sortable: true, render: (item) => formatDateDisplay(item.fecha_culminacion) },
         { header: 'TOTAL DÍAS', accessor: 'total_dias', sortable: true, render: (item) => item.total_dias ?? '-' },
         { header: 'MONTO NETO', accessor: 'monto_neto', sortable: true, render: (item) => formatMonedaPeruana(item.monto_neto) },
+        {
+            header: 'ARCHIVOS',
+            accessor: '_archivos',
+            render: (item, idx, ctx) => <FileButtons docs={getDocumentLinks(item)} openPdfInModal={ctx?.openPdfInModal} />,
+        },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 

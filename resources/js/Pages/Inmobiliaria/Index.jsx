@@ -1,6 +1,7 @@
 import React from 'react';
 import ModuleIndex from '@/Components/ModuleIndex';
 import ModuleIndexRowDetail from '@/Components/ModuleIndexRowDetail';
+import FileButtons from '@/Components/FileButtons';
 
 export default function Index({ items, filters, userRole, folders = [], currentFolder = null, breadcrumb = [], operadores = [], anulados = [] }) {
     const getDocumentLinks = (item) => {
@@ -13,6 +14,11 @@ export default function Index({ items, filters, userRole, folders = [], currentF
         { header: 'UBICACIÓN', accessor: 'ubicacion', sortable: true, render: (item) => (item.ubicacion ? String(item.ubicacion).slice(0, 35) + (String(item.ubicacion).length > 35 ? '…' : '') : '-') },
         { header: 'PRECIO', accessor: 'precio', sortable: true, render: (row) => `S/ ${parseFloat(row.precio || 0).toFixed(2)}` },
         { header: 'ESTADO', accessor: 'estado', sortable: true },
+        {
+            header: 'ARCHIVOS',
+            accessor: '_archivos',
+            render: (item, idx, ctx) => <FileButtons docs={getDocumentLinks(item)} openPdfInModal={ctx?.openPdfInModal} />,
+        },
         { header: '', accessor: '_expand', render: () => <i className="bi bi-chevron-down text-secondary" title="Ver detalle" /> },
     ];
 

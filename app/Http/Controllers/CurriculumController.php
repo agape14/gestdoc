@@ -164,6 +164,13 @@ class CurriculumController extends Controller
             'nombre_candidato' => 'required|string|max:255',
             'nombre' => 'nullable|string|max:255',
             'folder_id' => 'nullable|exists:folders,id',
+            'archivos.*.es_certificado' => 'nullable|boolean',
+            'archivos.*.periodos' => 'nullable|array',
+            'archivos.*.periodos.*.tipo' => 'nullable|in:valorizacion,suspension',
+            'archivos.*.periodos.*.numero' => 'nullable|string|max:50',
+            'archivos.*.periodos.*.fecha_inicio' => 'nullable|date',
+            'archivos.*.periodos.*.fecha_fin' => 'nullable|date',
+            'archivos.*.periodos.*.dias' => 'nullable|integer|min:0',
         ]);
 
         $archivos = $this->parseArchivosFromRequest($request);
@@ -189,12 +196,14 @@ class CurriculumController extends Controller
             ], [], ["archivos.{$index}.file" => 'archivo PDF']);
             $nombre = \Str::limit($item['nombre_archivo'], 255);
             $path = $item['file']->store('expedientes/cvs', 'r2');
-            CurriculumFile::create([
+            $archivo = CurriculumFile::create([
                 'curriculum_id' => $cv->id,
                 'nombre_archivo' => $nombre,
                 'path' => $path,
                 'orden' => $index,
+                'es_certificado' => (bool) ($item['es_certificado'] ?? false),
             ]);
+            $this->syncPeriodos($archivo, $item['periodos'] ?? []);
         }
 
         $folderId = $cv->folder_id;
@@ -203,7 +212,7 @@ class CurriculumController extends Controller
 
     public function edit(Curriculum $cv)
     {
-        $cv->load('files');
+        $cv->load(['files.periodos']);
         $operadores = auth()->user()->role === 'Administrador'
             ? \App\Models\User::where('role', 'Operador')->orderBy('name')->get(['id', 'name'])
             : [];
@@ -222,9 +231,23 @@ class CurriculumController extends Controller
             'archivos_existentes' => 'nullable|array',
             'archivos_existentes.*.id' => 'required|exists:curriculum_files,id',
             'archivos_existentes.*.nombre_archivo' => 'required|string|max:255',
+            'archivos_existentes.*.es_certificado' => 'nullable|boolean',
+            'archivos_existentes.*.periodos' => 'nullable|array',
+            'archivos_existentes.*.periodos.*.tipo' => 'nullable|in:valorizacion,suspension',
+            'archivos_existentes.*.periodos.*.numero' => 'nullable|string|max:50',
+            'archivos_existentes.*.periodos.*.fecha_inicio' => 'nullable|date',
+            'archivos_existentes.*.periodos.*.fecha_fin' => 'nullable|date',
+            'archivos_existentes.*.periodos.*.dias' => 'nullable|integer|min:0',
             'archivos' => 'nullable|array',
             'archivos.*.nombre_archivo' => 'required_with:archivos.*.file|string|max:255',
             'archivos.*.file' => AllowedUploads::rule(),
+            'archivos.*.es_certificado' => 'nullable|boolean',
+            'archivos.*.periodos' => 'nullable|array',
+            'archivos.*.periodos.*.tipo' => 'nullable|in:valorizacion,suspension',
+            'archivos.*.periodos.*.numero' => 'nullable|string|max:50',
+            'archivos.*.periodos.*.fecha_inicio' => 'nullable|date',
+            'archivos.*.periodos.*.fecha_fin' => 'nullable|date',
+            'archivos.*.periodos.*.dias' => 'nullable|integer|min:0',
         ], [], [
             'archivos.*.nombre_archivo' => 'nombre del archivo',
             'archivos.*.file' => 'archivo PDF',
@@ -239,7 +262,11 @@ class CurriculumController extends Controller
             foreach ($validated['archivos_existentes'] as $item) {
                 $f = CurriculumFile::where('curriculum_id', $cv->id)->find($item['id']);
                 if ($f) {
-                    $f->update(['nombre_archivo' => $item['nombre_archivo']]);
+                    $f->update([
+                        'nombre_archivo' => $item['nombre_archivo'],
+                        'es_certificado' => (bool) ($item['es_certificado'] ?? false),
+                    ]);
+                    $this->syncPeriodos($f, $item['periodos'] ?? []);
                 }
             }
         }
@@ -253,12 +280,14 @@ class CurriculumController extends Controller
             }
             $orden++;
             $path = $file->store('expedientes/cvs', 'r2');
-            CurriculumFile::create([
+            $archivo = CurriculumFile::create([
                 'curriculum_id' => $cv->id,
                 'nombre_archivo' => $item['nombre_archivo'] ?? $file->getClientOriginalName(),
                 'path' => $path,
                 'orden' => $orden,
+                'es_certificado' => filter_var($item['es_certificado'] ?? false, FILTER_VALIDATE_BOOLEAN),
             ]);
+            $this->syncPeriodos($archivo, is_array($item['periodos'] ?? null) ? $item['periodos'] : []);
         }
 
         $folderId = $cv->folder_id;
@@ -384,9 +413,14 @@ class CurriculumController extends Controller
             $cvs = $query->with('files')->whereIn('id', $ids)->get();
         }
 
+        $cvs = $cvs->values();
+        $folders = StructuredZipService::numberDuplicateFolders(
+            $cvs->map(fn ($cv) => StructuredZipService::projectFolder(null, $cv->nombre_candidato ?: ('cv-' . $cv->id)))->all()
+        );
+
         $entries = [];
-        foreach ($cvs as $cv) {
-            $project = StructuredZipService::projectFolder(null, $cv->nombre_candidato ?: ('cv-' . $cv->id));
+        foreach ($cvs as $i => $cv) {
+            $project = $folders[$i];
             foreach ($cv->files as $file) {
                 $entries[] = [
                     'zipPath' => $project . '/' . StructuredZipService::readableFilename($file->path, $file->nombre_archivo ?: 'cv'),
@@ -419,7 +453,12 @@ class CurriculumController extends Controller
                 $nombre = is_array($item) ? ($item['nombre_archivo'] ?? '') : '';
                 $file = $request->file("archivos.{$index}.file") ?? $request->file("archivos.{$index}");
                 if ($nombre !== '' && $file) {
-                    $out[$index] = ['nombre_archivo' => $nombre, 'file' => $file];
+                    $out[$index] = [
+                        'nombre_archivo' => $nombre,
+                        'file' => $file,
+                        'es_certificado' => filter_var($item['es_certificado'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                        'periodos' => is_array($item['periodos'] ?? null) ? $item['periodos'] : [],
+                    ];
                 }
             }
         }
@@ -428,10 +467,60 @@ class CurriculumController extends Controller
                 $nombre = $request->input("archivos.{$i}.nombre_archivo");
                 $file = $request->file("archivos.{$i}.file") ?? $request->file("archivos.{$i}");
                 if ($nombre !== null && $nombre !== '' && $file) {
-                    $out[$i] = ['nombre_archivo' => $nombre, 'file' => $file];
+                    $periodos = $request->input("archivos.{$i}.periodos");
+                    $out[$i] = [
+                        'nombre_archivo' => $nombre,
+                        'file' => $file,
+                        'es_certificado' => filter_var($request->input("archivos.{$i}.es_certificado", false), FILTER_VALIDATE_BOOLEAN),
+                        'periodos' => is_array($periodos) ? $periodos : [],
+                    ];
                 }
             }
         }
         return $out;
+    }
+
+    /**
+     * Reemplaza los periodos del certificado asociados a un archivo.
+     */
+    private function syncPeriodos(CurriculumFile $file, array $periodos): void
+    {
+        $file->periodos()->delete();
+
+        if (!$file->es_certificado) {
+            return;
+        }
+
+        $orden = 0;
+        foreach ($periodos as $periodo) {
+            if (!is_array($periodo)) {
+                continue;
+            }
+            $fechaInicio = $periodo['fecha_inicio'] ?? null;
+            $fechaFin = $periodo['fecha_fin'] ?? null;
+            $dias = ($periodo['dias'] ?? '') !== '' ? (int) $periodo['dias'] : null;
+
+            if ($fechaInicio === null && $fechaFin === null && $dias === null) {
+                continue;
+            }
+
+            if ($dias === null && $fechaInicio && $fechaFin) {
+                $dias = (int) (\Carbon\Carbon::parse($fechaInicio)->startOfDay()
+                    ->diffInDays(\Carbon\Carbon::parse($fechaFin)->startOfDay()) + 1);
+            }
+
+            $tipo = in_array(($periodo['tipo'] ?? ''), ['valorizacion', 'suspension'], true)
+                ? $periodo['tipo']
+                : 'valorizacion';
+
+            $file->periodos()->create([
+                'tipo' => $tipo,
+                'numero' => $periodo['numero'] ?? null,
+                'fecha_inicio' => $fechaInicio ?: null,
+                'fecha_fin' => $fechaFin ?: null,
+                'dias' => $dias,
+                'orden' => $orden++,
+            ]);
+        }
     }
 }

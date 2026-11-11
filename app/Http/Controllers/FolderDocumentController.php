@@ -322,7 +322,8 @@ class FolderDocumentController extends Controller
         $typeSet = array_fill_keys(array_map(fn ($t) => mb_strtoupper(trim($t)), $types), true);
 
         $entries = [];
-        $usedFolders = [];
+        $documents = $documents->values();
+        $baseFolders = [];
         foreach ($documents as $doc) {
             $asunto = trim((string) ($doc->asunto ?? ''));
             $numero = trim((string) ($doc->numero ?? ''));
@@ -331,13 +332,14 @@ class FolderDocumentController extends Controller
                 $cui = $m[1];
             }
             $numeroValido = $numero !== '' && ! preg_match('/^(SD|S\/?N|-+)$/i', $numero);
-            $project = $numeroValido
+            $baseFolders[] = $numeroValido
                 ? StructuredZipService::projectFolder($cui, $numero)
                 : StructuredZipService::projectFolder($cui, 'DOCUMENTO_' . $doc->id . ($asunto !== '' && $asunto !== 'SD' ? ' ' . $asunto : ''));
-            if (isset($usedFolders[$project]) && $usedFolders[$project] !== $doc->id) {
-                $project .= '_' . $doc->id;
-            }
-            $usedFolders[$project] = $doc->id;
+        }
+        $folders = StructuredZipService::numberDuplicateFolders($baseFolders);
+
+        foreach ($documents as $i => $doc) {
+            $project = $folders[$i];
 
             foreach ($doc->files as $file) {
                 $tipoNombre = trim((string) ($file->nombre_archivo ?? ''));

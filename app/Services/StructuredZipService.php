@@ -165,64 +165,171 @@ class StructuredZipService
     }
 
     /**
+     * Construye una carpeta única por registro seleccionado.
+     *
+     * Cuando dos registros generan el mismo nombre de carpeta (por ejemplo, el mismo
+     * cliente sin CUI) se numeran como "1. CARPETA", "2. CARPETA", ... para que los
+     * documentos no se mezclen entre proyectos.
+     *
+     * @param  array<int, string>  $names
+     * @return array<int, string>
+     */
+    public static function numberDuplicateFolders(array $names): array
+    {
+        $counts = array_count_values($names);
+        $seen = [];
+
+        foreach ($names as $i => $name) {
+            if (($counts[$name] ?? 0) > 1) {
+                $seen[$name] = ($seen[$name] ?? 0) + 1;
+                $names[$i] = $seen[$name] . '. ' . $name;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Carpeta raíz de un registro (CUI_PROYECTO o nombre del proyecto).
+     */
+    public static function recordFolder(object $model): string
+    {
+        return self::projectFolder(
+            $model->cui ?? null,
+            $model->cliente
+                ?? $model->proyecto
+                ?? $model->titulo
+                ?? $model->objeto_del_contrato
+                ?? $model->entidad
+                ?? $model->nombre_candidato
+                ?? $model->nombre_sigla_entidad
+                ?? $model->nomenclatura
+                ?? ('registro-' . ($model->id ?? ''))
+        );
+    }
+
+    /**
+     * Extrae las entradas ZIP de varios registros garantizando UNA carpeta por
+     * proyecto y sin mezclar archivos entre registros seleccionados.
+     *
+     * @param  iterable<int, object>  $records
+     * @param  array<int, string>  $allowedTypes
+     * @return array<int, array{zipPath: string, storagePath: string}>
+     */
+    public static function entriesFromRecords(iterable $records, array $allowedTypes = []): array
+    {
+        $list = is_array($records) ? array_values($records) : iterator_to_array($records, false);
+        if ($list === []) {
+            return [];
+        }
+
+        $folders = [];
+        foreach ($list as $record) {
+            $folders[] = self::recordFolder($record);
+        }
+        $folders = self::numberDuplicateFolders($folders);
+
+        $entries = [];
+        foreach ($list as $i => $record) {
+            $entries = array_merge($entries, self::entriesFromRecord($record, $allowedTypes, $folders[$i]));
+        }
+
+        return $entries;
+    }
+
+    /**
      * Extrae entradas ZIP de un registro de experiencia / consultor / expediente.
      *
      * @param  array<int, string>  $allowedTypes
      * @return array<int, array{zipPath: string, storagePath: string}>
      */
-    public static function entriesFromRecord(object $model, array $allowedTypes = []): array
+    public static function entriesFromRecord(object $model, array $allowedTypes = [], ?string $project = null): array
     {
-        $project = self::projectFolder(
-            $model->cui ?? null,
-            $model->cliente ?? $model->proyecto ?? $model->titulo ?? $model->objeto_del_contrato ?? $model->entidad ?? ('registro-' . ($model->id ?? ''))
-        );
+        $project = $project ?: self::recordFolder($model);
+        $seenPaths = [];
 
         $out = [];
-        $push = function (?string $typeFolder, ?string $path, ?string $label) use (&$out, $project, $allowedTypes) {
-            if (! $path) {
+        $push = function (?string $typeFolder, ?string $path, ?string $label) use (&$out, &$seenPaths, $project, $allowedTypes) {
+            if (! is_string($path) || trim($path) === '') {
+                return;
+            }
+            $path = trim($path);
+            if (isset($seenPaths[$path]) || preg_match('#^https?://#i', $path)) {
                 return;
             }
             $typeFolder = $typeFolder ?: self::TYPE_OTROS;
             if ($allowedTypes && ! in_array($typeFolder, $allowedTypes, true)) {
                 return;
             }
+            $seenPaths[$path] = true;
             $out[] = [
                 'zipPath' => $project . '/' . self::readableFilename($path, $label),
                 'storagePath' => $path,
             ];
         };
 
-        if (method_exists($model, 'documentos')) {
-            foreach ($model->documentos ?? [] as $doc) {
+        // Documentos secundarios / subproyectos vinculados al registro principal.
+        foreach (['documentos', 'documentosLiquidacion'] as $relation) {
+            if (! method_exists($model, $relation)) {
+                continue;
+            }
+            $relationDefault = $relation === 'documentosLiquidacion' ? 'liquidacion' : 'documento';
+            try {
+                $documents = $model->{$relation};
+            } catch (\Throwable $e) {
+                continue;
+            }
+            foreach ($documents ?? [] as $doc) {
                 $tipo = $doc->tipo_documento_adjunto ?? $doc->nombre ?? '';
-                $push(self::mapDocumentoTipo($tipo), $doc->file_path ?? null, $doc->nombre ?? $tipo);
+                $label = $doc->nombre ?: ($tipo ?: $relationDefault);
+                $push(self::mapDocumentoTipo($tipo), $doc->file_path ?? null, $label);
             }
         }
 
-        $push(self::TYPE_CONTRATOS, $model->archivo_contrato ?? $model->contrato_archivo ?? $model->contrato ?? null, 'contrato');
-        $push(self::TYPE_RESOLUCIONES, $model->archivo_conformidad_servicio ?? $model->conformidad_tecnica ?? $model->resolucion_archivo ?? $model->actas_resoluciones ?? null, 'resolucion');
-        $push(self::TYPE_COMPROBANTES, $model->archivo_comprobante_pago ?? null, 'comprobante');
-        $push(self::TYPE_SUSPENSION, $model->archivo_suspension ?? $model->archivo_acta_suspension ?? null, 'suspension');
-        $push(self::TYPE_REINICIO, $model->archivo_reinicio ?? $model->archivo_acta_reinicio ?? null, 'reinicio');
-        $push(self::TYPE_TDR, $model->tdr_archivo ?? null, 'tdr');
-        $push(self::TYPE_OTROS, $model->documento ?? null, 'documento');
-        $push(self::TYPE_RESOLUCIONES, $model->archivo_acta_recepcion ?? null, 'acta-recepcion');
-        $push(self::TYPE_RESOLUCIONES, $model->archivo_acta_inicio ?? null, 'acta-inicio');
-        $push(self::TYPE_RESOLUCIONES, $model->archivo_acta_entrega_terreno ?? null, 'acta-entrega-terreno');
-        $push(self::TYPE_OTROS, $model->archivo_acta_adicional ?? null, 'acta-adicional');
-        $push(self::TYPE_OTROS, $model->archivo_acta_deductivo ?? null, 'acta-deductivo');
-        $push(self::TYPE_RESOLUCIONES, $model->archivo_aprobacion_acto_resolutivo ?? null, 'acto-resolutivo');
-
-        if (method_exists($model, 'documentosLiquidacion')) {
-            foreach ($model->documentosLiquidacion ?? [] as $doc) {
-                $push(self::TYPE_OTROS, $doc->file_path ?? null, $doc->nombre ?? 'liquidacion');
+        // Listas de archivos (productos técnicos, informes, etc.).
+        foreach (['producto_tecnico', 'informes_tecnicos', 'panel_fotografico'] as $field) {
+            try {
+                $value = $model->{$field} ?? null;
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if (is_array($value)) {
+                foreach ($value as $i => $path) {
+                    $push(
+                        $field === 'producto_tecnico' ? self::TYPE_PRODUCTOS : self::TYPE_OTROS,
+                        is_string($path) ? $path : null,
+                        str_replace('_', '-', $field) . '-' . ($i + 1)
+                    );
+                }
             }
         }
 
-        if (is_array($model->producto_tecnico ?? null)) {
-            foreach ($model->producto_tecnico as $i => $path) {
-                $push(self::TYPE_PRODUCTOS, $path, 'producto-' . ($i + 1));
+        // Campos de archivo simples del registro. Se incluyen todos los que
+        // empiezan por "archivo_" o terminan en "_archivo", además de columnas
+        // históricas con nombres especiales.
+        $extraFields = [
+            'documento', 'contrato', 'acta_suspension', 'acta_reinicio', 'archivo_cv',
+            'personal_clave', 'panel_fotografico', 'promesa_consorcio',
+            'resolucion_archivo', 'actas_resoluciones', 'conformidad_tecnica',
+        ];
+        $attributes = method_exists($model, 'getAttributes') ? $model->getAttributes() : [];
+
+        foreach ($attributes as $key => $value) {
+            if (! is_string($value) || trim($value) === '') {
+                continue;
             }
+            $isFileField = str_starts_with($key, 'archivo_')
+                || str_ends_with($key, '_archivo')
+                || in_array($key, $extraFields, true);
+            if (! $isFileField) {
+                continue;
+            }
+
+            $push(
+                self::mapDocumentoTipo($key),
+                $value,
+                str_replace('_', ' ', preg_replace('/^archivo_/', '', $key) ?? $key)
+            );
         }
 
         return $out;

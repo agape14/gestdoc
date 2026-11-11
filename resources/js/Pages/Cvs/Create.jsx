@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import SubmitButton from '@/Components/SubmitButton';
+import CertificadoPrestacionServicios from '@/Components/CertificadoPrestacionServicios';
 import Swal from 'sweetalert2';
 
-const INIT_ARCHIVO = { nombre_archivo: '', file: null };
+const CERTIFICADO_TITULO = 'CERTIFICADO DE PRESTACIÓN DE SERVICIOS';
+const INIT_PERIODO = { tipo: 'valorizacion', numero: '1', fecha_inicio: '', fecha_fin: '', dias: '' };
+const INIT_ARCHIVO = { nombre_archivo: '', file: null, es_certificado: false, periodos: [] };
 
 export default function Create({ folderId = null, breadcrumbLabel = '', operadores = [] }) {
     const { auth } = usePage().props;
     const isAdmin = auth?.user?.role === 'Administrador';
     const defaultNombre = auth?.user?.role === 'Operador' ? (auth?.user?.name || '') : '';
 
-    const [archivos, setArchivos] = useState([{ ...INIT_ARCHIVO }]);
+    const [archivos, setArchivos] = useState([{ ...INIT_ARCHIVO, periodos: [] }]);
 
     const { data, setData, post, processing, errors } = useForm({
         nombre_candidato: defaultNombre,
@@ -19,7 +22,7 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
         folder_id: folderId || '',
     });
 
-    const addArchivo = () => setArchivos((prev) => [...prev, { ...INIT_ARCHIVO }]);
+    const addArchivo = () => setArchivos((prev) => [...prev, { ...INIT_ARCHIVO, periodos: [] }]);
     const removeArchivo = (index) => setArchivos((prev) => prev.filter((_, i) => i !== index));
     const setArchivoNombre = (index, nombre_archivo) => {
         setArchivos((prev) => prev.map((a, i) => (i === index ? { ...a, nombre_archivo } : a)));
@@ -27,9 +30,35 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
     const setArchivoFile = (index, file) => {
         setArchivos((prev) => prev.map((a, i) => (i === index ? { ...a, file } : a)));
     };
+    const setArchivoPeriodos = (index, periodos) => {
+        setArchivos((prev) => prev.map((a, i) => (i === index ? { ...a, periodos } : a)));
+    };
+    const toggleCertificado = (index, checked) => {
+        setArchivos((prev) => prev.map((a, i) => {
+            if (i !== index) return a;
+            if (checked) {
+                return {
+                    ...a,
+                    es_certificado: true,
+                    nombre_archivo: CERTIFICADO_TITULO,
+                    periodos: a.periodos?.length ? a.periodos : [{ ...INIT_PERIODO }],
+                };
+            }
+            return {
+                ...a,
+                es_certificado: false,
+                nombre_archivo: a.nombre_archivo === CERTIFICADO_TITULO ? '' : a.nombre_archivo,
+                periodos: [],
+            };
+        }));
+    };
 
     const submit = (e) => {
         e.preventDefault();
+        if (archivos.some((a) => a.es_certificado && !a.file)) {
+            Swal.fire({ icon: 'warning', title: 'Falta el PDF', text: 'Adjunte el archivo PDF del certificado de prestación de servicios.', confirmButtonText: 'Entendido' });
+            return;
+        }
         const conArchivo = archivos.filter((a) => a.nombre_archivo && a.file);
         const formData = new FormData();
         formData.append('nombre_candidato', data.nombre_candidato);
@@ -38,6 +67,16 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
         conArchivo.forEach((a, i) => {
             formData.append(`archivos[${i}][nombre_archivo]`, a.nombre_archivo);
             formData.append(`archivos[${i}][file]`, a.file);
+            if (a.es_certificado) {
+                formData.append(`archivos[${i}][es_certificado]`, '1');
+                (a.periodos || []).forEach((p, j) => {
+                    formData.append(`archivos[${i}][periodos][${j}][tipo]`, p.tipo || 'valorizacion');
+                    formData.append(`archivos[${i}][periodos][${j}][numero]`, p.numero ?? '');
+                    formData.append(`archivos[${i}][periodos][${j}][fecha_inicio]`, p.fecha_inicio || '');
+                    formData.append(`archivos[${i}][periodos][${j}][fecha_fin]`, p.fecha_fin || '');
+                    formData.append(`archivos[${i}][periodos][${j}][dias]`, p.dias ?? '');
+                });
+            }
         });
         router.post(route('cvs.store'), formData, {
             forceFormData: true,
@@ -105,30 +144,55 @@ export default function Create({ folderId = null, breadcrumbLabel = '', operador
                         </label>
                         <div className="small text-secondary mb-2">Máx. 25 MB por archivo, formato PDF.</div>
                         {archivos.map((a, i) => (
-                            <div key={i} className="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center mb-2">
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Nombre (ej. Curriculum Vitae, Carta de Presentación, Anexo)"
-                                    value={a.nombre_archivo}
-                                    onChange={(e) => setArchivoNombre(i, e.target.value)}
-                                />
-                                <div className="d-flex gap-2 align-items-center">
+                            <div key={i} className="border rounded-3 p-2 mb-2 bg-body">
+                                <div className="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center">
                                     <input
-                                        type="file"
-                                        className="form-control flex-grow-1"
-                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg"
-                                        onChange={(e) => setArchivoFile(i, e.target.files?.[0] || null)}
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Nombre (ej. Curriculum Vitae, Carta de Presentación, Anexo)"
+                                        value={a.nombre_archivo}
+                                        onChange={(e) => setArchivoNombre(i, e.target.value)}
                                     />
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-danger btn-sm flex-shrink-0"
-                                        onClick={() => removeArchivo(i)}
-                                        title="Quitar"
-                                    >
-                                        <i className="bi bi-trash"></i>
-                                    </button>
+                                    <div className="d-flex gap-2 align-items-center">
+                                        <input
+                                            type="file"
+                                            className="form-control flex-grow-1"
+                                            accept={a.es_certificado ? '.pdf,application/pdf' : '.pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,.png,.jpg,.jpeg'}
+                                            onChange={(e) => setArchivoFile(i, e.target.files?.[0] || null)}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-danger btn-sm flex-shrink-0"
+                                            onClick={() => removeArchivo(i)}
+                                            title="Quitar"
+                                        >
+                                            <i className="bi bi-trash"></i>
+                                        </button>
+                                    </div>
                                 </div>
+
+                                <div className="form-check mt-2">
+                                    <input
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        id={`certificado-${i}`}
+                                        checked={Boolean(a.es_certificado)}
+                                        onChange={(e) => toggleCertificado(i, e.target.checked)}
+                                    />
+                                    <label className="form-check-label fw-semibold" htmlFor={`certificado-${i}`}>
+                                        CERTIFICADO DE PRESTACIÓN DE SERVICIOS
+                                    </label>
+                                    <div className="form-text">
+                                        Al marcarlo, el título del archivo se reemplaza por «{CERTIFICADO_TITULO}» y podrá registrar los periodos de valorización y suspensión. El título seguirá siendo editable.
+                                    </div>
+                                </div>
+
+                                {a.es_certificado && (
+                                    <CertificadoPrestacionServicios
+                                        periodos={a.periodos || []}
+                                        onChange={(periodos) => setArchivoPeriodos(i, periodos)}
+                                    />
+                                )}
                             </div>
                         ))}
                         <button type="button" className="btn btn-outline-primary btn-sm" onClick={addArchivo}>

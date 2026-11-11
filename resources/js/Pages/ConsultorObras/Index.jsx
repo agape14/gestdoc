@@ -6,8 +6,9 @@ import FolderCardModule from '@/Components/FolderCardModule';
 import ModuleFolderEditModal from '@/Components/ModuleFolderEditModal';
 import ModuleFolderModal from '@/Components/ModuleFolderModal';
 import { GridPerPageSelect, SortTh } from '@/Components/GridTableControls';
-import ZipTypePickerModal from '@/Components/ZipTypePickerModal';
-import { CONSULTOR_ZIP_TYPES, FILE_ACCEPT } from '@/Utils/allowedUploads';
+import FileButtons from '@/Components/FileButtons';
+import PdfModal from '@/Components/PdfModal';
+import { FILE_ACCEPT } from '@/Utils/allowedUploads';
 import { formatDateDisplay } from '@/Utils/experienciaCalculations';
 import DateInput from '@/Components/DateInput';
 
@@ -297,7 +298,9 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
     const [editingFolder, setEditingFolder] = useState(null);
     const [tabActivo, setTabActivo] = useState('activos');
     const [selectedIds, setSelectedIds] = useState([]);
-    const [showZipModal, setShowZipModal] = useState(false);
+    const [showPdfModal, setShowPdfModal] = useState(false);
+    const [pdfModalUrl, setPdfModalUrl] = useState('');
+    const [pdfModalTitle, setPdfModalTitle] = useState('');
     const [movingItem, setMovingItem] = useState(null);
     const [movingIds, setMovingIds] = useState([]);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
@@ -456,7 +459,43 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
         });
     };
 
-    const confirmZipDownload = (types) => {
+    const getDocumentLinks = (item) => {
+        const links = [];
+        if (Array.isArray(item.documentos)) {
+            item.documentos.forEach((d, idx) => {
+                if (d && (d.file_path || d.url)) {
+                    links.push({ label: d.nombre || `Documento ${idx + 1}`, path: d.file_path || '', url: d.url || null });
+                }
+            });
+        }
+        [
+            ['contrato_archivo', 'Contrato'],
+            ['tdr_archivo', 'TDR'],
+            ['actas_resoluciones', 'Actas y resoluciones'],
+            ['conformidad_tecnica', 'Conformidad técnica'],
+            ['personal_clave', 'Personal clave'],
+        ].forEach(([key, label]) => {
+            const path = item[key];
+            const url = item[`${key}_url`];
+            if (path || url) links.push({ label, path: path || '', url: url || null });
+        });
+        if (Array.isArray(item.producto_tecnico)) {
+            item.producto_tecnico.forEach((path, idx) => {
+                if (path) links.push({ label: `Producto técnico ${idx + 1}`, path, url: item.producto_tecnico_urls?.[idx] || null });
+            });
+        }
+        return links;
+    };
+
+    const openPdfInModal = (label, path, url) => {
+        const resolved = url || (path ? `/storage/${path}` : '');
+        if (!resolved) return;
+        setPdfModalTitle(`Consultor de Obras — ${label}`);
+        setPdfModalUrl(resolved);
+        setShowPdfModal(true);
+    };
+
+    const confirmZipDownload = () => {
         const params = new URLSearchParams();
         if (selectedIds.length > 0) {
             selectedIds.forEach((id) => params.append('ids[]', id));
@@ -466,9 +505,8 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
         if (currentFolder?.id) params.set('folder_id', currentFolder.id);
         if (search) params.set('search', search);
         if (isAdmin && operatorId) params.set('user_id', operatorId);
-        types.forEach((t) => params.append('types[]', t));
+        // Sin "types": el backend incluye todos los tipos de documento por defecto.
         window.location.href = route('consultor-obras.download-zip') + '?' + params.toString();
-        setShowZipModal(false);
     };
 
     const handleExport = () => {
@@ -559,7 +597,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                     )}
                     {currentUserRole !== 'Visualizador' && (
                         <>
-                            <button type="button" onClick={() => setShowZipModal(true)} className="btn btn-outline-primary rounded-pill px-4">
+                            <button type="button" onClick={confirmZipDownload} className="btn btn-outline-primary rounded-pill px-4">
                                 <i className="bi bi-file-zip me-2"></i> {selectedIds.length > 0 ? `ZIP (${selectedIds.length})` : 'Descargar ZIP'}
                             </button>
                             <button onClick={handleExport} className="btn btn-success rounded-pill px-4">
@@ -679,6 +717,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                 <SortTh label="F. APROB." field="fecha_aprobacion" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <SortTh label="ESTADO" field="estado" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
                                 <SortTh label="DURACIÓN" field="duracion" currentSort={sortField} currentDirection={sortDirection} onSort={toggleSort} />
+                                <th scope="col" className="py-3">ARCHIVOS</th>
                                 <th scope="col" className="text-end pe-4 py-3">ACCIONES</th>
                             </tr>
                         </thead>
@@ -687,7 +726,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                 Object.entries(grouped).map(([especialidad, items]) => (
                                     <React.Fragment key={especialidad}>
                                         <tr className="bg-light">
-                                            <td colSpan={hasMove ? 10 : 9} className="ps-4 py-2 fw-bold text-primary">
+                                            <td colSpan={hasMove ? 11 : 10} className="ps-4 py-2 fw-bold text-primary">
                                                 <i className="bi bi-folder-fill me-2"></i>
                                                 {especialidad || 'Sin Especialidad'} ({items.length} {items.length === 1 ? 'registro' : 'registros'})
                                             </td>
@@ -714,6 +753,9 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                         </span>
                                                     </td>
                                                     <td className="text-secondary">{consultoria.duracion || '-'}</td>
+                                                    <td>
+                                                        <FileButtons docs={getDocumentLinks(consultoria)} openPdfInModal={openPdfInModal} />
+                                                    </td>
                                                     <td className="text-end pe-4">
                                                         {currentUserRole === 'Visualizador' ? (
                                                             <button className="btn btn-sm btn-outline-info" title="Ver">
@@ -783,6 +825,9 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                                 </span>
                                             </td>
                                             <td className="text-secondary">{consultoria.duracion || '-'}</td>
+                                            <td>
+                                                <FileButtons docs={getDocumentLinks(consultoria)} openPdfInModal={openPdfInModal} />
+                                            </td>
                                             <td className="text-end pe-4">
                                                 {currentUserRole === 'Visualizador' ? (
                                                     <button className="btn btn-sm btn-outline-info" title="Ver">
@@ -829,7 +874,7 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={hasMove ? 10 : 9} className="text-center py-5 text-muted">No se encontraron registros.</td>
+                                    <td colSpan={hasMove ? 11 : 10} className="text-center py-5 text-muted">No se encontraron registros.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -893,12 +938,12 @@ export default function Index({ consultorias, groupedByEspecialidad, filters, fl
                 <ModuleFolderEditModal show={!!editingFolder} onClose={() => setEditingFolder(null)} folder={editingFolder} />
             )}
 
-            <ZipTypePickerModal
-                show={showZipModal}
-                title={selectedIds.length > 0 ? `Descargar ZIP (${selectedIds.length})` : 'Descargar ZIP'}
-                types={CONSULTOR_ZIP_TYPES}
-                onClose={() => setShowZipModal(false)}
-                onConfirm={confirmZipDownload}
+            <PdfModal
+                show={showPdfModal}
+                onClose={() => { setShowPdfModal(false); setPdfModalUrl(''); setPdfModalTitle(''); }}
+                pdfUrl={pdfModalUrl}
+                title={pdfModalTitle}
+                large
             />
             </div>
         </MainLayout>
